@@ -1,68 +1,117 @@
 package controller;
 
-import java.sql.*;
-import java.sql.Date;
-import java.util.*;
-
 import connect.connectMySQL;
+import view.DoanhThuUI;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 
 public class DoanhThuController {
-    private Connection conn;
 
-    public DoanhThuController() {
+    private DoanhThuUI view;
+    private Connection conn;
+    private SimpleDateFormat monthYearFormat = new SimpleDateFormat("MM/yyyy");
+
+    public DoanhThuController(DoanhThuUI view) {
+        this.view = view;
         try {
             this.conn = connectMySQL.getConnection();
-        } catch (Exception e) {
+            if (this.conn == null) {
+                throw new SQLException("Không thể kết nối CSDL");
+            }
+        } catch (SQLException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(view, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    public void loadDoanhThuData() {
+        DefaultTableModel modelDoanhThu = view.getModelDoanhThu();
+        modelDoanhThu.setRowCount(0);
+        double totalRevenue = 0;
+        String sql = "SELECT dt.idDoanhThu, dt.idHoaDon, bn.hoTen, dt.thangNam, hd.tongTien, hd.trangThai " +
+                     "FROM DoanhThu dt " +
+                     "JOIN HoaDon hd ON dt.idHoaDon = hd.idHoaDon " +
+                     "JOIN BenhNhan bn ON hd.idBenhNhan = bn.idBenhNhan " +
+                     "WHERE hd.trangThai = 'DaThanhToan'";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                int idDoanhThu = resultSet.getInt("idDoanhThu");
+                int idHoaDon = resultSet.getInt("idHoaDon");
+                String hoTenBenhNhan = resultSet.getString("hoTen");
+                Date thangNam = resultSet.getDate("thangNam");
+                double tongDoanhThu = resultSet.getDouble("tongTien"); // Lấy tongTien từ bảng HoaDon
+                String trangThai = resultSet.getString("trangThai");
+                modelDoanhThu.addRow(new Object[]{idDoanhThu, idHoaDon, hoTenBenhNhan, monthYearFormat.format(thangNam), tongDoanhThu, trangThai});
+                totalRevenue += tongDoanhThu;
+            }
+            // Thêm hàng tổng vào cuối
+            modelDoanhThu.addRow(new Object[]{null, null, null, "Tổng:", totalRevenue, null});
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view, "Lỗi truy vấn dữ liệu doanh thu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // 1. Cập nhật tổng doanh thu hàng tháng
-    public void capNhatDoanhThu(int thang, int nam) {
-        String sql = "SELECT SUM(tongTien) AS tong FROM HoaDon WHERE MONTH(ngayTao) = ? AND YEAR(ngayTao) = ?";
-        String insertSql = "INSERT INTO DoanhThu (thangNam, tongDoanhThu) VALUES (?, ?)";
-
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, thang);
-            stmt.setInt(2, nam);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                double tongDoanhThu = rs.getDouble("tong");
-                if (tongDoanhThu > 0) {
-                    try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-                        insertStmt.setDate(1, Date.valueOf(nam + "-" + thang + "-01"));
-                        insertStmt.setDouble(2, tongDoanhThu);
-                        insertStmt.executeUpdate();
-                    }
-                    System.out.println("✅ Đã cập nhật doanh thu tháng " + thang + "/" + nam + ": " + tongDoanhThu);
-                } else {
-                    System.out.println("⚠️ Không có doanh thu trong tháng " + thang + "/" + nam);
-                }
+    public void themDoanhThu(Date thangNam, double tongDoanhThu, int idHoaDon) {
+        String sql = "INSERT INTO DoanhThu (thangNam, tongDoanhThu, idHoaDon) VALUES (?, ?, ?)";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setDate(1, new java.sql.Date(thangNam.getTime()));
+            preparedStatement.setDouble(2, tongDoanhThu);
+            preparedStatement.setInt(3, idHoaDon);
+            int affectedRows = preparedStatement.executeUpdate();
+            if (affectedRows > 0) {
+                JOptionPane.showMessageDialog(view, "Thêm doanh thu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                loadDoanhThuData(); // Tải lại dữ liệu sau khi thêm
+            } else {
+                JOptionPane.showMessageDialog(view, "Thêm doanh thu thất bại! (Kiểm tra ID Hóa đơn)", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi cập nhật doanh thu: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view, "Lỗi thêm doanh thu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // 2. Hiển thị doanh thu từng tháng
-    public List<Object[]> hienThiDoanhThu() {  // ĐẢM BẢO TRẢ VỀ List<Object[]>
-        List<Object[]> dataList = new ArrayList<>();
-        String sql = "SELECT thangNam, tongDoanhThu FROM DoanhThu ORDER BY thangNam DESC";
-
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                Date thangNam = rs.getDate("thangNam");
-                double tongDoanhThu = rs.getDouble("tongDoanhThu");
-
-                // Thêm vào danh sách
-                dataList.add(new Object[]{thangNam.toString(), tongDoanhThu});
+    public void xoaDoanhThu(int idDoanhThu) {
+        String sql = "DELETE FROM DoanhThu WHERE idDoanhThu = ?";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setInt(1, idDoanhThu);
+            int affectedRows = preparedStatement.executeUpdate();
+            if (affectedRows > 0) {
+                JOptionPane.showMessageDialog(view, "Xóa doanh thu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                loadDoanhThuData(); // Tải lại dữ liệu sau khi xóa
+            } else {
+                JOptionPane.showMessageDialog(view, "Không tìm thấy doanh thu để xóa!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi lấy doanh thu: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view, "Lỗi xóa doanh thu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
-        return dataList;  // TRẢ VỀ danh sách thay vì void
+    }
+
+    public void suaDoanhThu(int idDoanhThu, java.util.Date thangNam, double tongDoanhThu, int idHoaDon) {
+        String sql = "UPDATE DoanhThu SET thangNam = ?, tongDoanhThu = ?, idHoaDon = ? WHERE idDoanhThu = ?";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setDate(1, new java.sql.Date(thangNam.getTime()));
+            preparedStatement.setDouble(2, tongDoanhThu);
+            preparedStatement.setInt(3, idHoaDon);
+            preparedStatement.setInt(4, idDoanhThu);
+            int affectedRows = preparedStatement.executeUpdate();
+            if (affectedRows > 0) {
+                JOptionPane.showMessageDialog(view, "Sửa doanh thu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                loadDoanhThuData(); // Tải lại dữ liệu sau khi sửa
+            } else {
+                JOptionPane.showMessageDialog(view, "Không tìm thấy doanh thu để sửa! (Kiểm tra ID Hóa đơn)", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(view, "Lỗi sửa doanh thu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

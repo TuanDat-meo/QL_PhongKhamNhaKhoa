@@ -80,7 +80,12 @@ public class GiaoDienChinh extends JFrame {
 
         LichHenGUI lichHenPanel = new LichHenGUI();
         contentPanel.add(lichHenPanel, "Quản lý Lịch Hẹn");
-
+        
+        DoanhThuUI doanhThuPanel = new DoanhThuUI();
+        contentPanel.add(doanhThuPanel, "Quản lý Doanh Thu");
+        LuongUI luongPanel = new LuongUI();
+        contentPanel.add(luongPanel, "Quản lý Lương");
+        
         ThongTinNguoiDungUI thongTinNguoiDungPanel = new ThongTinNguoiDungUI();
         contentPanel.add(thongTinNguoiDungPanel, "Thông tin Người Dùng");
 

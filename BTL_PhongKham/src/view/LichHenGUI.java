@@ -309,26 +309,26 @@ public class LichHenGUI extends JPanel {
     }
     private void addAppointment() {
         JPanel panel = new JPanel(new GridLayout(0, 2, 5, 5));
-
+    
         // Lấy danh sách bác sĩ
         List<String> bacSiList = qlLichHen.danhSachBacSi();
         JComboBox<String> comboBacSi = new JComboBox<>(bacSiList.toArray(new String[0]));
-
+    
         // Lấy danh sách bệnh nhân
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         JComboBox<String> comboBenhNhan = new JComboBox<>(benhNhanList.toArray(new String[0]));
-
+    
         // Lấy danh sách phòng khám
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
         JComboBox<String> comboPhongKham = new JComboBox<>(phongKhamList.toArray(new String[0]));
-
+    
         // Các trường nhập liệu khác
         JDateChooser dateChooserNgayHen = new JDateChooser();
         JTextField txtGioHen = new JTextField();
         dateChooserNgayHen.setDate(Calendar.getInstance().getTime());
         JComboBox<LichHen.TrangThaiLichHen> statusComboBox = new JComboBox<>(LichHen.TrangThaiLichHen.values());
         JTextField txtMoTa = new JTextField();
-
+    
         // Thêm các phần tử vào panel
         panel.add(new JLabel("Tên bác sĩ:"));
         panel.add(comboBacSi);
@@ -344,40 +344,38 @@ public class LichHenGUI extends JPanel {
         panel.add(statusComboBox);
         panel.add(new JLabel("Mô tả:"));
         panel.add(txtMoTa);
-
+    
         int result = JOptionPane.showConfirmDialog(this, panel, "Thêm Lịch Hẹn",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
+    
         if (result == JOptionPane.OK_OPTION) {
             try {
                 String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
                 String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
                 String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
-                System.out.println("Tên bác sĩ đã chọn: " + hoTenBacSi);
-                System.out.println("Tên bệnh nhân đã chọn: " + hoTenBenhNhan);
-                System.out.println("Tên phòng khám đã chọn: " + tenPhongKham);
-
+    
                 // Lấy ID từ các tên đã chọn
                 int idBacSi = qlLichHen.getBacSiIdFromName(hoTenBacSi);
                 int idBenhNhan = qlLichHen.getBenhNhanIdFromName(hoTenBenhNhan);
                 int idPhongKham = qlLichHen.getPhongKhamIdFromName(tenPhongKham);
-
+    
                 if (idBacSi == -1 || idBenhNhan == -1 || idPhongKham == -1) {
                     JOptionPane.showMessageDialog(this, "Tên bác sĩ, bệnh nhân hoặc phòng khám không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-
+    
                 java.util.Date ngayHenDate = dateChooserNgayHen.getDate();
                 java.sql.Date ngayHen = new java.sql.Date(ngayHenDate.getTime());
                 LocalTime gioHen = LocalTime.parse(txtGioHen.getText());
                 java.sql.Time timeGioHen = java.sql.Time.valueOf(gioHen);
                 LichHen.TrangThaiLichHen trangThaiEnum = (LichHen.TrangThaiLichHen) statusComboBox.getSelectedItem();
                 String moTa = txtMoTa.getText();
-
+    
+                // Create LichHen object with both IDs and names
                 LichHen lichHen = new LichHen(0, idBacSi, hoTenBacSi, idBenhNhan, hoTenBenhNhan, ngayHen, idPhongKham, tenPhongKham, timeGioHen, trangThaiEnum, moTa);
-
+    
                 qlLichHen.datLichHen(lichHen);
-
+    
                 JOptionPane.showMessageDialog(this, "Thêm lịch hẹn thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                 updateCalendar();
             } catch (NumberFormatException e) {
@@ -389,6 +387,7 @@ public class LichHenGUI extends JPanel {
             }
         }
     }
+    
 
 
     private String getFormattedWeek() {

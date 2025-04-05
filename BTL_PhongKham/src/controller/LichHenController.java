@@ -161,56 +161,58 @@ public class LichHenController {
         return -1;
     }
  // Trong QLLichHen.java
-    public List<String> danhSachBacSi() {
-        List<String> danhSach = new ArrayList<>();
-        try {
-            String sql = "SELECT hoTenBacSi FROM BacSi";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                String hoTenBacSi = resultSet.getString("hoTenBacSi").trim();
-                System.out.println("Tên bác sĩ: " + hoTenBacSi);
-                danhSach.add(hoTenBacSi);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+ // In LichHenController.java
+// In LichHenController.java
+public List<String> danhSachBacSi() {
+    List<String> danhSach = new ArrayList<>();
+    try {
+        String sql = "SELECT hoTenBacSi FROM BacSi";
+        PreparedStatement preparedStatement = conn.prepareStatement(sql);
+        ResultSet resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            String hoTenBacSi = resultSet.getString("hoTenBacSi").trim(); // Trim here!
+            System.out.println("Tên bác sĩ (from DB): '" + hoTenBacSi + "'"); // Debugging
+            danhSach.add(hoTenBacSi);
         }
-        return danhSach;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    return danhSach;
+}
 
-    public List<String> danhSachBenhNhan() {
-        List<String> danhSach = new ArrayList<>();
-        try {
-            String sql = "SELECT hoTen FROM BenhNhan";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                String hoTenBenhNhan = resultSet.getString("hoTen").trim();
-                System.out.println("Tên bệnh nhân: " + hoTenBenhNhan);
-                danhSach.add(hoTenBenhNhan);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+public List<String> danhSachBenhNhan() {
+    List<String> danhSach = new ArrayList<>();
+    try {
+        String sql = "SELECT hoTen FROM BenhNhan";
+        PreparedStatement preparedStatement = conn.prepareStatement(sql);
+        ResultSet resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            String hoTenBenhNhan = resultSet.getString("hoTen").trim(); // Trim here!
+            System.out.println("Tên bệnh nhân (from DB): '" + hoTenBenhNhan + "'"); // Debugging
+            danhSach.add(hoTenBenhNhan);
         }
-        return danhSach;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    return danhSach;
+}
 
-    public List<String> danhSachPhongKham() {
-        List<String> danhSach = new ArrayList<>();
-        try {
-            String sql = "SELECT tenPhong FROM PhongKham";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                String tenPhong = resultSet.getString("tenPhong").trim();
-                System.out.println("Tên phòng khám: " + tenPhong);
-                danhSach.add(tenPhong);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+public List<String> danhSachPhongKham() {
+    List<String> danhSach = new ArrayList<>();
+    try {
+        String sql = "SELECT tenPhong FROM PhongKham";
+        PreparedStatement preparedStatement = conn.prepareStatement(sql);
+        ResultSet resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            String tenPhong = resultSet.getString("tenPhong").trim(); // Trim here!
+            System.out.println("Tên phòng khám (from DB): '" + tenPhong + "'"); // Debugging
+            danhSach.add(tenPhong);
         }
-        return danhSach;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    return danhSach;
+}
 
 
     public LichHen mapResultSetToLichHen(ResultSet rs) throws SQLException {
@@ -226,53 +228,57 @@ public class LichHenController {
         lichHen.setMoTa(rs.getString("moTa"));
         return lichHen;
     }
-    public int getBacSiIdFromName(String hoTenBacSi) {
-        String sql = "SELECT idBacSi FROM BacSi WHERE hoTenBacSi = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, hoTenBacSi);
-            System.out.println("Truy vấn ID bác sĩ với tên: " + hoTenBacSi);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("idBacSi");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+    // In LichHenController.java
+// In LichHenController.java
+public int getBacSiIdFromName(String hoTenBacSi) {
+    String sql = "SELECT idBacSi FROM BacSi WHERE hoTenBacSi = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, hoTenBacSi.trim()); // Trim here!
+        System.out.println("Truy vấn ID bác sĩ với tên (trimmed): '" + hoTenBacSi.trim() + "'"); // Debugging
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("idBacSi");
         }
-        System.err.println("Không tìm thấy ID bác sĩ cho tên: " + hoTenBacSi);
-        return -1;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    System.err.println("Không tìm thấy ID bác sĩ cho tên: '" + hoTenBacSi + "'");
+    return -1;
+}
 
-    public int getBenhNhanIdFromName(String hoTenBenhNhan) {
-        String sql = "SELECT idBenhNhan FROM BenhNhan WHERE hoTen = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, hoTenBenhNhan);
-            System.out.println("Truy vấn ID bệnh nhân với tên: " + hoTenBenhNhan);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("idBenhNhan");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+public int getBenhNhanIdFromName(String hoTenBenhNhan) {
+    String sql = "SELECT idBenhNhan FROM BenhNhan WHERE hoTen = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, hoTenBenhNhan.trim()); // Trim here!
+        System.out.println("Truy vấn ID bệnh nhân với tên (trimmed): '" + hoTenBenhNhan.trim() + "'"); // Debugging
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("idBenhNhan");
         }
-        System.err.println("Không tìm thấy ID bệnh nhân cho tên: " + hoTenBenhNhan);
-        return -1;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    System.err.println("Không tìm thấy ID bệnh nhân cho tên: '" + hoTenBenhNhan + "'");
+    return -1;
+}
 
-    public int getPhongKhamIdFromName(String tenPhong) {
-        String sql = "SELECT idPhongKham FROM PhongKham WHERE tenPhong = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, tenPhong);
-            System.out.println("Truy vấn ID phòng khám với tên: " + tenPhong);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("idPhongKham");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+public int getPhongKhamIdFromName(String tenPhong) {
+    String sql = "SELECT idPhongKham FROM PhongKham WHERE tenPhong = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, tenPhong.trim()); // Trim here!
+        System.out.println("Truy vấn ID phòng khám với tên (trimmed): '" + tenPhong.trim() + "'"); // Debugging
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("idPhongKham");
         }
-        System.err.println("Không tìm thấy ID phòng khám cho tên: " + tenPhong);
-        return -1;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    System.err.println("Không tìm thấy ID phòng khám cho tên: '" + tenPhong + "'");
+    return -1;
+}
+
+
     public List<LichHen> getAllLichHen() {
         List<LichHen> dsLichHen = new ArrayList<>();
         String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
