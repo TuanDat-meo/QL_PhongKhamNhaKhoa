@@ -111,6 +111,30 @@ public class BenhNhanController {
         }
         return danhSach;
     }
+    public BenhNhan timKiemBenhNhanTheoId(int idBenhNhan) {
+        BenhNhan benhNhan = null;
+        String sql = "SELECT idBenhNhan, hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi FROM BenhNhan WHERE idBenhNhan = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, idBenhNhan);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                benhNhan = new BenhNhan();
+                benhNhan.setIdBenhNhan(rs.getInt("idBenhNhan"));
+                benhNhan.setHoTen(rs.getString("hoTen"));
+                benhNhan.setNgaySinh(rs.getDate("ngaySinh"));
+                benhNhan.setGioiTinh(rs.getString("gioiTinh"));
+                benhNhan.setSoDienThoai(rs.getString("soDienThoai"));
+                benhNhan.setCccd(rs.getString("cccd"));
+                benhNhan.setDiaChi(rs.getString("diaChi"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return benhNhan;
+    }
+
     public List<BenhNhan> layBenhNhanTheoHoTen(String hoTen) throws SQLException {
         List<BenhNhan> danhSach = new ArrayList<>();
         String sql = "SELECT * FROM BenhNhan WHERE LOWER(hoTen) = LOWER(?)";
@@ -133,5 +157,27 @@ public class BenhNhanController {
         }
         return danhSach;
     }
-
+    public List<BenhNhan> getAllBenhNhan() {
+        List<BenhNhan> danhSach = new ArrayList<>();
+        String sql = "SELECT idBenhNhan, hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi FROM BenhNhan";
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                BenhNhan benhNhan = new BenhNhan(
+                        rs.getInt("idBenhNhan"),
+                        rs.getString("hoTen"),
+                        rs.getDate("ngaySinh"),
+                        rs.getString("gioiTinh"),
+                        rs.getString("soDienThoai"),
+                        rs.getString("cccd"),
+                        rs.getString("diaChi")
+                );
+                danhSach.add(benhNhan);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Xử lý lỗi SQLException ở đây, ví dụ: log lỗi hoặc thông báo cho người dùng
+        }
+        return danhSach;
+    }
 }

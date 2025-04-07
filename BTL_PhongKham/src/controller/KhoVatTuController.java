@@ -1,12 +1,18 @@
 package controller;
 
-import java.sql.*;
+import connect.connectMySQL;
+import model.KhoVatTu;
+import model.NhaCungCap;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import connect.connectMySQL;
-
 public class KhoVatTuController {
+
     private Connection conn;
 
     public KhoVatTuController() {
@@ -17,67 +23,157 @@ public class KhoVatTuController {
         }
     }
 
-    // 1. Thêm vật tư vào kho
-    public boolean themVatTu(String tenVatTu, int soLuong, String donViTinh, int idNCC) {
-        String sql = "INSERT INTO KhoVatTu (tenVatTu, soLuong, donViTinh, idNCC) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, tenVatTu);
-            stmt.setInt(2, soLuong);
-            stmt.setString(3, donViTinh);
-            stmt.setInt(4, idNCC);
-            return stmt.executeUpdate() > 0;
+    public List<KhoVatTu> getAllKhoVatTu() {
+        List<KhoVatTu> danhSachVatTu = new ArrayList<>();
+        String sql = "SELECT * FROM KhoVatTu";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                KhoVatTu vatTu = new KhoVatTu();
+                vatTu.setIdVatTu(rs.getInt("idVatTu"));
+                vatTu.setTenVatTu(rs.getString("tenVatTu"));
+                vatTu.setSoLuong(rs.getInt("soLuong"));
+                vatTu.setDonViTinh(rs.getString("donViTinh"));
+                vatTu.setMaNCC(rs.getString("idNCC")); // Sử dụng String maNCC
+                vatTu.setPhanLoai(rs.getString("phanLoai"));
+                danhSachVatTu.add(vatTu);
+            }
+
         } catch (SQLException e) {
-            System.err.println("Lỗi khi thêm vật tư: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return danhSachVatTu;
+    }
+
+    public boolean addKhoVatTu(KhoVatTu vatTu) {
+        String sql = "INSERT INTO KhoVatTu (tenVatTu, soLuong, donViTinh, idNCC, phanLoai) VALUES (?, ?, ?, ?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, vatTu.getTenVatTu());
+            pstmt.setInt(2, vatTu.getSoLuong());
+            pstmt.setString(3, vatTu.getDonViTinh());
+            pstmt.setString(4, vatTu.getMaNCC()); // Sử dụng String maNCC
+            pstmt.setString(5, vatTu.getPhanLoai());
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
             return false;
         }
     }
 
-    // 2. Lấy danh sách vật tư
-    public List<String> layDanhSachVatTu() {
-        List<String> list = new ArrayList<>();
-        String sql = "SELECT k.idVatTu, k.tenVatTu, k.soLuong, k.donViTinh, n.tenNCC " +
-                     "FROM KhoVatTu k JOIN NhaCungCap n ON k.idNCC = n.idNCC";
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+    public boolean updateKhoVatTu(KhoVatTu vatTu) {
+        String sql = "UPDATE KhoVatTu SET tenVatTu = ?, soLuong = ?, donViTinh = ?, idNCC = ?, phanLoai = ? WHERE idVatTu = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, vatTu.getTenVatTu());
+            pstmt.setInt(2, vatTu.getSoLuong());
+            pstmt.setString(3, vatTu.getDonViTinh());
+            pstmt.setString(4, vatTu.getMaNCC()); // Sử dụng String maNCC
+            pstmt.setString(5, vatTu.getPhanLoai());
+            pstmt.setInt(6, vatTu.getIdVatTu());
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteKhoVatTu(int idVatTu) {
+        String sql = "DELETE FROM KhoVatTu WHERE idVatTu = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, idVatTu);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public List<NhaCungCap> getAllNhaCungCap() {
+        List<NhaCungCap> danhSachNCC = new ArrayList<>();
+        String sql = "SELECT idNCC, tenNCC FROM NhaCungCap";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
             while (rs.next()) {
-                String vt = "ID: " + rs.getInt("idVatTu") +
-                        ", Tên: " + rs.getString("tenVatTu") +
-                        ", Số lượng: " + rs.getInt("soLuong") +
-                        ", Đơn vị: " + rs.getString("donViTinh") +
-                        ", Nhà cung cấp: " + rs.getString("tenNCC");
-                list.add(vt);
+                NhaCungCap ncc = new NhaCungCap();
+                ncc.setMaNCC(rs.getString("idNCC"));
+                ncc.setTenNCC(rs.getString("tenNCC"));
+                danhSachNCC.add(ncc);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return danhSachNCC;
+    }
+    public java.util.Map<String, Integer> getTongSoLuongTheoPhanLoai() {
+        java.util.Map<String, Integer> tongSoLuongTheoPhanLoai = new java.util.HashMap<>();
+        String sql = "SELECT phanLoai, SUM(soLuong) AS tongSoLuong FROM KhoVatTu GROUP BY phanLoai ORDER BY phanLoai";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                String phanLoai = rs.getString("phanLoai");
+                int tongSoLuong = rs.getInt("tongSoLuong");
+                tongSoLuongTheoPhanLoai.put(phanLoai, tongSoLuong);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return tongSoLuongTheoPhanLoai;
+    }
+    public List<String> getAllPhanLoai() {
+        List<String> danhSachPhanLoai = new ArrayList<>();
+        String sql = "SELECT DISTINCT phanLoai FROM KhoVatTu ORDER BY phanLoai";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                danhSachPhanLoai.add(rs.getString("phanLoai"));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return danhSachPhanLoai;
+    }
+    public String getTenNhaCungCap(String maNCC) {
+        String tenNCC = null;
+        String sql = "SELECT tenNCC FROM NhaCungCap WHERE idNCC = ?"; // Truy vấn bảng NhaCungCap
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, maNCC);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                tenNCC = rs.getString("tenNCC");
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy danh sách vật tư: " + e.getMessage());
+            e.printStackTrace();
         }
-        return list;
+        return tenNCC;
     }
-
-    // 3. Cập nhật thông tin vật tư
-    public boolean capNhatVatTu(int idVatTu, String tenVatTu, int soLuong, String donViTinh, int idNCC) {
-        String sql = "UPDATE KhoVatTu SET tenVatTu = ?, soLuong = ?, donViTinh = ?, idNCC = ? WHERE idVatTu = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, tenVatTu);
-            stmt.setInt(2, soLuong);
-            stmt.setString(3, donViTinh);
-            stmt.setInt(4, idNCC);
-            stmt.setInt(5, idVatTu);
-            return stmt.executeUpdate() > 0;
+    public String getMaNhaCungCapTheoTen(String tenNCC) {
+        String maNCC = null;
+        String sql = "SELECT idNCC FROM NhaCungCap WHERE tenNCC = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, tenNCC);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                maNCC = rs.getString("idNCC");
+            }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi cập nhật vật tư: " + e.getMessage());
-            return false;
+            e.printStackTrace();
         }
-    }
-
-    // 4. Xóa vật tư khỏi kho
-    public boolean xoaVatTu(int idVatTu) {
-        String sql = "DELETE FROM KhoVatTu WHERE idVatTu = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, idVatTu);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("Lỗi khi xóa vật tư: " + e.getMessage());
-            return false;
-        }
+        return maNCC;
     }
 }

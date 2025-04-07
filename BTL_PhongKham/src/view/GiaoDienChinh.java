@@ -2,6 +2,8 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.SQLException;
+
 import javax.swing.border.EmptyBorder;
 
 public class GiaoDienChinh extends JFrame {
@@ -9,10 +11,10 @@ public class GiaoDienChinh extends JFrame {
     private String[] menuItems = {
             "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn",
             "Quản lý Hồ Sơ", "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn",
-            "Quản lý Lương", "Quản lý Nhà Cung Cấp", "Quản lý Thanh Toán", "Thống Kê","Thông tin Người Dùng"
+            "Quản lý Lương", "Quản lý Nhà Cung Cấp", "Thống Kê","Thông tin Người Dùng"
     };
 
-    public GiaoDienChinh() {
+    public GiaoDienChinh() throws SQLException {
         setTitle("Phần mềm Quản lý Phòng Khám Nha Khoa");
         setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -81,8 +83,20 @@ public class GiaoDienChinh extends JFrame {
         LichHenGUI lichHenPanel = new LichHenGUI();
         contentPanel.add(lichHenPanel, "Quản lý Lịch Hẹn");
         
+        HoSoBenhAnUI HoSoBenhAnPanel = new HoSoBenhAnUI();
+        contentPanel.add(HoSoBenhAnPanel, "Quản lý Hồ Sơ");
+        
+        HoaDonUI HoaDonPanel = new HoaDonUI();
+        contentPanel.add(HoaDonPanel, "Quản lý Hóa Đơn");
+        
         DoanhThuUI doanhThuPanel = new DoanhThuUI();
         contentPanel.add(doanhThuPanel, "Quản lý Doanh Thu");
+        NhaCungCapUI nhaCungCapPanel = new NhaCungCapUI();
+        contentPanel.add(nhaCungCapPanel, "Quản lý Nhà Cung Cấp");
+        KhoVatTuUI khoVatTuPanel = new KhoVatTuUI();
+        contentPanel.add(khoVatTuPanel, "Quản lý Kho Vật Tư");
+//        ThongKeUI thongKePanel = new ThongKeUI();
+//        contentPanel.add(thongKePanel, "Thống Kê");
         LuongUI luongPanel = new LuongUI();
         contentPanel.add(luongPanel, "Quản lý Lương");
         
@@ -127,6 +141,13 @@ public class GiaoDienChinh extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new GiaoDienChinh().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+			try {
+				new GiaoDienChinh().setVisible(true);
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		});
     }
 }

@@ -34,7 +34,8 @@ public class DoanhThuUI extends JPanel {
         setLayout(new BorderLayout());
 
         // Khởi tạo NumberFormat mặc định (ví dụ: theo Locale VN)
-        Locale localeVN = new Locale("vi", "VN");
+        @SuppressWarnings("deprecation")
+		Locale localeVN = new Locale("vi", "VN");
         currencyFormat = NumberFormat.getInstance(localeVN);
         currencyFormat.setMinimumFractionDigits(0);
         currencyFormat.setGroupingUsed(true);

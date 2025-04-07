@@ -8,6 +8,7 @@ import image.imageResize;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.sql.SQLException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -107,7 +108,12 @@ public class LoginFrame extends JFrame {
 
                 if (QLUser.checkLogin(email, password)) {
                     JOptionPane.showMessageDialog(null, "Đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                    new GiaoDienChinh().setVisible(true); // Chuyển sang trang chính
+                    try {
+						new GiaoDienChinh().setVisible(true);
+					} catch (SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} // Chuyển sang trang chính
                     dispose(); // Đóng cửa sổ đăng nhập
                 } else {
                     JOptionPane.showMessageDialog(null, "Email hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);

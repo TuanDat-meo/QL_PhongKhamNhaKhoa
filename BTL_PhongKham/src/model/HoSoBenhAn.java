@@ -1,6 +1,6 @@
 package model;
 
-import java.sql.Date;
+import java.util.Date;
 
 public class HoSoBenhAn {
     private int idHoSo;
@@ -13,8 +13,7 @@ public class HoSoBenhAn {
     public HoSoBenhAn() {
     }
 
-    public HoSoBenhAn(int idHoSo, int idBenhNhan, String chuanDoan, String ghiChu, Date ngayTao, String trangThai) {
-        this.idHoSo = idHoSo;
+    public HoSoBenhAn(int idBenhNhan, String chuanDoan, String ghiChu, Date ngayTao, String trangThai) {
         this.idBenhNhan = idBenhNhan;
         this.chuanDoan = chuanDoan;
         this.ghiChu = ghiChu;
@@ -22,7 +21,6 @@ public class HoSoBenhAn {
         this.trangThai = trangThai;
     }
 
-    // Getters and setters
     public int getIdHoSo() {
         return idHoSo;
     }
@@ -69,5 +67,17 @@ public class HoSoBenhAn {
 
     public void setTrangThai(String trangThai) {
         this.trangThai = trangThai;
+    }
+
+    @Override
+    public String toString() {
+        return "HoSoBenhAn{" +
+                "idHoSo=" + idHoSo +
+                ", idBenhNhan=" + idBenhNhan +
+                ", chuanDoan='" + chuanDoan + '\'' +
+                ", ghiChu='" + ghiChu + '\'' +
+                ", ngayTao=" + ngayTao +
+                ", trangThai='" + trangThai + '\'' +
+                '}';
     }
 }
