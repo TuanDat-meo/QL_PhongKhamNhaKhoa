@@ -6,6 +6,12 @@ import java.awt.event.*;
 import java.text.SimpleDateFormat;
 import com.toedter.calendar.JDateChooser;
 import javax.swing.border.LineBorder;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import connect.connectMySQL;
+
 public class RegisterFrame extends JFrame {
     private JTextField txtHoTen, txtEmail, txtSoDienThoai;
     private JPasswordField txtMatKhau, txtNhapLaiMatKhau;
@@ -140,10 +146,144 @@ public class RegisterFrame extends JFrame {
         String matKhau1 = new String(txtMatKhau.getPassword());
         String matKhau2 = new String(txtNhapLaiMatKhau.getPassword());
 
+        // Kiểm tra tên không được để trống
+        if (hoTen.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập họ tên!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra độ dài họ tên
+        if (hoTen.length() > 100) {
+            JOptionPane.showMessageDialog(this, "Họ tên không được vượt quá 100 ký tự!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra định dạng tên (chỉ chứa chữ cái và dấu cách)
+        if (!hoTen.matches("^[\\p{L}\\s]+$")) {
+            JOptionPane.showMessageDialog(this, "Tên không được chứa số hoặc ký tự đặc biệt!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra độ dài email
+        if (email.length() > 254) {
+            JOptionPane.showMessageDialog(this, "Email không được vượt quá 254 ký tự!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra định dạng email
+        if (!email.matches("^[A-Za-z0-9+_.-]+@gmail\\.com$")) {
+            JOptionPane.showMessageDialog(this, "Email phải có định dạng @gmail.com!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra email đã tồn tại
+        if (kiemTraEmailTonTai(email)) {
+            JOptionPane.showMessageDialog(this, "Email này đã được đăng ký!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra số điện thoại
+        if (!soDienThoai.matches("^[0-9]+$")) {
+            JOptionPane.showMessageDialog(this, "Số điện thoại chỉ được nhập số!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra độ dài số điện thoại
+        if (soDienThoai.length() < 10) {
+            JOptionPane.showMessageDialog(this, "Số điện thoại phải có ít nhất 10 chữ số!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (soDienThoai.length() > 11) {
+            JOptionPane.showMessageDialog(this, "Số điện thoại không được quá 11 chữ số!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra số điện thoại đã tồn tại
+        if (kiemTraSoDienThoaiTonTai(soDienThoai)) {
+            JOptionPane.showMessageDialog(this, "Số điện thoại này đã được đăng ký!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Kiểm tra mật khẩu mạnh
+        if (!matKhau1.matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$")) {
+            JOptionPane.showMessageDialog(this, 
+                "Mật khẩu phải có ít nhất:\n" +
+                "- 8 ký tự\n" +
+                "- 1 chữ hoa\n" +
+                "- 1 chữ thường\n" +
+                "- 1 số\n" +
+                "- 1 ký tự đặc biệt (@#$%^&+=)", 
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         if (!matKhau1.equals(matKhau2)) {
             JOptionPane.showMessageDialog(this, "Mật khẩu nhập lại không khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        JOptionPane.showMessageDialog(this, "Đăng ký thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+
+        // Lưu thông tin vào database
+        try {
+            String sql = "INSERT INTO NguoiDung (hoTen, email, soDienThoai, ngaySinh, gioiTinh, matKhau) VALUES (?, ?, ?, ?, ?, ?)";
+            try (Connection conn = connect.connectMySQL.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                
+                // Chuyển đổi ngày sinh từ String sang java.sql.Date
+                java.util.Date utilDate = dateFormat.parse(ngaySinh);
+                java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime());
+
+                pstmt.setString(1, hoTen);
+                pstmt.setString(2, email);
+                pstmt.setString(3, soDienThoai);
+                pstmt.setDate(4, sqlDate);
+                pstmt.setString(5, gioiTinh);
+                pstmt.setString(6, matKhau1);
+
+                int rowsAffected = pstmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    JOptionPane.showMessageDialog(this, "Đăng ký thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    this.setVisible(false); // Ẩn form đăng ký sau khi đăng ký thành công
+                } else {
+                    JOptionPane.showMessageDialog(this, "Đăng ký thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi khi lưu thông tin đăng ký: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Phương thức kiểm tra email đã tồn tại
+    private boolean kiemTraEmailTonTai(String email) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE email = ?";
+        try (Connection conn = connect.connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi khi kiểm tra email!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+        return false;
+    }
+
+    // Phương thức kiểm tra số điện thoại đã tồn tại
+    private boolean kiemTraSoDienThoaiTonTai(String soDienThoai) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE soDienThoai = ?";
+        try (Connection conn = connect.connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, soDienThoai);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi khi kiểm tra số điện thoại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+        return false;
     }
 }
