@@ -10,10 +10,20 @@ public class BenhNhanController {
     private Connection conn;
 
     public BenhNhanController() {
-    	try {
+        try {
             this.conn = connectMySQL.getConnection();
             if (this.conn == null) {
                 throw new SQLException("Không thể kết nối CSDL");
+            }
+            
+            // Thiết lập character set cho kết nối
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("SET NAMES 'utf8'");
+                stmt.execute("SET CHARACTER SET utf8");
+                stmt.execute("SET character_set_client = utf8");
+                stmt.execute("SET character_set_connection = utf8");
+                stmt.execute("SET character_set_results = utf8");
+                stmt.execute("SET collation_connection = utf8_general_ci");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -67,17 +77,62 @@ public class BenhNhanController {
         }
     }
     public void xoaBenhNhan(int idBenhNhan) throws SQLException {
-        // Xóa các bản ghi liên quan trong LichHen
-        String sqlLichHen = "DELETE FROM LichHen WHERE idBenhNhan = ?";
-        try (PreparedStatement stmtLichHen = conn.prepareStatement(sqlLichHen)) {
-            stmtLichHen.setInt(1, idBenhNhan);
-            stmtLichHen.executeUpdate();
-        }
+        try {
+            // Bước 1: Xóa tất cả các bản ghi từ bảng DieuTri liên quan đến Hồ Sơ Bệnh Án của Bệnh Nhân này
+            String sqlDieuTri = "DELETE FROM DieuTri WHERE idHoSo IN (SELECT idHoSo FROM HoSoBenhAn WHERE idBenhNhan = ?)";
+            try (PreparedStatement stmtDieuTri = conn.prepareStatement(sqlDieuTri)) {
+                stmtDieuTri.setInt(1, idBenhNhan);
+                stmtDieuTri.executeUpdate();
+            }
 
-        // Xóa bệnh nhân
-        String sqlBenhNhan = "DELETE FROM BenhNhan WHERE idBenhNhan = ?";
-        try (PreparedStatement stmtBenhNhan = conn.prepareStatement(sqlBenhNhan)) {
-            stmtBenhNhan.setInt(1, idBenhNhan);
+            // Bước 2: Xóa tất cả các bản ghi từ bảng DoanhThu liên quan đến các Hóa Đơn của Bệnh Nhân này
+            String sqlDoanhThu = "DELETE FROM DoanhThu WHERE idHoaDon IN (SELECT idHoaDon FROM HoaDon WHERE idBenhNhan = ?)";
+            try (PreparedStatement stmtDoanhThu = conn.prepareStatement(sqlDoanhThu)) {
+                stmtDoanhThu.setInt(1, idBenhNhan);
+                stmtDoanhThu.executeUpdate();
+            }
+
+            // Bước 3: Xóa tất cả các bản ghi từ ChiTietDonThuoc liên quan đến các DonThuoc của BenhNhan này
+            String sqlChiTietDonThuoc = "DELETE FROM ChiTietDonThuoc WHERE idDonThuoc IN (SELECT idDonThuoc FROM DonThuoc WHERE idBenhNhan = ?)";
+            try (PreparedStatement stmtChiTietDonThuoc = conn.prepareStatement(sqlChiTietDonThuoc)) {
+                stmtChiTietDonThuoc.setInt(1, idBenhNhan);
+                stmtChiTietDonThuoc.executeUpdate();
+            }
+
+            // Bước 4: Xóa tất cả các bản ghi từ DonThuoc liên quan đến BenhNhan này
+            String sqlDonThuoc = "DELETE FROM DonThuoc WHERE idBenhNhan = ?";
+            try (PreparedStatement stmtDonThuoc = conn.prepareStatement(sqlDonThuoc)) {
+                stmtDonThuoc.setInt(1, idBenhNhan);
+                stmtDonThuoc.executeUpdate();
+            }
+
+            // Bước 5: Xóa tất cả các bản ghi từ bảng HoaDon liên quan đến BenhNhan này
+            String sqlHoaDon = "DELETE FROM HoaDon WHERE idBenhNhan = ?";
+            try (PreparedStatement stmtHoaDon = conn.prepareStatement(sqlHoaDon)) {
+                stmtHoaDon.setInt(1, idBenhNhan);
+                stmtHoaDon.executeUpdate();
+            }
+
+            // Bước 6: Xóa tất cả các bản ghi từ bảng HoSoBenhAn liên quan đến Bệnh Nhân này
+            String sqlHoSoBenhAn = "DELETE FROM HoSoBenhAn WHERE idBenhNhan = ?";
+            try (PreparedStatement stmtHoSoBenhAn = conn.prepareStatement(sqlHoSoBenhAn)) {
+                stmtHoSoBenhAn.setInt(1, idBenhNhan);
+                stmtHoSoBenhAn.executeUpdate();
+            }
+
+            // Bước 7: Xóa tất cả các bản ghi từ LichHen liên quan đến BenhNhan này
+            String sqlLichHen = "DELETE FROM LichHen WHERE idBenhNhan = ?";
+            try (PreparedStatement stmtLichHen = conn.prepareStatement(sqlLichHen)) {
+                stmtLichHen.setInt(1, idBenhNhan);
+                stmtLichHen.executeUpdate();
+            }
+
+            // Bước 8: Cuối cùng, xóa bản ghi của bệnh nhân
+            String sqlBenhNhan = "DELETE FROM BenhNhan WHERE idBenhNhan = ?";
+            try (PreparedStatement stmtBenhNhan = conn.prepareStatement(sqlBenhNhan)) {
+                stmtBenhNhan.setInt(1, idBenhNhan);
+                stmtBenhNhan.executeUpdate();
+            }
         } catch (SQLException e) {
             System.err.println("Lỗi khi xóa bệnh nhân: " + e.getMessage());
             e.printStackTrace();

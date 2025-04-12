@@ -2,8 +2,9 @@ package view;
 
 import javax.swing.*;
 
-import controller.QLUser;
+import controller.NguoiDungController;
 import image.imageResize;
+import model.NguoiDung;
 
 import java.awt.*;
 import java.awt.event.FocusAdapter;
@@ -18,7 +19,6 @@ public class LoginFrame extends JFrame {
     private JButton loginButton, createAccountButton;
     private JLabel forgotPasswordLabel;
     private final String passwordPlaceholder = "Enter password";
-    
     public LoginFrame() {
         setTitle("Login");
         setSize(400, 300);
@@ -31,22 +31,35 @@ public class LoginFrame extends JFrame {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        // Email or Phone Input
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
-//        emailOrPhoneField = new JTextField(20);
-//        emailOrPhoneField.setText("Email address or phone number");
-        JTextField emailOrPhoneField = new JTextField(20);
+        
+        // Fixed: Use the class member variable instead of declaring a new local variable
+        emailOrPhoneField = new JTextField(20);
         addPlaceholder(emailOrPhoneField, "Email address or phone number");
         panel.add(emailOrPhoneField, gbc);
-        
-        // Reset gridwidth to 1 before adding another component
+     
+
         gbc.gridy = 1;
         gbc.gridwidth = 2;
-
         passwordField = new JPasswordField(20);
+     // Enter trong emailOrPhoneField thì chuyển focus sang passwordField
+        emailOrPhoneField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                passwordField.requestFocusInWindow();
+            }
+        });
+
+        // Enter trong passwordField thì tự động click nút login
+        passwordField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                loginButton.doClick();
+            }
+        });
+
         addPasswordPlaceholder(passwordField, passwordPlaceholder);
         ImageIcon eyeOpenIcon = new ImageIcon(getClass().getResource("/image/eyeOpen.jpg"));
         ImageIcon eyeClosedIcon = new ImageIcon(getClass().getResource("/image/eyeClose.jpg"));
@@ -58,23 +71,21 @@ public class LoginFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (String.valueOf(passwordField.getPassword()).equals(passwordPlaceholder)) {
-                    return; // Không hiển thị nếu đang ở trạng thái placeholder
+                    return; 
                 }
                 if (passwordField.getEchoChar() == '●') {
-                    passwordField.setEchoChar((char) 0); // Hiện mật khẩu
+                    passwordField.setEchoChar((char) 0);
                     toggleButton.setIcon(eyeOpenIconResize);
                 } else {
-                    passwordField.setEchoChar('●'); // Ẩn mật khẩu
+                    passwordField.setEchoChar('●');
                     toggleButton.setIcon(eyeClosedIconResize);
                 }
             }
         });
-
         JPanel passwordPanel = new JPanel(new BorderLayout());
         passwordPanel.add(passwordField, BorderLayout.CENTER);
         passwordPanel.add(toggleButton, BorderLayout.EAST);
         panel.add(passwordPanel, gbc);
-
         // Login Button
         gbc.gridwidth = 2;
         gbc.gridy = 2;
@@ -82,6 +93,7 @@ public class LoginFrame extends JFrame {
         loginButton.setBackground(new Color(24, 119, 242));
         loginButton.setForeground(Color.WHITE);
         panel.add(loginButton, gbc);
+     // Trong LoginFrame.java, trong sự kiện của loginButton
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -105,28 +117,27 @@ public class LoginFrame extends JFrame {
                     JOptionPane.showMessageDialog(null, "Vui lòng nhập mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return; 
                 }
-
-                if (QLUser.checkLogin(email, password)) {
+                
+                // Thay đổi phần này để lấy đối tượng NguoiDung từ controller
+                NguoiDung loggedInUser = NguoiDungController.checkLoginAndGetUser(email, password);
+                if (loggedInUser != null) {
                     JOptionPane.showMessageDialog(null, "Đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                     try {
-						new GiaoDienChinh().setVisible(true);
-					} catch (SQLException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} // Chuyển sang trang chính
+                        new GiaoDienChinh(loggedInUser).setVisible(true);
+                    } catch (SQLException e1) {
+                        e1.printStackTrace();
+                    }
                     dispose(); // Đóng cửa sổ đăng nhập
                 } else {
                     JOptionPane.showMessageDialog(null, "Email hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
-        // Forgot Password Label
         gbc.gridy = 3;
         gbc.gridwidth = 2;
         forgotPasswordLabel = new JLabel("Forgotten password?");
         forgotPasswordLabel.setForeground(new Color(24, 119, 242));
         forgotPasswordLabel.setCursor(new Cursor(Cursor.HAND_CURSOR)); // Biểu tượng tay
-
         // Bắt sự kiện click để mở trang quên mật khẩu
         forgotPasswordLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -134,25 +145,19 @@ public class LoginFrame extends JFrame {
                 new ForgotPasswordFrame(); // Mở cửa sổ quên mật khẩu
             }
         });
-
         panel.add(forgotPasswordLabel, gbc);
-
-
         // Create New Account Button
         gbc.gridy = 4;
         gbc.gridwidth = 2;
         createAccountButton = new JButton("Create new account");
         createAccountButton.setBackground(new Color(66, 183, 42));
         createAccountButton.setForeground(Color.WHITE);
-        
-
         // Xử lý sự kiện khi nhấn nút "Create new account"
         createAccountButton.addActionListener(e -> {
-        	RegisterFrame registerFrame = new RegisterFrame();
+            RegisterFrame registerFrame = new RegisterFrame();
             registerFrame.setVisible(true);
         });
         panel.add(createAccountButton, gbc);
-
         add(panel);
         setVisible(true);
         panel.requestFocusInWindow();
@@ -160,7 +165,6 @@ public class LoginFrame extends JFrame {
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
-
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -169,7 +173,6 @@ public class LoginFrame extends JFrame {
                     field.setForeground(Color.BLACK);
                 }
             }
-
             @Override
             public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
@@ -183,7 +186,6 @@ public class LoginFrame extends JFrame {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
         field.setEchoChar((char) 0); // Hiển thị văn bản bình thường thay vì ●
-
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -193,7 +195,6 @@ public class LoginFrame extends JFrame {
                     field.setEchoChar('●'); // Chuyển về chế độ ẩn mật khẩu
                 }
             }
-
             @Override
             public void focusLost(FocusEvent e) {
                 if (String.valueOf(field.getPassword()).isEmpty()) {
@@ -207,5 +208,4 @@ public class LoginFrame extends JFrame {
     public static void main(String[] args) {
         new LoginFrame();
     }
-    
 }
