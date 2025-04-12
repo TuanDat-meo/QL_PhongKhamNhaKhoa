@@ -144,31 +144,6 @@ public class DonThuocController {
         }
         return success;
     }
-    public boolean xoaChiTietDonThuocTheoDonThuocId(int idDonThuoc) {
-        String sql = "DELETE FROM ChiTietDonThuoc WHERE idDonThuoc = ?";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, idDonThuoc);
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows >= 0; // True if deleted or no details found
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 
-    public boolean xoaDonThuoc(int idDonThuoc) {
-        // First, delete the details of the prescription
-        if (xoaChiTietDonThuocTheoDonThuocId(idDonThuoc)) {
-            String sql = "DELETE FROM DonThuoc WHERE idDonThuoc = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setInt(1, idDonThuoc);
-                int affectedRows = pstmt.executeUpdate();
-                return affectedRows > 0;
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-        return false;
-    }
     // Các phương thức sửa, xóa, tìm kiếm tương tự sẽ được viết theo logic nghiệp vụ
 }
