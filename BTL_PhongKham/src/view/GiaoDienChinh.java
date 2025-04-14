@@ -439,8 +439,8 @@ public class GiaoDienChinh extends JFrame {
         contentPanel.add(luongPanel, "Quản lý Lương");
         
         // Thêm panel giả cho Thống kê
-//        BacSiUI thongKePanel = new BacSiUI();
-//        contentPanel.add(thongKePanel, "Thống Kê");
+        BacSiUI thongKePanel = new BacSiUI();
+        contentPanel.add(thongKePanel, "Thống Kê");
 
         // Set default panel
         CardLayout cl = (CardLayout) contentPanel.getLayout();
