@@ -448,7 +448,38 @@ public class BacSiUI extends JPanel {
             loadBacSiData();
         }
     }
-    
+    public void focusOnDoctor(int doctorId) {
+        try {
+            // Use the correct table variable (bacSiTable instead of tableBacSi)
+            int rowCount = bacSiTable.getRowCount();
+            
+            // Find the row containing the doctor with the corresponding ID
+            for (int i = 0; i < rowCount; i++) {
+                // The first column in the table contains the doctor ID
+                int currentDoctorId = (Integer) bacSiTable.getValueAt(i, 0);
+                
+                if (currentDoctorId == doctorId) {
+                    // Select the found row
+                    bacSiTable.setRowSelectionInterval(i, i);
+                    
+                    // Scroll to the selected row
+                    Rectangle rect = bacSiTable.getCellRect(i, 0, true);
+                    bacSiTable.scrollRectToVisible(rect);
+                    
+                    // Optionally, we could add highlighting effects here
+                    break;
+                }
+            }
+            
+            // If the doctor is not found in the current table data, we could show a message
+            // or reload data from the database
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Không thể hiển thị thông tin bác sĩ: " + e.getMessage(), 
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
     private void showEditBacSiDialog() {
         if (currentBacSiId == -1) {
             JOptionPane.showMessageDialog(parentFrame, 
@@ -472,7 +503,7 @@ public class BacSiUI extends JPanel {
         }
     }
     
-    private void deleteBacSi() {
+    public void deleteBacSi() {
         if (currentBacSiId == -1) {
             JOptionPane.showMessageDialog(parentFrame, 
                 "Vui lòng chọn một bác sĩ để xóa.", 
