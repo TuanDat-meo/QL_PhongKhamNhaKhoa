@@ -27,11 +27,20 @@ public class GiaoDienChinh extends JFrame {
     private final Font MENU_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Segoe UI", Font.PLAIN, 13);
 
-    private String[] menuItems = {
+    // Base menu items for all users
+    private String[] baseMenuItems = {
             "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn",
             "Quản lý Hồ Sơ", "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn",
             "Quản lý Lương", "Quản lý Nhà Cung Cấp", "Thống Kê"
     };
+    
+    // Admin-only menu items
+    private String[] adminMenuItems = {
+            "Quản lý Bác Sĩ", "Quản lý Người Dùng"
+    };
+    
+    // Combined menu items to be populated based on user role
+    private String[] menuItems;
 
     private JPanel mainPanel;
     private ThongTinNguoiDungUI thongTinNguoiDungPanel;
@@ -50,6 +59,9 @@ public class GiaoDienChinh extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // Initialize menu items based on user role
+        initializeMenuItems(user);
 
         mainPanel = new JPanel(new BorderLayout());
         setContentPane(mainPanel);
@@ -76,6 +88,21 @@ public class GiaoDienChinh extends JFrame {
         initializeContentPanels();
 
         createCircularMenuButton();
+    }
+    
+    // Initialize menu items based on user role
+    private void initializeMenuItems(NguoiDung user) {
+        boolean isAdmin = user.getVaiTro() != null && user.getVaiTro().equalsIgnoreCase("admin");
+        
+        if (isAdmin) {
+            // Combine base and admin menu items for admin users
+            menuItems = new String[baseMenuItems.length + adminMenuItems.length];
+            System.arraycopy(baseMenuItems, 0, menuItems, 0, baseMenuItems.length);
+            System.arraycopy(adminMenuItems, 0, menuItems, baseMenuItems.length, adminMenuItems.length);
+        } else {
+            // Only use base menu items for regular users
+            menuItems = baseMenuItems;
+        }
     }
 
     private JPanel createHeaderPanel() {
@@ -439,8 +466,19 @@ public class GiaoDienChinh extends JFrame {
         contentPanel.add(luongPanel, "Quản lý Lương");
         
         // Thêm panel giả cho Thống kê
-        BacSiUI thongKePanel = new BacSiUI();
-        contentPanel.add(thongKePanel, "Thống Kê");
+//        ThongKeUI thongKePanel = new ThongKeUI();
+//        contentPanel.add(thongKePanel, "Thống Kê");
+
+        // Only add admin-only panels if user is admin
+        boolean isAdmin = loggedInUser.getVaiTro() != null && loggedInUser.getVaiTro().equalsIgnoreCase("admin");
+        if (isAdmin) {
+            // Add the new admin panels
+            BacSiUI bacSiPanel = new BacSiUI();
+            contentPanel.add(bacSiPanel, "Quản lý Bác Sĩ");
+            
+            NguoiDungUI nguoiDungPanel = new NguoiDungUI();
+            contentPanel.add(nguoiDungPanel, "Quản lý Người Dùng");
+        }
 
         // Set default panel
         CardLayout cl = (CardLayout) contentPanel.getLayout();
