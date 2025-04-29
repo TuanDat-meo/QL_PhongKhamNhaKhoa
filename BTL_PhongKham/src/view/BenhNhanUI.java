@@ -5,6 +5,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
@@ -80,7 +81,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         // Main content panel
         JPanel contentPanel = new JPanel(new BorderLayout(0, 15));
         contentPanel.setBackground(backgroundColor);
-        contentPanel.setBorder(new EmptyBorder(15, 0, 15, 0));
+        contentPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
 
         // Table Panel
         JPanel tablePanel = createTablePanel();
@@ -159,6 +160,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         return headerPanel;
     }
 
+ // Replace the existing createTablePanel() method with this updated version
     private JPanel createTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -189,6 +191,12 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
                 Component comp = super.prepareRenderer(renderer, row, column);
+                
+                // Center the content
+                if (comp instanceof JLabel) {
+                    ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
+                }
+                
                 // Add alternating row colors
                 if (!comp.getBackground().equals(getSelectionBackground())) {
                     comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
@@ -196,6 +204,15 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 return comp;
             }
         };
+        
+        // Set default cell renderer to center all content
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        
+        // Apply center renderer to all columns
+        for (int i = 0; i < tableBenhNhan.getColumnCount(); i++) {
+            tableBenhNhan.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
         
         tableBenhNhan.setFont(tableFont);
         tableBenhNhan.setRowHeight(40);
@@ -215,6 +232,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         header.setPreferredSize(new Dimension(header.getWidth(), 45));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
         header.setReorderingAllowed(false);
+        
+        // Center the header text
+        DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) header.getDefaultRenderer();
+        headerRenderer.setHorizontalAlignment(JLabel.CENTER);
 
         // Set column widths
         TableColumnModel columnModel = tableBenhNhan.getColumnModel();
@@ -457,7 +478,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
 
-        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -472,13 +492,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
 
         return button;
     }
-
     private Color darkenColor(Color color) {
-        // Create a slightly darker version of the color for hover effect
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
     }
-
     private void createInputDialog() {
         inputDialog = new JDialog();
         inputDialog.setTitle("Thông tin bệnh nhân");
@@ -529,15 +546,11 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         gbc.insets = new Insets(10, 5, 10, 5);
         gbc.weightx = 1.0;
 
-        // Create form fields with improved styling
-        // Họ tên field
         addFormField(formPanel, gbc, "Họ tên:", txtHoTen = createStyledTextField(), true);
 
-        // Ngày sinh field - Using JDateChooser instead of TextField
         dateChooserNgaySinh = createStyledDateChooser();
         addFormField(formPanel, gbc, "Ngày sinh:", dateChooserNgaySinh, true);
 
-        // Giới tính field - Using ComboBox
         String[] genders = {"Nam", "Nữ", "Khác"};
         cbGioiTinh = new JComboBox<>(genders);
         cbGioiTinh.setFont(regularFont);
@@ -786,7 +799,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         }
     }
 
-   
     private void xoaBenhNhan() {
         int selectedRow = tableBenhNhan.getSelectedRow();
         if (selectedRow == -1) {
@@ -794,12 +806,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             return;
         }
 
-        // Make sure to convert from view index to model index if table sorting is enabled
         int modelRow = tableBenhNhan.convertRowIndexToModel(selectedRow);
         int idBenhNhan = (int) tableModel.getValueAt(modelRow, 0);
         String tenBenhNhan = (String) tableModel.getValueAt(modelRow, 1);
 
-        // Create custom confirmation dialog
         JDialog confirmDialog = new JDialog();
         confirmDialog.setTitle("Xác nhận xóa");
         confirmDialog.setModal(true);
@@ -896,8 +906,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         txtCccd.setText("");
         txtDiaChi.setText("");
     }
-
-    // Modern toast notification
     @Override
     public void showSuccessToast(String message) {
         JDialog toastDialog = new JDialog();
@@ -917,9 +925,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
         toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
         
-        // Icon could be added here
-        // JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("/icons/success.png")));
-        // toastPanel.add(iconLabel);
         
         JLabel messageLabel = new JLabel(message);
         messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -984,9 +989,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 JOptionPane.INFORMATION_MESSAGE
         );
     }
-    
-    // Custom classes for UI enhancement
-    
     // Custom rounded border
     class CustomBorder extends LineBorder {
         private int radius;
@@ -1095,5 +1097,9 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             }
         });
     }
-    
+    @Override
+	public void showMessage(String message, String title, int messageType) {
+		// TODO Auto-generated method stub
+		
+	}
 }

@@ -14,9 +14,8 @@ public class GiaoDienChinh extends JFrame {
     private JPanel menuPanel;
     private JButton menuButton;
     private boolean isMenuVisible = true;
-    private final int MENU_WIDTH = 220;
+    private final int MENU_WIDTH = 200;
     
-    // Refined color scheme
     private final Color PRIMARY_COLOR = new Color(41, 128, 185);    // Soft blue
     private final Color SECONDARY_COLOR = new Color(52, 152, 219);  // Lighter blue for hover effects
     private final Color DARK_COLOR = new Color(44, 62, 80);         // Dark slate for menu bg
@@ -215,7 +214,9 @@ public class GiaoDienChinh extends JFrame {
 
     private JPanel createMenuPanel() {
         JPanel menuContainerPanel = new JPanel(new BorderLayout());
+     // Thêm các dòng sau vào phương thức createMenuPanel() của bạn:
         menuContainerPanel.setPreferredSize(new Dimension(MENU_WIDTH, getHeight()));
+        menuContainerPanel.setMinimumSize(new Dimension(MENU_WIDTH, getHeight()));  // Thêm kích thước tối thiểu
         menuContainerPanel.setBackground(DARK_COLOR);
 
         JLabel menuHeader = new JLabel("MENU", JLabel.CENTER);

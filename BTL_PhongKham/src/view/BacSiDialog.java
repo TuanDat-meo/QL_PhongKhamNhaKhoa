@@ -54,7 +54,6 @@ public class BacSiDialog extends JDialog {
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         
         add(mainPanel);
-        
         // Load data if editing
         if (bacSi != null) {
             loadDoctorData();
@@ -172,6 +171,14 @@ public class BacSiDialog extends JDialog {
     }
     
     private void loadDoctorData() {
+        // If editing an existing doctor, fetch the latest data from database
+        if (currentBacSi != null) {
+            BacSi refreshedBacSi = bacSiController.getBacSiById(currentBacSi.getIdBacSi());
+            if (refreshedBacSi != null) {
+                currentBacSi = refreshedBacSi;
+            }
+        }
+        
         // Set fields with current doctor data
         nameField.setText(currentBacSi.getHoTenBacSi());
         specialtyField.setText(currentBacSi.getChuyenKhoa());
@@ -250,6 +257,9 @@ public class BacSiDialog extends JDialog {
                     "Thêm bác sĩ thành công.",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 confirmed = true;
+                
+                // Gửi thông báo tới BacSiUI để cập nhật lại dữ liệu
+                firePropertyChange("doctorDataChanged", false, true);
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this,
@@ -270,6 +280,9 @@ public class BacSiDialog extends JDialog {
                     "Cập nhật bác sĩ thành công.",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 confirmed = true;
+                
+                // Gửi thông báo tới BacSiUI để cập nhật lại dữ liệu
+                firePropertyChange("doctorDataChanged", false, true);
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this,

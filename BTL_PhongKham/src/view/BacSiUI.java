@@ -47,7 +47,7 @@ public class BacSiUI extends JPanel {
     private JButton addButton;
     private JButton exportButton;
     private int currentBacSiId = -1;
-    
+    private String currentUserRole;
     private JFrame parentFrame;
     
     public BacSiUI() {
@@ -480,11 +480,14 @@ public class BacSiUI extends JPanel {
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
+    public void setCurrentUserRole(String role) {
+        this.currentUserRole = role;
+    }
     private void showEditBacSiDialog() {
         if (currentBacSiId == -1) {
             JOptionPane.showMessageDialog(parentFrame, 
                 "Vui lòng chọn một bác sĩ để chỉnh sửa.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
@@ -497,7 +500,17 @@ public class BacSiUI extends JPanel {
         }
         
         BacSiDialog dialog = new BacSiDialog(parentFrame, bacSi);
+        
+        // Add property change listener to capture the doctorDataChanged event
+        dialog.addPropertyChangeListener("doctorDataChanged", evt -> {
+            if ((boolean) evt.getNewValue()) {
+                loadBacSiData(); // Reload data when change is confirmed
+            }
+        });
+        
         dialog.setVisible(true);
+        
+        // This check will still work as a fallback
         if (dialog.isConfirmed()) {
             loadBacSiData();
         }
@@ -507,7 +520,7 @@ public class BacSiUI extends JPanel {
         if (currentBacSiId == -1) {
             JOptionPane.showMessageDialog(parentFrame, 
                 "Vui lòng chọn một bác sĩ để xóa.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
@@ -531,10 +544,22 @@ public class BacSiUI extends JPanel {
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 loadBacSiData();
             } else {
-                JOptionPane.showMessageDialog(parentFrame, 
-                    "Không thể xóa bác sĩ. Bác sĩ này có thể có lịch hẹn hoặc điều trị hiện tại.", 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                // Only show appointment warning if the user is a doctor
+                if ("doctor".equalsIgnoreCase(currentUserRole)) {
+                    JOptionPane.showMessageDialog(parentFrame, 
+                        "Không thể xóa bác sĩ. Bác sĩ này có thể có lịch hẹn hoặc điều trị hiện tại.", 
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(parentFrame, 
+                        "Hủy xóa thành công.", 
+                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
+        } else {
+            // User clicked "No" - show "cancel deletion successful" message
+            JOptionPane.showMessageDialog(parentFrame, 
+                "Hủy xóa thành công.", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         }
     }
     

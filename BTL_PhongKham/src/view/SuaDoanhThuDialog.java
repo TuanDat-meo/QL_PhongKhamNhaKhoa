@@ -7,8 +7,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.Date;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 public class SuaDoanhThuDialog extends JDialog {
     private JTextField txtIdDoanhThu;
@@ -19,6 +22,7 @@ public class SuaDoanhThuDialog extends JDialog {
     private JButton btnHuy;
     private DoanhThuUI mainUI;
     private SimpleDateFormat monthYearFormat = new SimpleDateFormat("MM/yyyy");
+    private DecimalFormat decimalFormat = new DecimalFormat("#,###.##");
     
     // Định nghĩa các màu sắc chính
     private final Color PRIMARY_COLOR = new Color(41, 128, 185);
@@ -116,9 +120,19 @@ public class SuaDoanhThuDialog extends JDialog {
         gbc.gridx = 1;
         mainPanel.add(dateChooserThangNam, gbc);
         
-        // Tổng Thu
+        // Tổng Thu - Định dạng lại số để tránh hiển thị dạng E
         createFormRow(mainPanel, gbc, 3, "Tổng Thu:", labelFont);
-        txtTongDoanhThu = createTextField(data[4].toString(), true);
+        
+        // Định dạng lại giá trị tổng doanh thu để hiển thị đầy đủ, không dùng E notation
+        String tongDoanhThuFormatted;
+        try {
+        	double value = Double.parseDouble(data[4].toString());
+            tongDoanhThuFormatted = decimalFormat.format(value);
+        } catch (NumberFormatException e) {
+            tongDoanhThuFormatted = data[4].toString();
+        }
+        
+        txtTongDoanhThu = createTextField(tongDoanhThuFormatted, true);
         gbc.gridx = 1;
         mainPanel.add(txtTongDoanhThu, gbc);
         
@@ -192,12 +206,14 @@ public class SuaDoanhThuDialog extends JDialog {
         btnSua.addActionListener(e -> {
             String idDoanhThuStr = txtIdDoanhThu.getText();
             Date thangNam = dateChooserThangNam.getDate();
-            String tongDoanhThuStr = txtTongDoanhThu.getText();
+            String tongDoanhThuStr = txtTongDoanhThu.getText().trim();
             String idHoaDonStr = txtIdHoaDon.getText();
             
             if (!idDoanhThuStr.isEmpty() && thangNam != null && !tongDoanhThuStr.isEmpty() && !idHoaDonStr.isEmpty()) {
                 try {
                     int idDoanhThu = Integer.parseInt(idDoanhThuStr);
+                    // Xử lý chuỗi doanh thu để đảm bảo nó là một số hợp lệ
+                    tongDoanhThuStr = tongDoanhThuStr.replace(",", "");
                     double tongDoanhThu = Double.parseDouble(tongDoanhThuStr);
                     int idHoaDon = Integer.parseInt(idHoaDonStr);
                     

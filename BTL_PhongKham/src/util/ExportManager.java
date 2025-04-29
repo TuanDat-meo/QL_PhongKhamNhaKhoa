@@ -4,710 +4,411 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.awt.Component;
-import java.util.prefs.Preferences;
-import java.util.List;
-import model.BacSi;
+import java.awt.event.MouseEvent;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+/**
+ * Lớp tiện ích để xuất dữ liệu từ JTable sang các định dạng CSV và khác
+ */
 public class ExportManager {
-    private Component parentComponent;
-    private DefaultTableModel tableModel;
-    private Preferences prefs = Preferences.userNodeForPackage(ExportManager.class);
-    private static final String LAST_EXCEL_PATH = "lastExcelPath";
-    private static final String LAST_CSV_PATH = "lastCsvPath";
+    // Constants
+    private static final int DIALOG_WIDTH = 480;
+    private static final int DIALOG_HEIGHT = 330;
+    private static final int BUTTON_WIDTH = 100;
+    private static final int BUTTON_HEIGHT = 36;
+    private static final int CONTENT_PADDING = 15;
+    private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 18);
+    private static final Font LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 14);
     
-    // Interface để hiển thị thông báo
+    // Interface để gọi lại thông báo đến màn hình chính
     public interface MessageCallback {
         void showSuccessToast(String message);
         void showErrorMessage(String title, String message);
+		void showMessage(String message, String title, int messageType);
     }
-    
-    private MessageCallback messageCallback;
-    
-    // Constructor
-    public ExportManager(Component parentComponent, DefaultTableModel tableModel, MessageCallback messageCallback) {
+
+    // Fields
+    private final Component parentComponent;
+    private final DefaultTableModel tableModel;
+    private final MessageCallback callback;
+    private final String defaultFileName;
+
+    public ExportManager(Component parentComponent, DefaultTableModel tableModel, MessageCallback callback) {
         this.parentComponent = parentComponent;
         this.tableModel = tableModel;
-        this.messageCallback = messageCallback;
+        this.callback = callback;
+        this.defaultFileName = generateDefaultFileName();
     }
-    
-    // Hiển thị hộp thoại lựa chọn định dạng xuất file
     public void showExportOptions(Color primaryColor, Color secondaryColor, Color buttonTextColor) {
-        JDialog exportDialog = new JDialog();
-        exportDialog.setTitle("Xuất dữ liệu");
-        exportDialog.setModal(true);
-        exportDialog.setSize(300, 200);
-        exportDialog.setLocationRelativeTo(parentComponent);
+        // Tạo dialog chính
+        JDialog exportDialog = createDialog();
         
-        JPanel panel = new JPanel(new BorderLayout(10, 15));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        // Tạo panel chính với BorderLayout để tổ chức nội dung tốt hơn
+        JPanel mainPanel = new JPanel(new BorderLayout(0, 15));
+        mainPanel.setBackground(Color.WHITE);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(CONTENT_PADDING, CONTENT_PADDING, CONTENT_PADDING, CONTENT_PADDING));
         
-        JLabel titleLabel = new JLabel("Chọn định dạng xuất file:");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        titleLabel.setForeground(primaryColor);
-        panel.add(titleLabel, BorderLayout.NORTH);
+        // Panel chứa tiêu đề và logo (nếu có)
+        JPanel headerPanel = createHeaderPanel(primaryColor);
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
         
-        JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 0, 10));
-        buttonPanel.setBackground(Color.WHITE);
+        // Panel chứa các tùy chọn
+        JPanel contentPanel = createContentPanel();
+        mainPanel.add(contentPanel, BorderLayout.CENTER);
         
-        JButton btnXuatExcel = createRoundedButton("Excel (.xls)", primaryColor, buttonTextColor, 10);
-        btnXuatExcel.addActionListener(e -> {
-            exportDialog.dispose();
-            exportToExcelXML();
-        });
+        // Panel chứa các nút
+        JPanel buttonPanel = createButtonPanel(primaryColor, secondaryColor, buttonTextColor, exportDialog);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         
-        JButton btnXuatCSV = createRoundedButton("CSV (.csv)", secondaryColor, buttonTextColor, 10);
-        btnXuatCSV.addActionListener(e -> {
-            exportDialog.dispose();
-            exportToCSV();
-        });
-        
-        buttonPanel.add(btnXuatExcel);
-        buttonPanel.add(btnXuatCSV);
-        panel.add(buttonPanel, BorderLayout.CENTER);
-        
-        exportDialog.setContentPane(panel);
+        // Hiển thị dialog
+        exportDialog.setContentPane(mainPanel);
         exportDialog.setVisible(true);
     }
-    public void exportDoctorList(JTable table, List<BacSi> doctorList, String exportType) {
-        // Lưu lại tableModel hiện tại
-        DefaultTableModel currentModel = this.tableModel;
+    private JDialog createDialog() {
+        JDialog exportDialog = new JDialog(SwingUtilities.getWindowAncestor(parentComponent), "Xuất dữ liệu");
+        exportDialog.setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+        exportDialog.setLocationRelativeTo(parentComponent);
+        exportDialog.setResizable(false);
+        exportDialog.setModal(true);
+        return exportDialog;
+    }
+    private JPanel createHeaderPanel(Color primaryColor) {
+        JPanel headerPanel = new JPanel(new BorderLayout(10, 0));
+        headerPanel.setBackground(Color.WHITE);
         
-        // Sử dụng tableModel từ table được truyền vào
-        this.tableModel = (DefaultTableModel) table.getModel();
+        // Tiêu đề
+        JLabel titleLabel = new JLabel("Xuất dữ liệu");
+        titleLabel.setFont(TITLE_FONT);
+        titleLabel.setForeground(primaryColor);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
         
-        try {
-            if ("excel".equalsIgnoreCase(exportType)) {
-                exportDoctorToExcelXML(doctorList);
-            } else if ("csv".equalsIgnoreCase(exportType)) {
-                exportDoctorToCSV(doctorList);
-            } else {
-                // Hiển thị hộp thoại lựa chọn định dạng xuất
-                JDialog exportDialog = new JDialog();
-                exportDialog.setTitle("Xuất danh sách bác sĩ");
-                exportDialog.setModal(true);
-                exportDialog.setSize(300, 200);
-                exportDialog.setLocationRelativeTo(parentComponent);
-                
-                JPanel panel = new JPanel(new BorderLayout(10, 15));
-                panel.setBackground(Color.WHITE);
-                panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-                
-                JLabel titleLabel = new JLabel("Chọn định dạng xuất file:");
-                titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                titleLabel.setForeground(new Color(76, 175, 80));  // Primary color
-                panel.add(titleLabel, BorderLayout.NORTH);
-                
-                JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 0, 10));
-                buttonPanel.setBackground(Color.WHITE);
-                
-                JButton btnXuatExcel = createRoundedButton("Excel (.xls)", new Color(76, 175, 80), Color.WHITE, 10);
-                btnXuatExcel.addActionListener(e -> {
-                    exportDialog.dispose();
-                    exportDoctorToExcelXML(doctorList);
-                });
-                
-                JButton btnXuatCSV = createRoundedButton("CSV (.csv)", new Color(33, 150, 243), Color.WHITE, 10);
-                btnXuatCSV.addActionListener(e -> {
-                    exportDialog.dispose();
-                    exportDoctorToCSV(doctorList);
-                });
-                
-                buttonPanel.add(btnXuatExcel);
-                buttonPanel.add(btnXuatCSV);
-                panel.add(buttonPanel, BorderLayout.CENTER);
-                
-                exportDialog.setContentPane(panel);
-                exportDialog.setVisible(true);
-            }
-        } finally {
-            // Khôi phục lại tableModel ban đầu
-            this.tableModel = currentModel;
-        }
-    }
-    
-    // Xuất danh sách bác sĩ ra Excel
-    private void exportDoctorToExcelXML(List<BacSi> doctorList) {
-        try {
-            // Lấy đường dẫn file đã lưu trước đó (nếu có)
-            String lastPath = prefs.get(LAST_EXCEL_PATH, null);
-            File lastFile = (lastPath != null) ? new File(lastPath) : null;
-            
-            // Tạo JFileChooser để chọn vị trí lưu file
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Lưu file Excel");
-            
-            // Thiết lập filter cho file Excel
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Excel files (*.xls)", "xls"));
-            
-            // Nếu có file đã lưu trước đó, đặt nó làm file mặc định
-            if (lastFile != null && lastFile.exists()) {
-                fileChooser.setSelectedFile(lastFile);
-            } else {
-                fileChooser.setSelectedFile(new File("danh_sach_bac_si.xls"));
-            }
-            
-            int userSelection = fileChooser.showSaveDialog(parentComponent);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                // Đảm bảo file có đuôi .xls
-                if (!fileToSave.getName().toLowerCase().endsWith(".xls")) {
-                    fileToSave = new File(fileToSave.getAbsolutePath() + ".xls");
-                }
-                
-                // Hiển thị xác nhận nếu file đã tồn tại
-                if (fileToSave.exists()) {
-                    int response = JOptionPane.showConfirmDialog(
-                        parentComponent,
-                        "File đã tồn tại. Bạn có muốn ghi đè lên file này không?",
-                        "Xác nhận ghi đè",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                    );
-                    
-                    if (response != JOptionPane.YES_OPTION) {
-                        return; // Người dùng không muốn ghi đè
-                    }
-                }
-                
-                // Lưu đường dẫn này để sử dụng lần sau
-                prefs.put(LAST_EXCEL_PATH, fileToSave.getAbsolutePath());
-                
-                // Tạo XML Spreadsheet
-                try (FileWriter writer = new FileWriter(fileToSave)) {
-                    // XML header
-                    writer.write("<?xml version=\"1.0\"?>\n");
-                    writer.write("<?mso-application progid=\"Excel.Sheet\"?>\n");
-                    writer.write("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
-                    writer.write(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n");
-                    writer.write(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n");
-                    writer.write(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
-                    writer.write(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n");
-                    
-                    // Styles
-                    writer.write(" <Styles>\n");
-                    
-                    // Default style
-                    writer.write("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n");
-                    writer.write("   <Alignment ss:Vertical=\"Bottom\"/>\n");
-                    writer.write("   <Borders/>\n");
-                    writer.write("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#000000\"/>\n");
-                    writer.write("   <Interior/>\n");
-                    writer.write("   <NumberFormat/>\n");
-                    writer.write("   <Protection/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Header style
-                    writer.write("  <Style ss:ID=\"Header\">\n");
-                    writer.write("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#FFFFFF\" ss:Bold=\"1\"/>\n");
-                    writer.write("   <Interior ss:Color=\"#4CAF50\" ss:Pattern=\"Solid\"/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Data style
-                    writer.write("  <Style ss:ID=\"Data\">\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Data alternate row style
-                    writer.write("  <Style ss:ID=\"DataAlt\">\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("   <Interior ss:Color=\"#F2F2F2\" ss:Pattern=\"Solid\"/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    writer.write(" </Styles>\n");
-                    
-                    // Worksheet
-                    writer.write(" <Worksheet ss:Name=\"Danh sách bác sĩ\">\n");
-                    writer.write("  <Table ss:ExpandedColumnCount=\"6\" ss:ExpandedRowCount=\"" + (tableModel.getRowCount() + 1) + "\" x:FullColumns=\"1\" x:FullRows=\"1\" ss:DefaultColumnWidth=\"100\">\n");
-                    
-                    // Cài đặt độ rộng cho các cột
-                    writer.write("   <Column ss:Width=\"60\"/>\n");       // ID
-                    writer.write("   <Column ss:Width=\"150\"/>\n");      // Họ tên bác sĩ
-                    writer.write("   <Column ss:Width=\"150\"/>\n");      // Chuyên khoa
-                    writer.write("   <Column ss:Width=\"150\"/>\n");      // Bằng cấp
-                    writer.write("   <Column ss:Width=\"80\"/>\n");       // Kinh nghiệm
-                    writer.write("   <Column ss:Width=\"80\"/>\n");       // ID Phòng khám
-                    
-                    // Header row
-                    writer.write("   <Row ss:Height=\"30\">\n");
-                    
-                    String[] headers = {"ID", "Họ tên bác sĩ", "Chuyên khoa", "Bằng cấp", "Kinh nghiệm (năm)", "ID Phòng khám"};
-                    for (String header : headers) {
-                        writer.write("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">" + escapeXML(header) + "</Data></Cell>\n");
-                    }
-                    
-                    writer.write("   </Row>\n");
-                    
-                    // Data rows
-                    for (int i = 0; i < tableModel.getRowCount(); i++) {
-                        // Xác định style cho hàng (hàng chẵn hay lẻ)
-                        String rowStyleID = (i % 2 == 0) ? "Data" : "DataAlt";
-                        
-                        writer.write("   <Row>\n");
-                        
-                        for (int j = 0; j < tableModel.getColumnCount(); j++) {
-                            Object value = tableModel.getValueAt(i, j);
-                            String cellValue = (value != null) ? value.toString() : "";
-                            
-                            writer.write("    <Cell ss:StyleID=\"" + rowStyleID + "\"><Data ss:Type=\"String\">" + escapeXML(cellValue) + "</Data></Cell>\n");
-                        }
-                        
-                        writer.write("   </Row>\n");
-                    }
-                    
-                    writer.write("  </Table>\n");
-                    writer.write("  <WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\">\n");
-                    writer.write("   <PageSetup>\n");
-                    writer.write("    <Header x:Margin=\"0.3\"/>\n");
-                    writer.write("    <Footer x:Margin=\"0.3\"/>\n");
-                    writer.write("    <PageMargins x:Bottom=\"0.75\" x:Left=\"0.7\" x:Right=\"0.7\" x:Top=\"0.75\"/>\n");
-                    writer.write("   </PageSetup>\n");
-                    writer.write("   <Selected/>\n");
-                    writer.write("   <Panes>\n");
-                    writer.write("    <Pane>\n");
-                    writer.write("     <Number>3</Number>\n");
-                    writer.write("     <ActiveRow>1</ActiveRow>\n");
-                    writer.write("     <ActiveCol>1</ActiveCol>\n");
-                    writer.write("    </Pane>\n");
-                    writer.write("   </Panes>\n");
-                    writer.write("   <ProtectObjects>False</ProtectObjects>\n");
-                    writer.write("   <ProtectScenarios>False</ProtectScenarios>\n");
-                    writer.write("  </WorksheetOptions>\n");
-                    writer.write(" </Worksheet>\n");
-                    writer.write("</Workbook>");
-                }
-                
-                messageCallback.showSuccessToast("Xuất danh sách bác sĩ ra file Excel thành công!");
-            }
-        } catch (IOException ex) {
-            messageCallback.showErrorMessage("Lỗi xuất file Excel", ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-    
-    // Xuất danh sách bác sĩ ra CSV
-    private void exportDoctorToCSV(List<BacSi> doctorList) {
-        try {
-            // Lấy đường dẫn file đã lưu trước đó (nếu có)
-            String lastPath = prefs.get(LAST_CSV_PATH, null);
-            File lastFile = (lastPath != null) ? new File(lastPath) : null;
-            
-            // Tạo JFileChooser để chọn vị trí lưu file
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Lưu file CSV");
-            
-            // Thiết lập filter cho file CSV
-            fileChooser.setFileFilter(new FileNameExtensionFilter("CSV files (*.csv)", "csv"));
-            
-            // Nếu có file đã lưu trước đó, đặt nó làm file mặc định
-            if (lastFile != null && lastFile.exists()) {
-                fileChooser.setSelectedFile(lastFile);
-            } else {
-                fileChooser.setSelectedFile(new File("danh_sach_bac_si.csv"));
-            }
-            
-            int userSelection = fileChooser.showSaveDialog(parentComponent);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                // Đảm bảo file có đuôi .csv
-                if (!fileToSave.getName().toLowerCase().endsWith(".csv")) {
-                    fileToSave = new File(fileToSave.getAbsolutePath() + ".csv");
-                }
-                
-                // Hiển thị xác nhận nếu file đã tồn tại
-                if (fileToSave.exists()) {
-                    int response = JOptionPane.showConfirmDialog(
-                        parentComponent,
-                        "File đã tồn tại. Bạn có muốn ghi đè lên file này không?",
-                        "Xác nhận ghi đè",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                    );
-                    
-                    if (response != JOptionPane.YES_OPTION) {
-                        return; // Người dùng không muốn ghi đè
-                    }
-                }
-                
-                // Lưu đường dẫn này để sử dụng lần sau
-                prefs.put(LAST_CSV_PATH, fileToSave.getAbsolutePath());
-                
-                // Tạo FileWriter
-                try (FileWriter writer = new FileWriter(fileToSave)) {
-                    // Viết header
-                    writer.append("ID,Họ tên bác sĩ,Chuyên khoa,Bằng cấp,Kinh nghiệm (năm),ID Phòng khám\n");
-                    
-                    // Viết dữ liệu từ tableModel
-                    for (int i = 0; i < tableModel.getRowCount(); i++) {
-                        // ID
-                        writer.append(tableModel.getValueAt(i, 0).toString());
-                        writer.append(',');
-                        
-                        // Họ tên bác sĩ - đặt trong dấu ngoặc kép để xử lý trường hợp có dấu phẩy
-                        writer.append('"').append(escapeCSV(tableModel.getValueAt(i, 1).toString())).append('"');
-                        writer.append(',');
-                        
-                        // Chuyên khoa
-                        writer.append('"').append(escapeCSV(tableModel.getValueAt(i, 2).toString())).append('"');
-                        writer.append(',');
-                        
-                        // Bằng cấp
-                        writer.append('"').append(escapeCSV(tableModel.getValueAt(i, 3).toString())).append('"');
-                        writer.append(',');
-                        
-                        // Kinh nghiệm
-                        writer.append(tableModel.getValueAt(i, 4).toString());
-                        writer.append(',');
-                        
-                        // ID Phòng khám
-                        writer.append(tableModel.getValueAt(i, 5).toString());
-                        writer.append('\n');
-                    }
-                }
-                
-                messageCallback.showSuccessToast("Xuất danh sách bác sĩ ra file CSV thành công!");
-            }
-        } catch (IOException ex) {
-            messageCallback.showErrorMessage("Lỗi xuất file CSV", ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-    // Phương thức xuất dữ liệu ra file Excel XML (.xls)
-    public void exportToExcelXML() {
-        try {
-            // Lấy đường dẫn file đã lưu trước đó (nếu có)
-            String lastPath = prefs.get(LAST_EXCEL_PATH, null);
-            File lastFile = (lastPath != null) ? new File(lastPath) : null;
-            
-            // Tạo JFileChooser để chọn vị trí lưu file
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Lưu file Excel");
-            
-            // Thiết lập filter cho file Excel
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Excel files (*.xls)", "xls"));
-            
-            // Nếu có file đã lưu trước đó, đặt nó làm file mặc định
-            if (lastFile != null && lastFile.exists()) {
-                fileChooser.setSelectedFile(lastFile);
-            } else {
-                fileChooser.setSelectedFile(new File("danh_sach_benh_nhan.xls"));
-            }
-            
-            int userSelection = fileChooser.showSaveDialog(parentComponent);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                // Đảm bảo file có đuôi .xls
-                if (!fileToSave.getName().toLowerCase().endsWith(".xls")) {
-                    fileToSave = new File(fileToSave.getAbsolutePath() + ".xls");
-                }
-                
-                // Hiển thị xác nhận nếu file đã tồn tại
-                if (fileToSave.exists()) {
-                    int response = JOptionPane.showConfirmDialog(
-                        parentComponent,
-                        "File đã tồn tại. Bạn có muốn ghi đè lên file này không?",
-                        "Xác nhận ghi đè",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                    );
-                    
-                    if (response != JOptionPane.YES_OPTION) {
-                        return; // Người dùng không muốn ghi đè
-                    }
-                }
-                
-                // Lưu đường dẫn này để sử dụng lần sau
-                prefs.put(LAST_EXCEL_PATH, fileToSave.getAbsolutePath());
-                
-                // Tạo XML Spreadsheet
-                try (FileWriter writer = new FileWriter(fileToSave)) {
-                    // XML header
-                    writer.write("<?xml version=\"1.0\"?>\n");
-                    writer.write("<?mso-application progid=\"Excel.Sheet\"?>\n");
-                    writer.write("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
-                    writer.write(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n");
-                    writer.write(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n");
-                    writer.write(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
-                    writer.write(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n");
-                    
-                    // Styles
-                    writer.write(" <Styles>\n");
-                    
-                    // Default style
-                    writer.write("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n");
-                    writer.write("   <Alignment ss:Vertical=\"Bottom\"/>\n");
-                    writer.write("   <Borders/>\n");
-                    writer.write("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#000000\"/>\n");
-                    writer.write("   <Interior/>\n");
-                    writer.write("   <NumberFormat/>\n");
-                    writer.write("   <Protection/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Header style
-                    writer.write("  <Style ss:ID=\"Header\">\n");
-                    writer.write("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#FFFFFF\" ss:Bold=\"1\"/>\n");
-                    writer.write("   <Interior ss:Color=\"#4CAF50\" ss:Pattern=\"Solid\"/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Data style
-                    writer.write("  <Style ss:ID=\"Data\">\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("  </Style>\n");
-                    
-                    // Data alternate row style
-                    writer.write("  <Style ss:ID=\"DataAlt\">\n");
-                    writer.write("   <Borders>\n");
-                    writer.write("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>\n");
-                    writer.write("   </Borders>\n");
-                    writer.write("   <Interior ss:Color=\"#F2F2F2\" ss:Pattern=\"Solid\"/>\n");
-                    writer.write("  </Style>\n");
-                    
-                    writer.write(" </Styles>\n");
-                    
-                    // Worksheet
-                    writer.write(" <Worksheet ss:Name=\"Danh sách bệnh nhân\">\n");
-                    writer.write("  <Table ss:ExpandedColumnCount=\"7\" ss:ExpandedRowCount=\"" + (tableModel.getRowCount() + 1) + "\" x:FullColumns=\"1\" x:FullRows=\"1\" ss:DefaultColumnWidth=\"100\">\n");
-                    
-                    // Cài đặt độ rộng cho các cột
-                    writer.write("   <Column ss:Width=\"60\"/>\n");   // ID
-                    writer.write("   <Column ss:Width=\"150\"/>\n");  // Họ tên
-                    writer.write("   <Column ss:Width=\"100\"/>\n");  // Ngày sinh
-                    writer.write("   <Column ss:Width=\"80\"/>\n");   // Giới tính
-                    writer.write("   <Column ss:Width=\"100\"/>\n");  // SĐT
-                    writer.write("   <Column ss:Width=\"100\"/>\n");  // CCCD
-                    writer.write("   <Column ss:Width=\"200\"/>\n");  // Địa chỉ
-                    
-                    // Header row
-                    writer.write("   <Row ss:Height=\"30\">\n");
-                    
-                    String[] headers = {"ID", "Họ tên", "Ngày sinh", "Giới tính", "Số điện thoại", "CCCD", "Địa chỉ"};
-                    for (String header : headers) {
-                        writer.write("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">" + escapeXML(header) + "</Data></Cell>\n");
-                    }
-                    
-                    writer.write("   </Row>\n");
-                    
-                    // Data rows
-                    for (int i = 0; i < tableModel.getRowCount(); i++) {
-                        // Xác định style cho hàng (hàng chẵn hay lẻ)
-                        String rowStyleID = (i % 2 == 0) ? "Data" : "DataAlt";
-                        
-                        writer.write("   <Row>\n");
-                        
-                        for (int j = 0; j < tableModel.getColumnCount(); j++) {
-                            Object value = tableModel.getValueAt(i, j);
-                            String cellValue = (value != null) ? value.toString() : "";
-                            
-                            writer.write("    <Cell ss:StyleID=\"" + rowStyleID + "\"><Data ss:Type=\"String\">" + escapeXML(cellValue) + "</Data></Cell>\n");
-                        }
-                        
-                        writer.write("   </Row>\n");
-                    }
-                    
-                    writer.write("  </Table>\n");
-                    writer.write("  <WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\">\n");
-                    writer.write("   <PageSetup>\n");
-                    writer.write("    <Header x:Margin=\"0.3\"/>\n");
-                    writer.write("    <Footer x:Margin=\"0.3\"/>\n");
-                    writer.write("    <PageMargins x:Bottom=\"0.75\" x:Left=\"0.7\" x:Right=\"0.7\" x:Top=\"0.75\"/>\n");
-                    writer.write("   </PageSetup>\n");
-                    writer.write("   <Selected/>\n");
-                    writer.write("   <Panes>\n");
-                    writer.write("    <Pane>\n");
-                    writer.write("     <Number>3</Number>\n");
-                    writer.write("     <ActiveRow>1</ActiveRow>\n");
-                    writer.write("     <ActiveCol>1</ActiveCol>\n");
-                    writer.write("    </Pane>\n");
-                    writer.write("   </Panes>\n");
-                    writer.write("   <ProtectObjects>False</ProtectObjects>\n");
-                    writer.write("   <ProtectScenarios>False</ProtectScenarios>\n");
-                    writer.write("  </WorksheetOptions>\n");
-                    writer.write(" </Worksheet>\n");
-                    writer.write("</Workbook>");
-                }
-                
-                messageCallback.showSuccessToast("Xuất file Excel thành công!");
-            }
-        } catch (IOException ex) {
-            messageCallback.showErrorMessage("Lỗi xuất file Excel", ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-    
-    // Phương thức xuất dữ liệu ra file CSV
-    public void exportToCSV() {
-        try {
-            // Lấy đường dẫn file đã lưu trước đó (nếu có)
-            String lastPath = prefs.get(LAST_CSV_PATH, null);
-            File lastFile = (lastPath != null) ? new File(lastPath) : null;
-            
-            // Tạo JFileChooser để chọn vị trí lưu file
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Lưu file CSV");
-            
-            // Thiết lập filter cho file CSV
-            fileChooser.setFileFilter(new FileNameExtensionFilter("CSV files (*.csv)", "csv"));
-            
-            // Nếu có file đã lưu trước đó, đặt nó làm file mặc định
-            if (lastFile != null && lastFile.exists()) {
-                fileChooser.setSelectedFile(lastFile);
-            } else {
-                fileChooser.setSelectedFile(new File("danh_sach_benh_nhan.csv"));
-            }
-            
-            int userSelection = fileChooser.showSaveDialog(parentComponent);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                // Đảm bảo file có đuôi .csv
-                if (!fileToSave.getName().toLowerCase().endsWith(".csv")) {
-                    fileToSave = new File(fileToSave.getAbsolutePath() + ".csv");
-                }
-                
-                // Hiển thị xác nhận nếu file đã tồn tại
-                if (fileToSave.exists()) {
-                    int response = JOptionPane.showConfirmDialog(
-                        parentComponent,
-                        "File đã tồn tại. Bạn có muốn ghi đè lên file này không?",
-                        "Xác nhận ghi đè",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                    );
-                    
-                    if (response != JOptionPane.YES_OPTION) {
-                        return; // Người dùng không muốn ghi đè
-                    }
-                }
-                
-                // Lưu đường dẫn này để sử dụng lần sau
-                prefs.put(LAST_CSV_PATH, fileToSave.getAbsolutePath());
-                
-                // Tạo FileWriter
-                try (FileWriter writer = new FileWriter(fileToSave)) {
-                    // Viết header
-                    writer.append("ID,Họ tên,Ngày sinh,Giới tính,Số điện thoại,CCCD,Địa chỉ\n");
-                    
-                    // Viết dữ liệu
-                    for (int i = 0; i < tableModel.getRowCount(); i++) {
-                        // ID
-                        writer.append(tableModel.getValueAt(i, 0).toString());
-                        writer.append(',');
-                        
-                        // Họ tên - đặt trong dấu ngoặc kép để xử lý trường hợp có dấu phẩy
-                        writer.append('"').append(escapeCSV(tableModel.getValueAt(i, 1).toString())).append('"');
-                        writer.append(',');
-                        
-                        // Ngày sinh
-                        writer.append('"').append(tableModel.getValueAt(i, 2).toString()).append('"');
-                        writer.append(',');
-                        
-                        // Giới tính
-                        writer.append('"').append(tableModel.getValueAt(i, 3).toString()).append('"');
-                        writer.append(',');
-                        
-                        // Số điện thoại
-                        writer.append('"').append(tableModel.getValueAt(i, 4).toString()).append('"');
-                        writer.append(',');
-                        
-                        // CCCD
-                        writer.append('"').append(tableModel.getValueAt(i, 5).toString()).append('"');
-                        writer.append(',');
-                        
-                        // Địa chỉ
-                        writer.append('"').append(escapeCSV(tableModel.getValueAt(i, 6).toString())).append('"');
-                        writer.append('\n');
-                    }
-                }
-                
-                messageCallback.showSuccessToast("Xuất file CSV thành công!");
-            }
-        } catch (IOException ex) {
-            messageCallback.showErrorMessage("Lỗi xuất file CSV", ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-    
-    // Phương thức hỗ trợ để escape các ký tự đặc biệt trong XML
-    private String escapeXML(String value) {
-        if (value == null) return "";
-        return value.replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                    .replace("\"", "&quot;")
-                    .replace("'", "&apos;");
-    }
-    
-    // Hàm hỗ trợ để escape các ký tự đặc biệt trong CSV
-    private String escapeCSV(String value) {
-        if (value == null) return "";
-        // Thay thế dấu ngoặc kép bằng hai dấu ngoặc kép (quy tắc của CSV)
-        return value.replace("\"", "\"\"");
-    }
-    
-    // Tạo button có viền bo tròn
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
-        JButton button = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-            
-            @Override
-            protected void paintBorder(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground().darker());
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                g2.dispose();
-            }
-        };
+        // Thêm đường kẻ phía dưới tiêu đề
+        JSeparator separator = new JSeparator();
+        separator.setForeground(new Color(230, 230, 230));
         
-        button.setOpaque(false);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(false);
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setBackground(Color.WHITE);
+        titlePanel.add(headerPanel, BorderLayout.CENTER);
+        titlePanel.add(separator, BorderLayout.SOUTH);
+        titlePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        
+        return titlePanel;
+    }
+    private JPanel createContentPanel() {
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(Color.WHITE);
+        
+        // Panel tên tệp tin
+        JPanel fileNamePanel = createFileNamePanel();
+        contentPanel.add(fileNamePanel);
+        
+        // Thêm khoảng trống
+        contentPanel.add(Box.createVerticalStrut(12));
+        
+        // Panel định dạng
+        JPanel formatPanel = createFormatPanel();
+        contentPanel.add(formatPanel);
+        
+        return contentPanel;
+    }
+    private JPanel createFileNamePanel() {
+        JPanel fileNamePanel = new JPanel(new BorderLayout(10, 5));
+        fileNamePanel.setBackground(Color.WHITE);
+        fileNamePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        fileNamePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Label tên tệp tin
+        JLabel fileNameLabel = new JLabel("Tên tệp tin:");
+        fileNameLabel.setFont(LABEL_FONT);
+        
+        // Panel chứa label để canh chỉnh
+        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        labelPanel.setBackground(Color.WHITE);
+        labelPanel.add(fileNameLabel);
+        fileNamePanel.add(labelPanel, BorderLayout.NORTH);
+        
+        // Trường nhập tên tệp tin
+        JTextField fileNameField = new JTextField(defaultFileName);
+        fileNameField.setFont(LABEL_FONT);
+        fileNameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(204, 204, 204), 1, true),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        fileNameField.setName("fileNameField");
+        fileNamePanel.add(fileNameField, BorderLayout.CENTER);
+        
+        return fileNamePanel;
+    }
+    private JPanel createFormatPanel() {
+        JPanel formatPanel = new JPanel(new BorderLayout());
+        formatPanel.setBackground(Color.WHITE);
+        formatPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        formatPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                "Định dạng"));
+        formatPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        
+        // Panel chứa các radio button theo hàng ngang
+        JPanel radioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        radioPanel.setBackground(Color.WHITE);
+        radioPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        
+        // Các tùy chọn định dạng
+        ButtonGroup formatGroup = new ButtonGroup();
+        
+        JRadioButton csvRadio = createFormatRadioButton("CSV (.csv)", true);
+        csvRadio.setName("csvRadio");
+        formatGroup.add(csvRadio);
+        radioPanel.add(csvRadio);
+        
+        JRadioButton excelRadio = createFormatRadioButton("Excel (.xlsx)", false);
+        excelRadio.setName("excelRadio");
+        formatGroup.add(excelRadio);
+        radioPanel.add(excelRadio);
+        
+        JRadioButton pdfRadio = createFormatRadioButton("PDF (.pdf)", false);
+        pdfRadio.setName("pdfRadio");
+        formatGroup.add(pdfRadio);
+        radioPanel.add(pdfRadio);
+        
+        formatPanel.add(radioPanel, BorderLayout.CENTER);
+        
+        return formatPanel;
+    }
+    private JRadioButton createFormatRadioButton(String text, boolean selected) {
+        JRadioButton radioButton = new JRadioButton(text);
+        radioButton.setFont(LABEL_FONT);
+        radioButton.setSelected(selected);
+        radioButton.setBackground(Color.WHITE);
+        radioButton.setFocusPainted(false);
+        return radioButton;
+    }
+    private JPanel createButtonPanel(Color primaryColor, Color secondaryColor, Color buttonTextColor, JDialog exportDialog) {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        
+        // Nút Hủy
+        JButton cancelButton = createButton("Hủy", new Color(240, 240, 240), new Color(80, 80, 80));
+        cancelButton.addActionListener(e -> exportDialog.dispose());
+        
+        // Nút Xuất
+        JButton exportButton = createButton("Xuất", primaryColor, buttonTextColor);
+        exportButton.addActionListener(e -> handleExport(exportDialog));
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(exportButton);
+        
+        return buttonPanel;
+    }
+    private JButton createButton(String text, Color bgColor, Color fgColor) {
+        JButton button = new JButton(text);
+        button.setFont(BUTTON_FONT);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setOpaque(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(BUTTON_WIDTH, BUTTON_HEIGHT));
+        
+        // Thêm hiệu ứng hover
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(darkenColor(bgColor));
+            }
+            
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+            }
+        });
+        
         return button;
+    }
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
+    }
+    private void handleExport(JDialog exportDialog) {
+        // Lấy tên tệp từ TextField
+        JTextField fileNameField = (JTextField) findComponentByName(exportDialog, "fileNameField");
+        String fileName = fileNameField.getText().trim();
+        
+        if (fileName.isEmpty()) {
+            callback.showErrorMessage("Lỗi", "Vui lòng nhập tên tệp tin");
+            return;
+        }
+        
+        // Xác định định dạng từ RadioButton được chọn
+        String format = determineSelectedFormat(exportDialog);
+        
+        // Tiến hành xuất dữ liệu
+        exportData(fileName, format);
+        exportDialog.dispose();
+    }
+    private Component findComponentByName(Container container, String name) {
+        for (Component comp : container.getComponents()) {
+            if (name.equals(comp.getName())) {
+                return comp;
+            } else if (comp instanceof Container) {
+                Component found = findComponentByName((Container) comp, name);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+    private String determineSelectedFormat(JDialog dialog) {
+        JRadioButton csvRadio = (JRadioButton) findComponentByName(dialog, "csvRadio");
+        JRadioButton excelRadio = (JRadioButton) findComponentByName(dialog, "excelRadio");
+        JRadioButton pdfRadio = (JRadioButton) findComponentByName(dialog, "pdfRadio");
+        
+        if (csvRadio.isSelected()) return "csv";
+        if (excelRadio.isSelected()) return "excel";
+        if (pdfRadio.isSelected()) return "pdf";
+        
+        return "csv"; // Mặc định
+    }
+    private void exportData(String baseFileName, String format) {
+        // Chuẩn bị thông tin cho định dạng tệp tin
+        FileFormatInfo formatInfo = getFileFormatInfo(format);
+        
+        // Đảm bảo tên tệp tin có phần mở rộng
+        if (!baseFileName.toLowerCase().endsWith("." + formatInfo.extension)) {
+            baseFileName += "." + formatInfo.extension;
+        }
+        
+        // Cấu hình file chooser
+        JFileChooser fileChooser = configureFileChooser(baseFileName, formatInfo);
+        
+        // Hiển thị hộp thoại lưu
+        int result = fileChooser.showSaveDialog(parentComponent);
+        
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = ensureFileExtension(fileChooser.getSelectedFile(), formatInfo.extension);
+            
+            try {
+                // Xuất dữ liệu theo định dạng
+                switch (format) {
+                    case "csv":
+                        exportToCSV(selectedFile);
+                        break;
+                    case "excel":
+                        exportToExcel(selectedFile);
+                        break;
+                    case "pdf":
+                        exportToPDF(selectedFile);
+                        break;
+                }
+                callback.showSuccessToast("Xuất dữ liệu thành công!");
+            } catch (IOException e) {
+                callback.showErrorMessage("Lỗi khi xuất dữ liệu", e.getMessage());
+            } catch (Exception e) {
+                callback.showErrorMessage("Lỗi không xác định", e.getMessage());
+            }
+        }
+    }
+    private static class FileFormatInfo {
+        String extension;
+        String description;
+        
+        FileFormatInfo(String extension, String description) {
+            this.extension = extension;
+            this.description = description;
+        }
+    }
+    private FileFormatInfo getFileFormatInfo(String format) {
+        switch (format) {
+            case "excel":
+                return new FileFormatInfo("xlsx", "Excel Files (*.xlsx)");
+            case "pdf":
+                return new FileFormatInfo("pdf", "PDF Files (*.pdf)");
+            case "csv":
+            default:
+                return new FileFormatInfo("csv", "CSV Files (*.csv)");
+        }
+    }
+    private JFileChooser configureFileChooser(String baseFileName, FileFormatInfo formatInfo) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Chọn vị trí lưu tệp tin");
+        fileChooser.setSelectedFile(new File(baseFileName));
+        fileChooser.setFileFilter(new FileNameExtensionFilter(
+                formatInfo.description, formatInfo.extension));
+        return fileChooser;
+    }
+    private File ensureFileExtension(File file, String extension) {
+        String filePath = file.getAbsolutePath();
+        if (!filePath.toLowerCase().endsWith("." + extension)) {
+            return new File(filePath + "." + extension);
+        }
+        return file;
+    }
+    private void exportToExcel(File file) throws IOException {
+        JOptionPane.showMessageDialog(parentComponent,
+            "Chức năng xuất Excel cần thư viện Apache POI.\n" +
+            "Vui lòng thêm thư viện và cập nhật mã nguồn.",
+            "Chức năng chưa khả dụng",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    private void exportToPDF(File file) throws Exception {
+        JOptionPane.showMessageDialog(parentComponent,
+            "Chức năng xuất PDF cần thư viện iText.\n" +
+            "Vui lòng thêm thư viện và cập nhật mã nguồn.",
+            "Chức năng chưa khả dụng",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    private void exportToCSV(File file) throws IOException {
+        try (FileWriter fw = new FileWriter(file);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            
+            // Ghi tiêu đề cột
+            writeCSVHeader(bw);
+            
+            // Ghi dữ liệu hàng
+            writeCSVData(bw);
+        }
+    }
+    private void writeCSVHeader(BufferedWriter bw) throws IOException {
+        for (int i = 0; i < tableModel.getColumnCount(); i++) {
+            bw.write(escapeCSV(tableModel.getColumnName(i)));
+            if (i < tableModel.getColumnCount() - 1) {
+                bw.write(",");
+            }
+        }
+        bw.newLine();
+    }
+    private void writeCSVData(BufferedWriter bw) throws IOException {
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            for (int j = 0; j < tableModel.getColumnCount(); j++) {
+                Object value = tableModel.getValueAt(i, j);
+                String cellText = value != null ? value.toString() : "";
+                bw.write(escapeCSV(cellText));
+                
+                if (j < tableModel.getColumnCount() - 1) {
+                    bw.write(",");
+                }
+            }
+            bw.newLine();
+        }
+    }
+    private String escapeCSV(String text) {
+        if (text == null) {
+            return "";
+        }
+        
+        boolean needQuotes = text.contains(",") || text.contains("\"") || text.contains("\n");
+        
+        if (needQuotes) {
+            return "\"" + text.replace("\"", "\"\"") + "\"";
+        } else {
+            return text;
+        }
+    }
+    private String generateDefaultFileName() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        return "export_data_" + sdf.format(new Date());
     }
 }
