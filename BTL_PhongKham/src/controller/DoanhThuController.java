@@ -55,31 +55,48 @@ public class DoanhThuController {
     
     public void loadDoanhThuData() {
         if (view == null) {
-            return; // Không có view để hiển thị dữ liệu
+            return; // No view to display data
         }
-        
+
         DefaultTableModel modelDoanhThu = view.getModelDoanhThu();
         modelDoanhThu.setRowCount(0);
+        
+        // Clear the original data list in the view before loading new data
+        view.clearOriginalData();
+        
         double totalRevenue = 0;
-        String sql = "SELECT dt.idDoanhThu, dt.idHoaDon, bn.hoTen, dt.thangNam, hd.tongTien, hd.trangThai " +
+
+        // Sửa query để lấy tongDoanhThu từ bảng DoanhThu thay vì tongTien từ bảng HoaDon
+        String sql = "SELECT dt.idDoanhThu, dt.idHoaDon, bn.hoTen, dt.thangNam, dt.tongDoanhThu, hd.trangThai " +
                      "FROM DoanhThu dt " +
                      "JOIN HoaDon hd ON dt.idHoaDon = hd.idHoaDon " +
                      "JOIN BenhNhan bn ON hd.idBenhNhan = bn.idBenhNhan " +
                      "WHERE hd.trangThai = 'DaThanhToan'";
         try (PreparedStatement preparedStatement = conn.prepareStatement(sql);
              ResultSet resultSet = preparedStatement.executeQuery()) {
+             
             while (resultSet.next()) {
                 int idDoanhThu = resultSet.getInt("idDoanhThu");
                 int idHoaDon = resultSet.getInt("idHoaDon");
                 String hoTenBenhNhan = resultSet.getString("hoTen");
                 Date thangNam = resultSet.getDate("thangNam");
-                double tongDoanhThu = resultSet.getDouble("tongTien"); // Lấy tongTien từ bảng HoaDon
+                // Lấy tongDoanhThu từ bảng DoanhThu
+                double tongDoanhThu = resultSet.getDouble("tongDoanhThu");
                 String trangThai = resultSet.getString("trangThai");
-                modelDoanhThu.addRow(new Object[]{idDoanhThu, idHoaDon, hoTenBenhNhan, monthYearFormat.format(thangNam), tongDoanhThu, trangThai});
+                
+                Object[] rowData = new Object[]{idDoanhThu, idHoaDon, hoTenBenhNhan, 
+                                               monthYearFormat.format(thangNam), tongDoanhThu, trangThai};
+                                               
+                // Instead of directly adding to the model, use the view's method
+                // which will add to both the model and the original data list
+                view.loadDoanhThuData(rowData);
+                
                 totalRevenue += tongDoanhThu;
             }
-            // Thêm hàng tổng vào cuối
-            modelDoanhThu.addRow(new Object[]{null, null, null, "Tổng:", totalRevenue, null});
+
+            // Update total row in UI using the new method
+            view.updateTotalRow(totalRevenue);
+
         } catch (SQLException e) {
             e.printStackTrace();
             if (view != null) {
@@ -89,13 +106,28 @@ public class DoanhThuController {
     }
 
     public boolean themDoanhThu(java.util.Date thangNam, double tongDoanhThu, int idHoaDon) {
+        // Kiểm tra xem hóa đơn có hợp lệ không
+        if (!kiemTraHoaDon(idHoaDon)) {
+            if (view != null) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(view, "Hóa đơn không tồn tại hoặc không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                });
+            }
+            return false;
+        }
+        
         // Đảm bảo Hóa đơn được cập nhật trạng thái thành "DaThanhToan"
-        capNhatTrangThaiHoaDon(idHoaDon, "DaThanhToan", tongDoanhThu);
+        capNhatTrangThaiHoaDon(idHoaDon, "DaThanhToan");
+        
+        // Lấy tổng tiền từ hóa đơn nếu không có giá trị được cung cấp hoặc giá trị là 0
+        if (tongDoanhThu <= 0) {
+            tongDoanhThu = layTongTienHoaDon(idHoaDon);
+        }
         
         String sql = "INSERT INTO DoanhThu (thangNam, tongDoanhThu, idHoaDon) VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
             preparedStatement.setDate(1, new java.sql.Date(thangNam.getTime()));
-            preparedStatement.setDouble(2, tongDoanhThu);
+            preparedStatement.setBigDecimal(2, java.math.BigDecimal.valueOf(tongDoanhThu));
             preparedStatement.setInt(3, idHoaDon);
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows > 0) {
@@ -121,6 +153,53 @@ public class DoanhThuController {
                     JOptionPane.showMessageDialog(view, "Lỗi thêm doanh thu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 });
             }
+            return false;
+        }
+    }
+    
+    // Phương thức mới để lấy tổng tiền từ hóa đơn
+    private double layTongTienHoaDon(int idHoaDon) {
+        double tongTien = 0;
+        String sql = "SELECT tongTien FROM HoaDon WHERE idHoaDon = ?";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setInt(1, idHoaDon);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                tongTien = resultSet.getDouble("tongTien");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return tongTien;
+    }
+    public double getHoaDonAmount(int idHoaDon) {
+        // This method should be implemented in DoanhThuController to retrieve 
+        // the invoice amount from the database
+        try {
+            // Connect to database and execute query to get invoice amount
+            String query = "SELECT TongTien FROM HoaDon WHERE IDHoaDon = ?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setInt(1, idHoaDon);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getDouble("TongTien");
+            }
+            return 0.0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0.0;
+        }
+    }
+    // Phương thức mới để kiểm tra xem hóa đơn có tồn tại không
+    private boolean kiemTraHoaDon(int idHoaDon) {
+        String sql = "SELECT idHoaDon FROM HoaDon WHERE idHoaDon = ?";
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setInt(1, idHoaDon);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return resultSet.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
             return false;
         }
     }
@@ -158,7 +237,10 @@ public class DoanhThuController {
             if (affectedRows > 0) {
                 // Nếu xóa thành công và có idHoaDon hợp lệ, cập nhật trạng thái hóa đơn thành "ChuaThanhToan"
                 if (idHoaDon > 0) {
-                    capNhatTrangThaiHoaDon(idHoaDon, "ChuaThanhToan", 0);
+                    // Kiểm tra xem hóa đơn có trong bảng doanh thu khác không
+                    if (!kiemTraHoaDonTrongDoanhThuKhac(idHoaDon, idDoanhThu)) {
+                        capNhatTrangThaiHoaDon(idHoaDon, "ChuaThanhToan");
+                    }
                 }
                 
                 if (view != null) {
@@ -179,6 +261,14 @@ public class DoanhThuController {
     }
 
     public void suaDoanhThu(int idDoanhThu, java.util.Date thangNam, double tongDoanhThu, int idHoaDon) {
+        // Kiểm tra xem hóa đơn có hợp lệ không
+        if (!kiemTraHoaDon(idHoaDon)) {
+            if (view != null) {
+                JOptionPane.showMessageDialog(view, "Hóa đơn không tồn tại hoặc không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+            return;
+        }
+        
         // Kiểm tra xem có sự thay đổi idHoaDon không
         int oldIdHoaDon = -1;
         try {
@@ -194,21 +284,26 @@ public class DoanhThuController {
             e.printStackTrace();
         }
         
-        // Cập nhật trạng thái của hóa đơn mới thành "DaThanhToan" và số tiền
-        capNhatTrangThaiHoaDon(idHoaDon, "DaThanhToan", tongDoanhThu);
+        // Cập nhật trạng thái của hóa đơn mới thành "DaThanhToan"
+        capNhatTrangThaiHoaDon(idHoaDon, "DaThanhToan");
         
         // Nếu idHoaDon thay đổi, đặt lại trạng thái của hóa đơn cũ
         if (oldIdHoaDon != idHoaDon && oldIdHoaDon > 0) {
             // Kiểm tra xem hóa đơn cũ có doanh thu nào khác không
             if (!kiemTraHoaDonTrongDoanhThuKhac(oldIdHoaDon, idDoanhThu)) {
-                capNhatTrangThaiHoaDon(oldIdHoaDon, "ChuaThanhToan", 0);
+                capNhatTrangThaiHoaDon(oldIdHoaDon, "ChuaThanhToan");
             }
+        }
+        
+        // Lấy tổng tiền từ hóa đơn nếu không có giá trị được cung cấp hoặc giá trị là 0
+        if (tongDoanhThu <= 0) {
+            tongDoanhThu = layTongTienHoaDon(idHoaDon);
         }
         
         String sql = "UPDATE DoanhThu SET thangNam = ?, tongDoanhThu = ?, idHoaDon = ? WHERE idDoanhThu = ?";
         try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
             preparedStatement.setDate(1, new java.sql.Date(thangNam.getTime()));
-            preparedStatement.setDouble(2, tongDoanhThu);
+            preparedStatement.setBigDecimal(2, java.math.BigDecimal.valueOf(tongDoanhThu));
             preparedStatement.setInt(3, idHoaDon);
             preparedStatement.setInt(4, idDoanhThu);
             int affectedRows = preparedStatement.executeUpdate();
@@ -246,35 +341,24 @@ public class DoanhThuController {
         return false;
     }
     
-    // Phương thức cập nhật trạng thái và tổng tiền cho hóa đơn
-    private void capNhatTrangThaiHoaDon(int idHoaDon, String trangThai, double tongTien) {
+    // Phương thức cập nhật trạng thái cho hóa đơn - không cập nhật tổng tiền
+    private void capNhatTrangThaiHoaDon(int idHoaDon, String trangThai) {
         // Sử dụng HoaDonController nếu đã được thiết lập
         if (hoaDonController != null) {
             // Lấy hóa đơn từ controller
             model.HoaDon hoaDon = hoaDonController.layHoaDonTheoId(idHoaDon);
             if (hoaDon != null) {
                 hoaDon.setTrangThai(trangThai);
-                if (tongTien > 0) {
-                    hoaDon.setTongTien(tongTien);
-                }
                 hoaDonController.capNhatHoaDon(hoaDon);
                 return;
             }
         }
         
         // Nếu không có hoaDonController hoặc không tìm thấy hóa đơn, cập nhật trực tiếp qua SQL
-        String sql = tongTien > 0 ? 
-            "UPDATE HoaDon SET trangThai = ?, tongTien = ? WHERE idHoaDon = ?" :
-            "UPDATE HoaDon SET trangThai = ? WHERE idHoaDon = ?";
-            
+        String sql = "UPDATE HoaDon SET trangThai = ? WHERE idHoaDon = ?";
         try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
             preparedStatement.setString(1, trangThai);
-            if (tongTien > 0) {
-                preparedStatement.setDouble(2, tongTien);
-                preparedStatement.setInt(3, idHoaDon);
-            } else {
-                preparedStatement.setInt(2, idHoaDon);
-            }
+            preparedStatement.setInt(2, idHoaDon);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -306,7 +390,7 @@ public class DoanhThuController {
             
             // Cập nhật trạng thái hóa đơn thành "ChuaThanhToan" nếu có hóa đơn bị xóa
             if (affectedRows > 0) {
-                capNhatTrangThaiHoaDon(idHoaDon, "ChuaThanhToan", 0);
+                capNhatTrangThaiHoaDon(idHoaDon, "ChuaThanhToan");
             }
             
             return affectedRows >= 0; // Trả về true ngay cả khi không có bản ghi nào bị xóa
