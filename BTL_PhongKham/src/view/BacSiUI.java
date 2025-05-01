@@ -2,6 +2,10 @@ package view;
 
 import controller.BacSiController;
 import model.BacSi;
+import util.DataChangeListener;
+import util.ExportManager;
+import util.ExportManager.MessageCallback;
+import view.BenhNhanUI.CustomBorder;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -16,7 +20,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 
-public class BacSiUI extends JPanel {
+public class BacSiUI extends JPanel implements MessageCallback, DataChangeListener {
     // Color scheme based on BenhNhanUI
     private Color primaryColor = new Color(79, 129, 189);     // Professional blue
     private Color secondaryColor = new Color(141, 180, 226);  // Lighter blue
@@ -47,11 +51,13 @@ public class BacSiUI extends JPanel {
     private JButton addButton;
     private JButton exportButton;
     private int currentBacSiId = -1;
-    
+    private String currentUserRole;
     private JFrame parentFrame;
+    private ExportManager exportManager;
     
     public BacSiUI() {
         bacSiController = new BacSiController();
+        exportManager = new ExportManager(this, tableModel, null);
         
         setBackground(backgroundColor);
         setLayout(new BorderLayout(0, 0));
@@ -86,13 +92,15 @@ public class BacSiUI extends JPanel {
         
         searchField = new JTextField(18);
         searchField.setFont(regularFont);
-        searchField.setBorder(new LineBorder(borderColor, 1));
+        searchField.setPreferredSize(new Dimension(220, 38));
         
-        searchButton = new JButton("Tìm kiếm");
-        searchButton.setFont(buttonFont);
-        searchButton.setForeground(buttonTextColor);
-        searchButton.setBackground(primaryColor);
-        searchButton.setBorder(new EmptyBorder(8, 15, 8, 15));
+        // Create rounded border with padding
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                new CustomBorder(10, borderColor), 
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)));
+             
+        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
+        searchButton.setPreferredSize(new Dimension(120, 38));
         searchButton.setFocusPainted(false);
         searchButton.addActionListener(e -> searchBacSi());
         
@@ -113,59 +121,58 @@ public class BacSiUI extends JPanel {
         tablePanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         
         // Create table with simplified columns matching the image
-	     String[] columns = {
-	         "ID", "Họ Tên", "Chuyên Khoa", "Bằng Cấp", "Kinh Nghiệm", "Phòng Khám", "Email", "Số Điện Thoại"
-	     };
-	
-	     tableModel = new DefaultTableModel(columns, 0) {
-	         @Override
-	         public boolean isCellEditable(int row, int column) {
-	             return false;
-	         }
-	     };
-	
-	     bacSiTable = new JTable(tableModel) {
-	         @Override
-	         public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
-	             Component comp = super.prepareRenderer(renderer, row, column);
-	             // Add alternating row colors
-	             if (!comp.getBackground().equals(getSelectionBackground())) {
-	                 comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
-	             }
-	             return comp;
-	         }
-	     };
-	
-	     bacSiTable.setFont(tableFont);
-	     bacSiTable.setRowHeight(40);
-	     bacSiTable.setShowGrid(false);
-	     bacSiTable.setIntercellSpacing(new Dimension(0, 0));
-	     bacSiTable.setSelectionBackground(new Color(229, 243, 255));
-	     bacSiTable.setSelectionForeground(textColor);
-	     bacSiTable.setFocusable(false);
-	     bacSiTable.setAutoCreateRowSorter(true);
-	     bacSiTable.setBorder(null);
-	
-	     // Style table header
-	     JTableHeader header = bacSiTable.getTableHeader();
-	     header.setFont(tableHeaderFont);
-	     header.setBackground(tableHeaderColor);
-	     header.setForeground(Color.WHITE);
-	     header.setPreferredSize(new Dimension(header.getWidth(), 45));
-	     header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
-	     header.setReorderingAllowed(false);
-	
-	     // Set column widths - proportional to the reference image
-	     TableColumnModel columnModel = bacSiTable.getColumnModel();
-	     columnModel.getColumn(0).setPreferredWidth(50);   // ID
-	     columnModel.getColumn(1).setPreferredWidth(180);  // Họ Tên
-	     columnModel.getColumn(2).setPreferredWidth(150);  // Chuyên Khoa
-	     columnModel.getColumn(3).setPreferredWidth(100);  // Bằng Cấp
-	     columnModel.getColumn(4).setPreferredWidth(80);   // Kinh Nghiệm
-	     columnModel.getColumn(5).setPreferredWidth(120);  // Phòng Khám
-	     columnModel.getColumn(6).setPreferredWidth(180);  // Email
-	     columnModel.getColumn(7).setPreferredWidth(120);  // Số Điện Thoại
-	        
+        String[] columns = {
+            "ID", "Họ Tên", "Chuyên Khoa", "Bằng Cấp", "Kinh Nghiệm", "Phòng Khám", "Email", "Số Điện Thoại"
+        };
+        
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        bacSiTable = new JTable(tableModel) {
+            @Override
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
+                Component comp = super.prepareRenderer(renderer, row, column);
+                // Add alternating row colors
+                if (!comp.getBackground().equals(getSelectionBackground())) {
+                    comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                }
+                return comp;
+            }
+        };
+        
+        bacSiTable.setFont(tableFont);
+        bacSiTable.setRowHeight(40);
+        bacSiTable.setShowGrid(false);
+        bacSiTable.setIntercellSpacing(new Dimension(0, 0));
+        bacSiTable.setSelectionBackground(new Color(229, 243, 255));
+        bacSiTable.setSelectionForeground(textColor);
+        bacSiTable.setFocusable(false);
+        bacSiTable.setAutoCreateRowSorter(true);
+        bacSiTable.setBorder(null);
+        
+        // Style table header
+        JTableHeader header = bacSiTable.getTableHeader();
+        header.setFont(tableHeaderFont);
+        header.setBackground(tableHeaderColor);
+        header.setForeground(Color.WHITE);
+        header.setPreferredSize(new Dimension(header.getWidth(), 45));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
+        header.setReorderingAllowed(false);
+        
+        // Set column widths - proportional to the reference image
+        TableColumnModel columnModel = bacSiTable.getColumnModel();
+        columnModel.getColumn(0).setPreferredWidth(50);   // ID
+        columnModel.getColumn(1).setPreferredWidth(180);  // Họ Tên
+        columnModel.getColumn(2).setPreferredWidth(150);  // Chuyên Khoa
+        columnModel.getColumn(3).setPreferredWidth(100);  // Bằng Cấp
+        columnModel.getColumn(4).setPreferredWidth(80);   // Kinh Nghiệm
+        columnModel.getColumn(5).setPreferredWidth(120);  // Phòng Khám
+        columnModel.getColumn(6).setPreferredWidth(180);  // Email
+        columnModel.getColumn(7).setPreferredWidth(120);  // Số Điện Thoại
         
         // Alternating row colors
         bacSiTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
@@ -175,7 +182,7 @@ public class BacSiUI extends JPanel {
                 
                 if (!isSelected) {
                     if (value == null || value.toString().trim().isEmpty()) {
-                        component.setBackground(Color.RED); // Nền trắng cho ô trống
+                        component.setBackground(Color.WHITE); // Nền trắng cho ô trống
                     } else {
                         component.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor); // Nền xen kẽ
                     }
@@ -226,7 +233,7 @@ public class BacSiUI extends JPanel {
         exportButton.setBackground(warningColor);
         exportButton.setBorder(new EmptyBorder(10, 20, 10, 20));
         exportButton.setFocusPainted(false);
-        exportButton.addActionListener(e -> exportData());
+        exportButton.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
         
         addButton = new JButton("Thêm mới");
         addButton.setFont(buttonFont);
@@ -244,7 +251,68 @@ public class BacSiUI extends JPanel {
         add(tablePanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
     }
-    
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+            
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
+    }
+    class CustomBorder extends LineBorder {
+        private int radius;
+        
+        public CustomBorder(int radius, Color color) {
+            super(color);
+            this.radius = radius;
+        }
+        
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(lineColor);
+            g2d.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            g2d.dispose();
+        }
+    }
     private void showRowPopupMenu(int x, int y) {
         JPopupMenu popupMenu = new JPopupMenu();
         popupMenu.setBorder(new LineBorder(borderColor, 1));
@@ -448,12 +516,12 @@ public class BacSiUI extends JPanel {
             loadBacSiData();
         }
     }
+    
     public void focusOnDoctor(int doctorId) {
         try {
-            // Use the correct table variable (bacSiTable instead of tableBacSi)
+            // Find the row containing the doctor with the corresponding ID
             int rowCount = bacSiTable.getRowCount();
             
-            // Find the row containing the doctor with the corresponding ID
             for (int i = 0; i < rowCount; i++) {
                 // The first column in the table contains the doctor ID
                 int currentDoctorId = (Integer) bacSiTable.getValueAt(i, 0);
@@ -466,38 +534,60 @@ public class BacSiUI extends JPanel {
                     Rectangle rect = bacSiTable.getCellRect(i, 0, true);
                     bacSiTable.scrollRectToVisible(rect);
                     
-                    // Optionally, we could add highlighting effects here
+                    currentBacSiId = doctorId;
                     break;
                 }
             }
-            
-            // If the doctor is not found in the current table data, we could show a message
-            // or reload data from the database
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, 
-                "Không thể hiển thị thông tin bác sĩ: " + e.getMessage(), 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Lỗi", "Không thể hiển thị thông tin bác sĩ: " + e.getMessage());
         }
     }
+    
+    public void setCurrentUserRole(String role) {
+        this.currentUserRole = role;
+        
+        // Adjust permissions based on role
+        if ("admin".equalsIgnoreCase(role)) {
+            addButton.setEnabled(true);
+            exportButton.setEnabled(true);
+        } else if ("staff".equalsIgnoreCase(role)) {
+            addButton.setEnabled(true);
+            exportButton.setEnabled(true);
+        } else if ("doctor".equalsIgnoreCase(role)) {
+            addButton.setEnabled(false);
+            exportButton.setEnabled(true);
+        } else {
+            // Default or guest role
+            addButton.setEnabled(false);
+            exportButton.setEnabled(false);
+        }
+    }
+    
     private void showEditBacSiDialog() {
         if (currentBacSiId == -1) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Vui lòng chọn một bác sĩ để chỉnh sửa.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showMessage("Vui lòng chọn một bác sĩ để chỉnh sửa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
         BacSi bacSi = bacSiController.getBacSiById(currentBacSiId);
         if (bacSi == null) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Không thể tìm thấy thông tin bác sĩ.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Lỗi", "Không thể tìm thấy thông tin bác sĩ.");
             return;
         }
         
         BacSiDialog dialog = new BacSiDialog(parentFrame, bacSi);
+        
+        // Add property change listener to capture the doctorDataChanged event
+        dialog.addPropertyChangeListener("doctorDataChanged", evt -> {
+            if ((boolean) evt.getNewValue()) {
+                loadBacSiData(); // Reload data when change is confirmed
+            }
+        });
+        
         dialog.setVisible(true);
+        
+        // This check will still work as a fallback
         if (dialog.isConfirmed()) {
             loadBacSiData();
         }
@@ -505,17 +595,13 @@ public class BacSiUI extends JPanel {
     
     public void deleteBacSi() {
         if (currentBacSiId == -1) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Vui lòng chọn một bác sĩ để xóa.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showMessage("Vui lòng chọn một bác sĩ để xóa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
         BacSi currentDoctor = bacSiController.getBacSiById(currentBacSiId);
         if (currentDoctor == null) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Không thể tìm thấy thông tin bác sĩ.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Lỗi", "Không thể tìm thấy thông tin bác sĩ.");
             return;
         }
         
@@ -526,39 +612,32 @@ public class BacSiUI extends JPanel {
         if (choice == JOptionPane.YES_OPTION) {
             boolean success = bacSiController.deleteBacSi(currentBacSiId);
             if (success) {
-                JOptionPane.showMessageDialog(parentFrame, 
-                    "Đã xóa bác sĩ thành công.", 
-                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                showSuccessToast("Đã xóa bác sĩ thành công.");
                 loadBacSiData();
             } else {
-                JOptionPane.showMessageDialog(parentFrame, 
-                    "Không thể xóa bác sĩ. Bác sĩ này có thể có lịch hẹn hoặc điều trị hiện tại.", 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                // Only show appointment warning if the user is a doctor
+                if ("doctor".equalsIgnoreCase(currentUserRole)) {
+                    showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Bác sĩ này có thể có lịch hẹn hoặc điều trị hiện tại.");
+                } else {
+                    showMessage("Hủy xóa thành công.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
+        } else {
+            // User clicked "No" - show "cancel deletion successful" message
+            showMessage("Hủy xóa thành công.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         }
-    }
-    
-    private void exportData() {
-        // Implementation for exporting data to file
-        JOptionPane.showMessageDialog(parentFrame, 
-            "Chức năng xuất file sẽ được triển khai sau.", 
-            "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
     
     private void showAppointments() {
         if (currentBacSiId == -1) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Vui lòng chọn một bác sĩ để xem lịch hẹn.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Lỗi", "Vui lòng chọn một bác sĩ để xem lịch hẹn.");
             return;
         }
         
         List<model.LichHen> appointments = bacSiController.getFutureAppointments(currentBacSiId);
         
         if (appointments.isEmpty()) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Bác sĩ này không có lịch hẹn nào trong tương lai.", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            showMessage("Bác sĩ này không có lịch hẹn nào trong tương lai.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
@@ -568,18 +647,14 @@ public class BacSiUI extends JPanel {
     
     private void showTreatments() {
         if (currentBacSiId == -1) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Vui lòng chọn một bác sĩ để xem điều trị.", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Lỗi", "Vui lòng chọn một bác sĩ để xem điều trị.");
             return;
         }
         
         List<model.DieuTri> treatments = bacSiController.getDieuTriByBacSi(currentBacSiId);
         
         if (treatments.isEmpty()) {
-            JOptionPane.showMessageDialog(parentFrame, 
-                "Bác sĩ này không có điều trị nào.", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            showMessage("Bác sĩ này không có điều trị nào.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
@@ -590,6 +665,29 @@ public class BacSiUI extends JPanel {
     // Set parent frame reference
     public void setParentFrame(JFrame parentFrame) {
         this.parentFrame = parentFrame;
+    }
+    
+    // Implementation of DataChangeListener interface
+    @Override
+    public void onDataChanged() {
+        // Reload data when notified of changes
+        loadBacSiData();
+    }
+    
+    // Implementation of MessageCallback interface
+    @Override
+    public void showSuccessToast(String message) {
+        JOptionPane.showMessageDialog(parentFrame, message, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    @Override
+    public void showErrorMessage(String title, String message) {
+        JOptionPane.showMessageDialog(parentFrame, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+    
+    @Override
+    public void showMessage(String message, String title, int messageType) {
+        JOptionPane.showMessageDialog(parentFrame, message, title, messageType);
     }
     
     // Custom rounded panel with shadow
