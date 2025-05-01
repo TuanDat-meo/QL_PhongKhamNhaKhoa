@@ -5,20 +5,28 @@ import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
 import javax.swing.border.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumnModel;
 
 import controller.NguoiDungController;
 import model.NguoiDung;
+import util.DataChangeListener;
+import util.ExportManager;
+import util.RoundedPanel;
+import util.ExportManager.MessageCallback;
+import view.BenhNhanUI.NotificationType;
 
-public class NguoiDungUI extends JPanel {
+public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeListener {
     private JTable userTable;
     private DefaultTableModel tableModel;
     private JTextField searchField;
-    private JButton addButton, editButton, deleteButton, searchButton;
+    private JButton addButton, searchButton, exportButton;
     private NguoiDungController controller;
     private JPopupMenu popupMenu;
-    
+    private JMenuItem viewItem, editMenuItem, deleteMenuItem;
+    private ExportManager exportManager;
     // Updated color scheme
     private final Color primaryColor = new Color(79, 129, 189);      // Professional blue
     private final Color secondaryColor = new Color(141, 180, 226);   // Lighter blue
@@ -33,48 +41,111 @@ public class NguoiDungUI extends JPanel {
     private final Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private final Color borderColor = new Color(222, 226, 230);
     
+    // Font settings
+    private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
+    private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
+    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
+    private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
+    private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
+    private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
+
     public NguoiDungUI() {
         controller = new NguoiDungController();
+        exportManager = new ExportManager(this, tableModel, this);
         setLayout(new BorderLayout());
         setBackground(backgroundColor);
+        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         initializeComponents();
         loadUserData();
     }
     
     private void initializeComponents() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
-            BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        ));
-        headerPanel.setBackground(panelColor);
-        
-        JLabel titleLabel = new JLabel("Quản lý Người Dùng");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        titleLabel.setForeground(primaryColor);
-        
-        headerPanel.add(titleLabel, BorderLayout.WEST);
-        
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        searchPanel.setBackground(panelColor);
-        
-        searchField = new JTextField(20);
-        searchField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(borderColor),
-            BorderFactory.createEmptyBorder(5, 8, 5, 8)
-        ));
-        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        
-        searchButton = new JButton("Tìm kiếm");
-        styleButton(searchButton, primaryColor);
-        
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-        headerPanel.add(searchPanel, BorderLayout.EAST);
-        
+        // Header Panel with Title and Search
+        JPanel headerPanel = createHeaderPanel();
         add(headerPanel, BorderLayout.NORTH);
         
+        // Main content panel
+        JPanel contentPanel = new JPanel(new BorderLayout(0, 15));
+        contentPanel.setBackground(backgroundColor);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        
+        // Table Panel
+        JPanel tablePanel = createTablePanel();
+        contentPanel.add(tablePanel, BorderLayout.CENTER);
+        
+        add(contentPanel, BorderLayout.CENTER);
+
+        // Button Panel
+        JPanel buttonPanel = createButtonPanel();
+        add(buttonPanel, BorderLayout.SOUTH);
+        
+        setupEventListeners();
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
+        headerPanel.setBackground(backgroundColor);
+        headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
+        
+        // Title panel on the left
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        titlePanel.setBackground(backgroundColor);
+        
+        JLabel titleLabel = new JLabel("QUẢN LÝ NGƯỜI DÙNG");
+        titleLabel.setFont(titleFont);
+        titleLabel.setForeground(primaryColor);
+        titlePanel.add(titleLabel);
+        
+        headerPanel.add(titlePanel, BorderLayout.WEST);
+        
+        // Search panel on the right
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        searchPanel.setBackground(backgroundColor);
+        
+        JLabel searchLabel = new JLabel("Tìm kiếm:");
+        searchLabel.setFont(regularFont);
+        searchLabel.setForeground(textColor);
+        
+        searchField = new JTextField(18);
+        searchField.setFont(regularFont);
+        searchField.setPreferredSize(new Dimension(220, 38));
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, 1, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 5)));
+        
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    searchUsers();
+                }
+            }
+        });
+        
+        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
+        searchButton.setPreferredSize(new Dimension(120, 38));
+        
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+        searchPanel.add(searchButton);
+        
+        headerPanel.add(searchPanel, BorderLayout.EAST);
+        
+        return headerPanel;
+    }
+    
+    private JPanel createTablePanel() {
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.setBackground(backgroundColor);
+        
+        // Create a panel with shadow effect
+        JPanel tablePanel = new RoundedPanel(15, true);
+        tablePanel.setLayout(new BorderLayout());
+        tablePanel.setBackground(panelColor);
+        tablePanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        
+        // Create table model
         String[] columns = {"ID", "Họ Tên", "Email", "Số điện thoại", "Vai trò"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -83,102 +154,233 @@ public class NguoiDungUI extends JPanel {
             }
         };
         
-        userTable = new JTable(tableModel);
-        userTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        userTable.setRowHeight(30);
-        userTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        userTable.setGridColor(Color.BLACK);
-        userTable.setShowVerticalLines(true);
-        userTable.setIntercellSpacing(new Dimension(0, 0));
-        userTable.setFillsViewportHeight(true);
+        userTable = new JTable(tableModel) {
+            @Override
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
+                Component comp = super.prepareRenderer(renderer, row, column);
+                
+                // Center the content
+                if (comp instanceof JLabel) {
+                    ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
+                }
+                
+                // Add alternating row colors
+                if (!comp.getBackground().equals(getSelectionBackground())) {
+                    comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                }
+                return comp;
+            }
+        };
         
+        // Set default cell renderer to center all content
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        
+        // Apply center renderer to all columns
+        for (int i = 0; i < userTable.getColumnCount(); i++) {
+            userTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+        
+        userTable.setFont(tableFont);
+        userTable.setRowHeight(40);
+        userTable.setShowGrid(false);
+        userTable.setIntercellSpacing(new Dimension(0, 0));
+        userTable.setSelectionBackground(new Color(229, 243, 255));
+        userTable.setSelectionForeground(textColor);
+        userTable.setFocusable(false);
+        userTable.setAutoCreateRowSorter(true);
+        userTable.setBorder(null);
+        
+        // Style table header
         JTableHeader header = userTable.getTableHeader();
+        header.setFont(tableHeaderFont);
         header.setBackground(tableHeaderColor);
         header.setForeground(Color.WHITE);
-        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        header.setBorder(BorderFactory.createLineBorder(primaryColor));
-        header.setPreferredSize(new Dimension(header.getWidth(), 35));
+        header.setPreferredSize(new Dimension(header.getWidth(), 45));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
+        header.setReorderingAllowed(false);
         
-        userTable.setSelectionBackground(secondaryColor);
-        userTable.setSelectionForeground(Color.WHITE);
+        // Center the header text
+        DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) header.getDefaultRenderer();
+        headerRenderer.setHorizontalAlignment(JLabel.CENTER);
         
-        createPopupMenu();
+        // Set column widths
+        TableColumnModel columnModel = userTable.getColumnModel();
+        columnModel.getColumn(0).setPreferredWidth(50);  // ID
+        columnModel.getColumn(1).setPreferredWidth(150); // Họ tên
+        columnModel.getColumn(2).setPreferredWidth(150); // Email
+        columnModel.getColumn(3).setPreferredWidth(120); // SĐT
+        columnModel.getColumn(4).setPreferredWidth(100); // Vai trò
         
+        setupPopupMenu();
+        
+        JScrollPane scrollPane = new JScrollPane(userTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(Color.WHITE);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        
+        tablePanel.add(scrollPane, BorderLayout.CENTER);
+        wrapperPanel.add(tablePanel, BorderLayout.CENTER);
+        
+        return wrapperPanel;
+    }
+    
+    private JPanel createButtonPanel() {
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        
+        exportButton = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
+        exportButton.setPreferredSize(new Dimension(100, 45));
+        exportButton.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
+        addButton = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
+        addButton.setPreferredSize(new Dimension(100, 45));
+        
+        buttonPanel.add(exportButton);
+        buttonPanel.add(addButton);
+        
+        return buttonPanel;
+    }
+    
+    private void setupEventListeners() {
+        searchButton.addActionListener(e -> searchUsers());
+        
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    searchUsers();
+                }
+            }
+        });
+        
+        // Handle table mouse events for popup menu and double-click
         userTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    int row = userTable.rowAtPoint(e.getPoint());
-                    if (row >= 0 && row < userTable.getRowCount()) {
-                        userTable.setRowSelectionInterval(row, row);
+            public void mouseReleased(MouseEvent e) {
+                int row = userTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < userTable.getRowCount()) {
+                    userTable.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
                         popupMenu.show(e.getComponent(), e.getX(), e.getY());
-                    }
-                } else if (e.getClickCount() == 2) {
-                    int row = userTable.rowAtPoint(e.getPoint());
-                    if (row >= 0 && row < userTable.getRowCount()) {
-                        userTable.setRowSelectionInterval(row, row);
+                    } else if (e.getClickCount() == 2) {
                         showUserDetails();
+                    }
+                } else {
+                    userTable.clearSelection();
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int row = userTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < userTable.getRowCount()) {
+                    userTable.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
                     }
                 }
             }
         });
         
-        JScrollPane scrollPane = new JScrollPane(userTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(Color.WHITE);
-        
-        add(scrollPane, BorderLayout.CENTER);
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, borderColor),
-            BorderFactory.createEmptyBorder(15, 20, 15, 20)
-        ));
-        buttonPanel.setBackground(panelColor);
-        
-        addButton = new JButton("Thêm người dùng");
-        styleButton(addButton, successColor);
-        
-        buttonPanel.add(addButton);
-        
-        add(buttonPanel, BorderLayout.SOUTH);
-        
         addButton.addActionListener(e -> showAddUserDialog());
-        searchButton.addActionListener(e -> searchUsers());
     }
     
-    private void createPopupMenu() {
+    private void setupPopupMenu() {
         popupMenu = new JPopupMenu();
-        popupMenu.setBorder(BorderFactory.createLineBorder(borderColor));
+        popupMenu.setBorder(new LineBorder(borderColor, 1));
         
-        JMenuItem viewItem = new JMenuItem("Xem chi tiết");
-        JMenuItem editItem = new JMenuItem("Chỉnh sửa");
-        JMenuItem deleteItem = new JMenuItem("Xóa");
+        viewItem = createStyledMenuItem("Xem Chi Tiết");
+        editMenuItem = createStyledMenuItem("Chỉnh Sửa");
+        deleteMenuItem = createStyledMenuItem("Xóa");
         
-        Font menuFont = new Font("Segoe UI", Font.PLAIN, 14);
-        viewItem.setFont(menuFont);
-        editItem.setFont(menuFont);
-        deleteItem.setFont(menuFont);
-        
-        viewItem.setBackground(Color.WHITE);
-        editItem.setBackground(Color.WHITE);
-        deleteItem.setBackground(Color.WHITE);
-        
-        viewItem.setForeground(primaryColor);
-        editItem.setForeground(warningColor);
-        deleteItem.setForeground(accentColor);
-        
-        viewItem.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        editItem.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        deleteItem.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        
-        viewItem.addActionListener(e -> showUserDetails());
-        editItem.addActionListener(e -> showEditUserDialog());
-        deleteItem.addActionListener(e -> deleteSelectedUser());
+        deleteMenuItem.setForeground(accentColor);
         
         popupMenu.add(viewItem);
-        popupMenu.add(editItem);
-        popupMenu.add(deleteItem);
+        popupMenu.addSeparator();
+        popupMenu.add(editMenuItem);
+        popupMenu.addSeparator();
+        popupMenu.add(deleteMenuItem);
+        
+        viewItem.addActionListener(e -> {
+            if (userTable.getSelectedRow() != -1) {
+                showUserDetails();
+            }
+        });
+        
+        editMenuItem.addActionListener(e -> {
+            if (userTable.getSelectedRow() != -1) {
+                showEditUserDialog();
+            }
+        });
+        
+        deleteMenuItem.addActionListener(e -> {
+            if (userTable.getSelectedRow() != -1) {
+                deleteSelectedUser();
+            }
+        });
+        
+        userTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                showPopup(e);
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                // Make sure the row is selected when right-clicking
+                int row = userTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < userTable.getRowCount()) {
+                    userTable.setRowSelectionInterval(row, row);
+                } else {
+                    userTable.clearSelection();
+                }
+                
+                showPopup(e);
+            }
+            
+            private void showPopup(MouseEvent e) {
+                if (e.isPopupTrigger() && userTable.getSelectedRow() != -1) {
+                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+        });
+    }
+
+    private JMenuItem createStyledMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(regularFont);
+        menuItem.setBackground(panelColor);
+        menuItem.setForeground(textColor);
+        menuItem.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        menuItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        return menuItem;
+    }
+    
+    private void loadUserData() {
+        tableModel.setRowCount(0);
+        
+        try {
+            java.util.List<NguoiDung> users = controller.getAllUsers();
+            
+            for (NguoiDung user : users) {
+                Object[] rowData = {
+                    user.getIdNguoiDung(),
+                    user.getHoTen(),
+                    user.getEmail(),
+                    user.getSoDienThoai(),
+                    user.getVaiTro()
+                };
+                tableModel.addRow(rowData);
+            }
+        } catch (SQLException e) {
+            showErrorMessage("Lỗi khi tải dữ liệu người dùng: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     private void showUserDetails() {
@@ -195,24 +397,27 @@ public class NguoiDungUI extends JPanel {
             
             if (user != null) {
                 JDialog dialog = createStyledDialog("Chi Tiết Người Dùng", 500, 420);
+                dialog.setLocationRelativeTo(this);
                 
                 JPanel contentPane = new JPanel(new BorderLayout());
                 contentPane.setBackground(panelColor);
                 
+                // Header panel
+                JPanel headerPanel = new JPanel(new BorderLayout());
+                headerPanel.setBackground(primaryColor);
+                headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
+                
+                JLabel titleLabel = new JLabel("Chi tiết người dùng");
+                titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                titleLabel.setForeground(Color.WHITE);
+                
+                headerPanel.add(titleLabel, BorderLayout.CENTER);
+                
+                // Detail panel
                 JPanel detailsPanel = new JPanel();
                 detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
                 detailsPanel.setBackground(panelColor);
                 detailsPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
-                
-                JLabel headerLabel = new JLabel("Thông tin chi tiết người dùng");
-                headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-                headerLabel.setForeground(primaryColor);
-                headerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                
-                JSeparator separator = new JSeparator();
-                separator.setForeground(borderColor);
-                separator.setAlignmentX(Component.LEFT_ALIGNMENT);
-                separator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
                 
                 JPanel contentPanel = new JPanel(new GridLayout(0, 1, 0, 15));
                 contentPanel.setBackground(panelColor);
@@ -226,16 +431,13 @@ public class NguoiDungUI extends JPanel {
                 
                 JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
                 buttonPanel.setBackground(panelColor);
-                buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+                buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
                 
-                JButton editButton = new JButton("Chỉnh sửa");
-                JButton closeButton = new JButton("Đóng");
+                JButton editButton = createRoundedButton("Chỉnh sửa", warningColor, buttonTextColor, 10);
+                JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10);
                 
-                styleButton(editButton, warningColor);
-                styleButton(closeButton, primaryColor);
-                
-                buttonPanel.add(editButton);
-                buttonPanel.add(closeButton);
+                editButton.setPreferredSize(new Dimension(120, 40));
+                closeButton.setPreferredSize(new Dimension(120, 40));
                 
                 editButton.addActionListener(e -> {
                     dialog.dispose();
@@ -244,12 +446,12 @@ public class NguoiDungUI extends JPanel {
                 
                 closeButton.addActionListener(e -> dialog.dispose());
                 
-                detailsPanel.add(headerLabel);
-                detailsPanel.add(Box.createVerticalStrut(10));
-                detailsPanel.add(separator);
-                detailsPanel.add(Box.createVerticalStrut(15));
+                buttonPanel.add(editButton);
+                buttonPanel.add(closeButton);
+                
                 detailsPanel.add(contentPanel);
                 
+                contentPane.add(headerPanel, BorderLayout.NORTH);
                 contentPane.add(detailsPanel, BorderLayout.CENTER);
                 contentPane.add(buttonPanel, BorderLayout.SOUTH);
                 
@@ -281,54 +483,12 @@ public class NguoiDungUI extends JPanel {
         return panel;
     }
     
-    private void styleButton(JButton button, Color bgColor) {
-        button.setBackground(bgColor);
-        button.setForeground(buttonTextColor);
-        button.setFocusPainted(false);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(darkenColor(bgColor, 0.1f));
-            }
-            
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(bgColor);
-            }
-        });
-    }
-    
-    private Color darkenColor(Color color, float fraction) {
-        int r = Math.max(0, Math.round(color.getRed() * (1 - fraction)));
-        int g = Math.max(0, Math.round(color.getGreen() * (1 - fraction)));
-        int b = Math.max(0, Math.round(color.getBlue() * (1 - fraction)));
-        return new Color(r, g, b);
-    }
-    
-    private void loadUserData() {
-        tableModel.setRowCount(0);
-        
-        try {
-            java.util.List<NguoiDung> users = controller.getAllUsers();
-            
-            for (NguoiDung user : users) {
-                Object[] rowData = {
-                    user.getIdNguoiDung(),
-                    user.getHoTen(),
-                    user.getEmail(),
-                    user.getSoDienThoai(),
-                    user.getVaiTro()
-                };
-                tableModel.addRow(rowData);
-            }
-        } catch (SQLException e) {
-            showErrorMessage("Lỗi khi tải dữ liệu người dùng: " + e.getMessage());
-            e.printStackTrace();
-        }
+    private JDialog createStyledDialog(String title, int width, int height) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), title, true);
+        dialog.setSize(width, height);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        return dialog;
     }
     
     private void showEditUserDialog() {
@@ -396,14 +556,11 @@ public class NguoiDungUI extends JPanel {
                 buttonPanel.setBackground(panelColor);
                 buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
                 
-                JButton saveButton = new JButton("Lưu");
-                JButton cancelButton = new JButton("Hủy");
+                JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
+                JButton cancelButton = createRoundedButton("Hủy", primaryColor, buttonTextColor, 10);
                 
-                styleButton(saveButton, successColor);
-                styleButton(cancelButton, primaryColor);
-                
-                buttonPanel.add(saveButton);
-                buttonPanel.add(cancelButton);
+                saveButton.setPreferredSize(new Dimension(100, 40));
+                cancelButton.setPreferredSize(new Dimension(100, 40));
                 
                 saveButton.addActionListener(e -> {
                     if (hoTenField.getText().trim().isEmpty() || 
@@ -436,6 +593,9 @@ public class NguoiDungUI extends JPanel {
                 
                 cancelButton.addActionListener(e -> dialog.dispose());
                 
+                buttonPanel.add(saveButton);
+                buttonPanel.add(cancelButton);
+                
                 contentPane.add(headerPanel, BorderLayout.NORTH);
                 contentPane.add(formPanel, BorderLayout.CENTER);
                 contentPane.add(buttonPanel, BorderLayout.SOUTH);
@@ -449,12 +609,52 @@ public class NguoiDungUI extends JPanel {
         }
     }
     
-    private JDialog createStyledDialog(String title, int width, int height) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), title, true);
-        dialog.setSize(width, height);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        return dialog;
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+    
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
     
     private JPanel createFormRow(String label, JComponent field) {
@@ -476,7 +676,7 @@ public class NguoiDungUI extends JPanel {
     
     private JTextField createStyledTextField(String text) {
         JTextField field = new JTextField(text);
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setFont(regularFont);
         field.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(borderColor),
             BorderFactory.createEmptyBorder(5, 8, 5, 8)
@@ -486,7 +686,7 @@ public class NguoiDungUI extends JPanel {
     
     private JPasswordField createStyledPasswordField() {
         JPasswordField field = new JPasswordField();
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setFont(regularFont);
         field.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(borderColor),
             BorderFactory.createEmptyBorder(5, 8, 5, 8)
@@ -496,7 +696,7 @@ public class NguoiDungUI extends JPanel {
     
     private JComboBox<String> createStyledComboBox(String[] items, String selectedItem) {
         JComboBox<String> comboBox = new JComboBox<>(items);
-        comboBox.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        comboBox.setFont(regularFont);
         comboBox.setBackground(Color.WHITE);
         comboBox.setBorder(BorderFactory.createLineBorder(borderColor));
         comboBox.setSelectedItem(selectedItem);
@@ -532,24 +732,23 @@ public class NguoiDungUI extends JPanel {
         }
     }
     
-    public NguoiDungController getController() {
-        return controller;
-    }
-    
     private void searchUsers() {
         String keyword = searchField.getText().trim();
         
-        tableModel.setRowCount(0);
+        if (keyword.isEmpty()) {
+            // If search text is empty, we'll just reload all data instead of showing a message
+            loadUserData();
+            showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            return;
+        }
         
         try {
-            java.util.List<NguoiDung> users;
+            java.util.List<NguoiDung> users = controller.searchUsers(keyword);
             
-            if (keyword.isEmpty()) {
-                users = controller.getAllUsers();
-            } else {
-                users = controller.searchUsers(keyword);
-            }
+            // Clear the table before adding new results
+            tableModel.setRowCount(0);
             
+            // Add search results to the table
             for (NguoiDung user : users) {
                 Object[] rowData = {
                     user.getIdNguoiDung(),
@@ -561,15 +760,82 @@ public class NguoiDungUI extends JPanel {
                 tableModel.addRow(rowData);
             }
             
+            // Show notification based on search results
             if (users.isEmpty()) {
-                showInfoMessage("Không tìm thấy người dùng nào phù hợp.");
+                showNotification("Không tìm thấy người dùng nào phù hợp với từ khóa: " + keyword, 
+                                 NotificationType.WARNING);
+            } else {
+                showNotification("Tìm thấy " + users.size() + " kết quả phù hợp!", 
+                                 NotificationType.SUCCESS);
             }
         } catch (SQLException e) {
             showErrorMessage("Lỗi khi tìm kiếm người dùng: " + e.getMessage());
             e.printStackTrace();
         }
     }
-    
+    private void showNotification(String message, NotificationType type) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);
+
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(type.color);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+
+        JLabel titleLabel = new JLabel(type.title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(Color.WHITE);
+        toastPanel.add(titleLabel);
+        
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);
+
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+
+        // Position at bottom right
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );
+
+        toastDialog.setVisible(true);
+
+        // Auto-hide after 3 seconds
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    public enum NotificationType {
+        SUCCESS(new Color(86, 156, 104), "Thành công"),
+        WARNING(new Color(237, 187, 85), "Cảnh báo"),
+        ERROR(new Color(192, 80, 77), "Lỗi");
+        
+        private final Color color;
+        private final String title;
+        
+        NotificationType(Color color, String title) {
+            this.color = color;
+            this.title = title;
+        }
+    }
     private void showAddUserDialog() {
         java.util.List<String> availableRoles;
         try {
@@ -809,4 +1075,81 @@ public class NguoiDungUI extends JPanel {
         dialog.setContentPane(panel);
         dialog.setVisible(true);
     }
+    private void styleButton(JButton button, Color bgColor) {
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        button.setPreferredSize(new Dimension(100, 40));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+    }
+    
+    // Method to get table model for export
+    public DefaultTableModel getTableModel() {
+        return tableModel;
+    }
+    
+    // Method to get table headers for export
+    public String[] getTableHeaders() {
+        String[] headers = new String[tableModel.getColumnCount()];
+        for (int i = 0; i < tableModel.getColumnCount(); i++) {
+            headers[i] = tableModel.getColumnName(i);
+        }
+        return headers;
+    }
+    
+    // Method to get table data for export
+    public Object[][] getTableData() {
+        Object[][] data = new Object[tableModel.getRowCount()][tableModel.getColumnCount()];
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            for (int j = 0; j < tableModel.getColumnCount(); j++) {
+                data[i][j] = tableModel.getValueAt(i, j);
+            }
+        }
+        return data;
+    }
+    
+    // Method to refresh table data
+    public void refreshData() {
+        loadUserData();
+        showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+    }
+
+	@Override
+	public void onDataChanged() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void showSuccessToast(String message) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void showErrorMessage(String title, String message) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void showMessage(String message, String title, int messageType) {
+		// TODO Auto-generated method stub
+		
+	}
 }
