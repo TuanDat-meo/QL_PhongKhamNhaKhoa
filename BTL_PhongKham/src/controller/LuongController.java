@@ -165,46 +165,36 @@ public class LuongController {
     public void themLuong(int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru) {
         if (!kiemTraQuyenThayDoi()) {
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Bạn không có quyền thêm thông tin lương!", "Từ chối quyền", JOptionPane.WARNING_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Bạn không có quyền thêm thông tin lương!", "Từ chối quyền", JOptionPane.WARNING_MESSAGE);
             }
             return;
         }
         
         if (idNguoiDung <= 0) {
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Vui lòng chọn nhân viên!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Vui lòng chọn nhân viên!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
             return;
         }
         
         if (thangNam == null) {
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Vui lòng chọn tháng năm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Vui lòng chọn tháng năm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
             return;
         }
         
         if (luongCoBan < 0 || thuong < 0 || khauTru < 0) {
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Các giá trị lương không được âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Các giá trị lương không được âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
             return;
         }
         
         if (kiemTraTonTaiLuong(idNguoiDung, thangNam)) {
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Đã tồn tại thông tin lương của nhân viên này trong tháng " + 
-                        monthYearFormat.format(thangNam) + "!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Đã tồn tại thông tin lương của nhân viên này trong tháng " + 
+                    monthYearFormat.format(thangNam) + "!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
             return;
         }
@@ -222,26 +212,20 @@ public class LuongController {
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows > 0) {
                 if (view != null) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(view, "Thêm thông tin lương thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                        loadLuongData(); // Tải lại dữ liệu sau khi thêm (gọi trên EDT)
-                    });
+                    JOptionPane.showMessageDialog(view, "Thêm thông tin lương thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    loadLuongData(); // Tải lại dữ liệu sau khi thêm
                 }
                 return;
             } else {
                 if (view != null) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(view, "Thêm thông tin lương thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    });
+                    JOptionPane.showMessageDialog(view, "Thêm thông tin lương thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
                 return;
             }
         } catch (SQLException e) {
             e.printStackTrace();
             if (view != null) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(view, "Lỗi thêm thông tin lương: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-                });
+                JOptionPane.showMessageDialog(view, "Lỗi thêm thông tin lương: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -461,22 +445,11 @@ public class LuongController {
                     totalKhauTru += khauTru;
                     totalTongLuong += tongLuong;
                 }
-                
-                // Update the total row
                 view.updateTotalRow(totalLuongCoBan, totalThuong, totalKhauTru, totalTongLuong);
                 
-                // Show notification based on search results
-                if (resultCount == 0) {
-                    if (view != null) {
-                        view.showNotification("Không tìm thấy kết quả nào cho: '" + tuKhoa + "'", LuongUI.NotificationType.WARNING);
-                    }
-                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-            	JOptionPane.showMessageDialog(view,"Lỗi tìm kiếm dữ liệu lương: " +"Lỗi" , JOptionPane.ERROR_MESSAGE);
-            }
         }
     }
     

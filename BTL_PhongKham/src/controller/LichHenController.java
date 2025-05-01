@@ -171,7 +171,6 @@ public List<String> danhSachBacSi() {
         ResultSet resultSet = preparedStatement.executeQuery();
         while (resultSet.next()) {
             String hoTenBacSi = resultSet.getString("hoTenBacSi").trim(); // Trim here!
-            System.out.println("Tên bác sĩ (from DB): '" + hoTenBacSi + "'"); // Debugging
             danhSach.add(hoTenBacSi);
         }
     } catch (SQLException e) {
@@ -188,7 +187,6 @@ public List<String> danhSachBenhNhan() {
         ResultSet resultSet = preparedStatement.executeQuery();
         while (resultSet.next()) {
             String hoTenBenhNhan = resultSet.getString("hoTen").trim(); // Trim here!
-            System.out.println("Tên bệnh nhân (from DB): '" + hoTenBenhNhan + "'"); // Debugging
             danhSach.add(hoTenBenhNhan);
         }
     } catch (SQLException e) {
@@ -205,7 +203,6 @@ public List<String> danhSachPhongKham() {
         ResultSet resultSet = preparedStatement.executeQuery();
         while (resultSet.next()) {
             String tenPhong = resultSet.getString("tenPhong").trim(); // Trim here!
-            System.out.println("Tên phòng khám (from DB): '" + tenPhong + "'"); // Debugging
             danhSach.add(tenPhong);
         }
     } catch (SQLException e) {
@@ -234,7 +231,6 @@ public int getBacSiIdFromName(String hoTenBacSi) {
     String sql = "SELECT idBacSi FROM BacSi WHERE hoTenBacSi = ?";
     try (PreparedStatement stmt = conn.prepareStatement(sql)) {
         stmt.setString(1, hoTenBacSi.trim()); // Trim here!
-        System.out.println("Truy vấn ID bác sĩ với tên (trimmed): '" + hoTenBacSi.trim() + "'"); // Debugging
         ResultSet rs = stmt.executeQuery();
         if (rs.next()) {
             return rs.getInt("idBacSi");
@@ -250,7 +246,6 @@ public int getBenhNhanIdFromName(String hoTenBenhNhan) {
     String sql = "SELECT idBenhNhan FROM BenhNhan WHERE hoTen = ?";
     try (PreparedStatement stmt = conn.prepareStatement(sql)) {
         stmt.setString(1, hoTenBenhNhan.trim()); // Trim here!
-        System.out.println("Truy vấn ID bệnh nhân với tên (trimmed): '" + hoTenBenhNhan.trim() + "'"); // Debugging
         ResultSet rs = stmt.executeQuery();
         if (rs.next()) {
             return rs.getInt("idBenhNhan");
@@ -266,7 +261,6 @@ public int getPhongKhamIdFromName(String tenPhong) {
     String sql = "SELECT idPhongKham FROM PhongKham WHERE tenPhong = ?";
     try (PreparedStatement stmt = conn.prepareStatement(sql)) {
         stmt.setString(1, tenPhong.trim()); // Trim here!
-        System.out.println("Truy vấn ID phòng khám với tên (trimmed): '" + tenPhong.trim() + "'"); // Debugging
         ResultSet rs = stmt.executeQuery();
         if (rs.next()) {
             return rs.getInt("idPhongKham");

@@ -16,7 +16,7 @@ import java.sql.Date;
 import connect.connectMySQL;
 
 public class NguoiDungController {
-    private Connection connection;
+    private static Connection connection;
 
     public NguoiDungController() {
         try {
@@ -26,14 +26,6 @@ public class NguoiDungController {
             e.printStackTrace();
         }
     }
-
-    /**
-     * Kiểm tra thông tin đăng nhập và trả về đối tượng NguoiDung nếu đăng nhập thành công
-     * 
-     * @param emailOrPhone Email hoặc số điện thoại của người dùng
-     * @param password Mật khẩu của người dùng
-     * @return Đối tượng NguoiDung nếu đăng nhập thành công, null nếu thất bại
-     */
     public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String password) {
         Connection connection = null;
         PreparedStatement statement = null;
@@ -42,8 +34,6 @@ public class NguoiDungController {
 
         try {
             connection = connectMySQL.getConnection();
-            
-            // Truy vấn kiểm tra đăng nhập bằng email hoặc số điện thoại
             String query = "SELECT * FROM NguoiDung WHERE (Email = ? OR SoDienThoai = ?) AND MatKhau = ?";
             statement = connection.prepareStatement(query);
             statement.setString(1, emailOrPhone);
@@ -74,13 +64,6 @@ public class NguoiDungController {
         return user;
     }
 
-    /**
-     * Lấy thông tin người dùng theo ID
-     * 
-     * @param userId ID của người dùng cần lấy thông tin
-     * @return Đối tượng NguoiDung chứa thông tin người dùng, null nếu không tìm thấy
-     * @throws SQLException Nếu có lỗi truy vấn SQL
-     */
     public NguoiDung getNguoiDungById(int userId) throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
@@ -141,12 +124,6 @@ public class NguoiDungController {
         
         return userList;
     }
-    /**
-     * Đăng ký người dùng mới
-     * 
-     * @param nguoiDung Đối tượng NguoiDung chứa thông tin đăng ký
-     * @return true nếu đăng ký thành công, false nếu thất bại
-     */
     public boolean registerUser(NguoiDung nguoiDung) {
         PreparedStatement statement = null;
         boolean success = false;
@@ -184,13 +161,6 @@ public class NguoiDungController {
         
         return success;
     }
-
-    /**
-     * Cập nhật thông tin người dùng
-     * 
-     * @param nguoiDung Đối tượng NguoiDung chứa thông tin cần cập nhật
-     * @return true nếu cập nhật thành công, false nếu thất bại
-     */
     public void updateUser(NguoiDung user) throws SQLException {
         PreparedStatement statement = null;
 
@@ -409,7 +379,6 @@ public class NguoiDungController {
             statement.setString(1, searchPattern);
             statement.setString(2, searchPattern);
             statement.setString(3, searchPattern);
-            statement.setString(4, searchPattern);
             
             resultSet = statement.executeQuery();
             
@@ -432,13 +401,6 @@ public class NguoiDungController {
         
         return userList;
     }
-    /**
-     * Cập nhật mật khẩu người dùng
-     * 
-     * @param userId ID của người dùng cần đổi mật khẩu
-     * @param newPassword Mật khẩu mới
-     * @return true nếu cập nhật thành công, false nếu thất bại
-     */
     public boolean updatePassword(int userId, String newPassword) {
         PreparedStatement statement = null;
         boolean success = false;
@@ -465,51 +427,14 @@ public class NguoiDungController {
         
         return success;
     }
-
-    /**
-     * Kiểm tra xem email đã tồn tại trong hệ thống chưa
-     * 
-     * @param email Email cần kiểm tra
-     * @return true nếu email đã tồn tại, false nếu chưa
-     * @throws SQLException Nếu có lỗi truy vấn SQL
-     */
-    public boolean isEmailExists(String email) throws SQLException {
+    public static boolean isPhoneExists(String phone) {
+        Connection connection = null;
         PreparedStatement statement = null;
         ResultSet resultSet = null;
         boolean exists = false;
 
         try {
-            String query = "SELECT COUNT(*) FROM NguoiDung WHERE Email = ?";
-            statement = connection.prepareStatement(query);
-            statement.setString(1, email);
-            
-            resultSet = statement.executeQuery();
-            
-            if (resultSet.next()) {
-                exists = resultSet.getInt(1) > 0;
-            }
-            
-        } finally {
-            if (resultSet != null) resultSet.close();
-            if (statement != null) statement.close();
-        }
-        
-        return exists;
-    }
-
-    /**
-     * Kiểm tra xem số điện thoại đã tồn tại trong hệ thống chưa
-     * 
-     * @param phone Số điện thoại cần kiểm tra
-     * @return true nếu số điện thoại đã tồn tại, false nếu chưa
-     * @throws SQLException Nếu có lỗi truy vấn SQL
-     */
-    public boolean isPhoneExists(String phone) throws SQLException {
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
-        boolean exists = false;
-
-        try {
+            connection = connectMySQL.getConnection();
             String query = "SELECT COUNT(*) FROM NguoiDung WHERE SoDienThoai = ?";
             statement = connection.prepareStatement(query);
             statement.setString(1, phone);
@@ -520,20 +445,22 @@ public class NguoiDungController {
                 exists = resultSet.getInt(1) > 0;
             }
             
+        } catch (SQLException e) {
+            System.err.println("Error checking phone existence: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            if (resultSet != null) resultSet.close();
-            if (statement != null) statement.close();
+            try {
+                if (resultSet != null) resultSet.close();
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
         
         return exists;
     }
-
-    /**
-     * Lấy thông tin người dùng thông qua email hoặc số điện thoại
-     * 
-     * @param emailOrPhone Email hoặc số điện thoại của người dùng
-     * @return Đối tượng NguoiDung nếu tìm thấy, null nếu không tìm thấy
-     */
+    
     public NguoiDung getNguoiDungByEmailOrPhone(String emailOrPhone) {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
@@ -601,9 +528,80 @@ public class NguoiDungController {
             if (statement != null) statement.close();
         }
     }
-    /**
-     * Đóng các tài nguyên database
-     */
+    public static boolean registerUser(String name, String email, String phone, String password) {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        boolean success = false;
+
+        try {
+            connection = connectMySQL.getConnection();
+            
+            // Default values for new user
+            String gender = "Unknown"; // Default gender
+            Date birthDate = null;     // Default birth date (null)
+            String role = "USER";      // Default role
+            
+            String query = "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, NgaySinh, GioiTinh, VaiTro) " +
+                           "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            statement = connection.prepareStatement(query);
+            statement.setString(1, name);
+            statement.setString(2, email);
+            statement.setString(3, phone);
+            statement.setString(4, password);
+            statement.setDate(5, birthDate);
+            statement.setString(6, gender);
+            statement.setString(7, role);
+
+            int rowsInserted = statement.executeUpdate();
+            success = (rowsInserted > 0);
+            
+        } catch (SQLException e) {
+            System.err.println("Error registering user: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try {
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return success;
+    }
+    public static boolean isEmailExists(String email) {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        boolean exists = false;
+
+        try {
+            connection = connectMySQL.getConnection();
+            String query = "SELECT COUNT(*) FROM NguoiDung WHERE Email = ?";
+            statement = connection.prepareStatement(query);
+            statement.setString(1, email);
+            
+            resultSet = statement.executeQuery();
+            
+            if (resultSet.next()) {
+                exists = resultSet.getInt(1) > 0;
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error checking email existence: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try {
+                if (resultSet != null) resultSet.close();
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return exists;
+    }
     private static void closeResources(ResultSet rs, PreparedStatement ps, Connection conn) {
         try {
             if (rs != null) rs.close();

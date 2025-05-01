@@ -4,9 +4,11 @@ import controller.KhoVatTuController;
 import model.KhoVatTu;
 import model.NhaCungCap;
 import util.ExportManager;
+import view.DoanhThuUI.NotificationType;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -232,62 +234,7 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
         columnModel.getColumn(5).setPreferredWidth(150);
         columnModel.getColumn(6).setPreferredWidth(120);
 
-        // Add event listener for table selection
-        tblKhoVatTu.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = tblKhoVatTu.rowAtPoint(e.getPoint());
-                if (row >= 0 && row < tblKhoVatTu.getRowCount()) {
-                    // Ensure the row is selected
-                    tblKhoVatTu.setRowSelectionInterval(row, row);
-                    
-                    try {
-                        // Get ID from the selected row
-                        Object idValue = tblKhoVatTu.getValueAt(row, 0);
-                        if (idValue != null && !idValue.toString().isEmpty()) {
-                            int id = Integer.parseInt(idValue.toString());
-                            // Get full information of the vat tu
-                            vatTuDangChon = new KhoVatTu(
-                                id,
-                                tblKhoVatTu.getValueAt(row, 2).toString(), // Tên Vật Tư
-                                Integer.parseInt(tblKhoVatTu.getValueAt(row, 3).toString()), // Số Lượng
-                                tblKhoVatTu.getValueAt(row, 4).toString(), // Đơn Vị Tính
-                                tblKhoVatTu.getValueAt(row, 1).toString(), // Mã NCC
-                                tblKhoVatTu.getValueAt(row, 6).toString()  // Phân Loại
-                            );
-                        } else {
-                            vatTuDangChon = null;
-                        }
-                    } catch (Exception ex) {
-                        vatTuDangChon = null;
-                    }
-                    
-                    // Show context menu on right-click
-                    if (SwingUtilities.isRightMouseButton(e)) {
-                        showPopupMenu(e.getComponent(), e.getX(), e.getY());
-                    } 
-                    // Double-click to open edit dialog
-                    else if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
-                        if (vatTuDangChon != null) {
-                            hienThiDialogThemSua(vatTuDangChon);
-                        }
-                    }
-                }
-            }
-            
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                // Alternative approach for right-click context menu
-                if (e.isPopupTrigger()) {
-                    int row = tblKhoVatTu.rowAtPoint(e.getPoint());
-                    if (row >= 0) {
-                        tblKhoVatTu.setRowSelectionInterval(row, row);
-                        showPopupMenu(e.getComponent(), e.getX(), e.getY());
-                    }
-                }
-            }
-        });
-
+        setupPopupMenu();
         JScrollPane scrollPane = new JScrollPane(tblKhoVatTu);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -296,8 +243,6 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
         tablePanel.add(scrollPane, BorderLayout.CENTER);
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
         wrapperPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-
-        createPopupMenu();
 
         return wrapperPanel;
     }
@@ -310,12 +255,11 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
         
         btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
-        btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
-        
+        btnXuatFile.addActionListener(this);
         
         btnThemMoi = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThemMoi.setPreferredSize(new Dimension(100, 45));
-        btnThemMoi.addActionListener(e -> hienThiDialogThemSua(null));
+        btnThemMoi.addActionListener(this);
         
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThemMoi);
@@ -323,57 +267,236 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
         return buttonPanel;
     }
 
-    private void createPopupMenu() {
+    private void setupPopupMenu() {
         popupMenu = new JPopupMenu();
-        popupMenu.setBorder(BorderFactory.createLineBorder(borderColor, 1));
+        popupMenu.setBorder(new LineBorder(borderColor, 1));
         
-        menuItemXemChiTiet = new JMenuItem("Xem chi tiết");
-        menuItemXemChiTiet.setFont(regularFont);
-        menuItemXemChiTiet.setForeground(textColor);
+        menuItemXemChiTiet = createStyledMenuItem("Xem Chi Tiết");
+        menuItemChinhSua = createStyledMenuItem("Chỉnh Sửa");
+        menuItemXoa = createStyledMenuItem("Xóa");
         
-        menuItemChinhSua = new JMenuItem("Chỉnh sửa");
-        menuItemChinhSua.setFont(regularFont);
-        menuItemChinhSua.setForeground(primaryColor);
-        
-        menuItemXoa = new JMenuItem("Xóa");
-        menuItemXoa.setFont(regularFont);
         menuItemXoa.setForeground(accentColor);
-        
-        MouseAdapter menuItemHover = new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(new Color(245, 247, 250));
-            }
-            
-            @Override
-            public void mouseExited(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(null);
-            }
-        };
-        
-        menuItemXemChiTiet.addMouseListener(menuItemHover);
-        menuItemChinhSua.addMouseListener(menuItemHover);
-        menuItemXoa.addMouseListener(menuItemHover);
-        
-        menuItemXemChiTiet.addActionListener(this);
-        menuItemChinhSua.addActionListener(this);
-        menuItemXoa.addActionListener(this);
         
         popupMenu.add(menuItemXemChiTiet);
         popupMenu.addSeparator();
         popupMenu.add(menuItemChinhSua);
+        popupMenu.addSeparator();
         popupMenu.add(menuItemXoa);
-        popupMenu.setBackground(Color.WHITE);
-    }
 
-    private void showPopupMenu(Component component, int x, int y) {
-        if (vatTuDangChon != null) {
-            popupMenu.show(component, x, y);
+        // Add action listeners
+        menuItemXemChiTiet.addActionListener(this);
+        menuItemChinhSua.addActionListener(this);
+        menuItemXoa.addActionListener(this);
+        
+        // Add mouse listener to table for right-click popup menu
+        tblKhoVatTu.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+            
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = tblKhoVatTu.rowAtPoint(e.getPoint());
+                if (row >= 0) {
+                    tblKhoVatTu.setRowSelectionInterval(row, row);
+                    int modelRow = tblKhoVatTu.getRowSorter() != null 
+                                 ? tblKhoVatTu.getRowSorter().convertRowIndexToModel(row)
+                                 : row;
+                    
+                    // Check if clicked row is not the summary row (if present)
+                    Object idValue = tableModel.getValueAt(modelRow, 0);
+                    if (idValue != null && !idValue.toString().isEmpty()) {
+                        try {
+                            // Get data directly from the table model
+                            vatTuDangChon = createKhoVatTuFromRow(modelRow);
+                        } catch (NumberFormatException ex) {
+                            vatTuDangChon = null;
+                        }
+                    } else {
+                        vatTuDangChon = null;
+                    }
+                    
+                    // Handle double-click
+                    if (e.getClickCount() == 2 && !e.isConsumed()) {
+                        e.consume();
+                        if (vatTuDangChon != null) {
+                            xemChiTiet();
+                        }
+                    }
+                }
+            }
+        });
+    }           
+    private void showPopupMenu(MouseEvent e) {
+        int row = tblKhoVatTu.rowAtPoint(e.getPoint());
+        if (row >= 0) {
+            tblKhoVatTu.setRowSelectionInterval(row, row);
+            int modelRow = tblKhoVatTu.getRowSorter() != null 
+                         ? tblKhoVatTu.getRowSorter().convertRowIndexToModel(row)
+                         : row;
+            
+            // Check if clicked row is not the summary row (if present)
+            Object idValue = tableModel.getValueAt(modelRow, 0);
+            if (idValue != null && !idValue.toString().isEmpty()) {
+                try {
+                    // Get data directly from the table model instead of database query
+                    vatTuDangChon = createKhoVatTuFromRow(modelRow);
+                    // Only show popup if we have a valid row selected
+                    popupMenu.show(tblKhoVatTu, e.getX(), e.getY());
+                } catch (NumberFormatException ex) {
+                    vatTuDangChon = null;
+                }
+            }
         }
     }
 
+    private JMenuItem createStyledMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(regularFont);
+        menuItem.setBackground(panelColor);
+        menuItem.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        return menuItem;
+    }
+    private KhoVatTu createKhoVatTuFromRow(int modelRow) {
+        int idVatTu = Integer.parseInt(tableModel.getValueAt(modelRow, 0).toString());
+        String maNCC = tableModel.getValueAt(modelRow, 1).toString();
+        String tenVatTu = tableModel.getValueAt(modelRow, 2).toString();
+        int soLuong = Integer.parseInt(tableModel.getValueAt(modelRow, 3).toString());
+        String donViTinh = tableModel.getValueAt(modelRow, 4).toString();
+        String phanLoai = tableModel.getValueAt(modelRow, 6).toString();
+        
+        return new KhoVatTu(idVatTu, tenVatTu, soLuong, donViTinh, maNCC, phanLoai);
+    }
+    private void setupEventListeners() {
+        // Setup search button action
+        btnTimKiem.addActionListener(e -> {
+            // Check if search field is empty
+            if (txtTimKiem.getText().trim().isEmpty()) {
+                // If empty, refresh the data
+                loadData();
+                showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            } else {
+                // If not empty, filter the data
+                timKiemVatTu();
+            }
+        });
+        
+        // Setup enter key on search field
+        txtTimKiem.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (txtTimKiem.getText().trim().isEmpty()) {
+                        // If empty, refresh the data
+                        loadData();
+                        showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+                    } else {
+                        // If not empty, filter the data
+                        timKiemVatTu();
+                    }
+                }
+            }
+        });
+        
+        // Table mouse listener for popup menu and double-click
+        tblKhoVatTu.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = tblKhoVatTu.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < tblKhoVatTu.getRowCount()) {
+                    tblKhoVatTu.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
+                        showPopupMenu(e);
+                    } else if (e.getClickCount() == 2) {
+                        xemChiTiet();
+                    }
+                } else {
+                    tblKhoVatTu.clearSelection();
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+        });
+    }
+    private void showNotification(String message, NotificationType type) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);
+
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(type.color);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+
+        JLabel titleLabel = new JLabel(type.title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(Color.WHITE);
+        toastPanel.add(titleLabel);
+        
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);
+
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+
+        // Position at bottom right
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );
+
+        toastDialog.setVisible(true);
+
+        // Auto-hide after 3 seconds
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    public enum NotificationType {
+        SUCCESS(new Color(86, 156, 104), "Thành công"),
+        WARNING(new Color(237, 187, 85), "Cảnh báo"),
+        ERROR(new Color(192, 80, 77), "Lỗi");
+        
+        private final Color color;
+        private final String title;
+        
+        NotificationType(Color color, String title) {
+            this.color = color;
+            this.title = title;
+        }
+    }
     private void createInputDialog() {
         themSuaDialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thêm/Sửa Vật Tư", true);
         themSuaDialog.setLayout(new BorderLayout());
@@ -566,15 +689,25 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
         cmbNhaCungCapDialog.setSelectedIndex(-1);
         cmbPhanLoaiDialog.setSelectedIndex(-1);
     }
-
     private void timKiemVatTu() {
         String tuKhoa = txtTimKiem.getText().trim();
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         tblKhoVatTu.setRowSorter(sorter);
+        
         if (tuKhoa.isEmpty()) {
             sorter.setRowFilter(null);
+            showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
         } else {
             sorter.setRowFilter(RowFilter.regexFilter("(?i)" + tuKhoa));
+            
+            // Count matching rows
+            int matchCount = tblKhoVatTu.getRowCount();
+            
+            if (matchCount > 0) {
+                showNotification("Tìm thấy " + matchCount + " kết quả phù hợp!", NotificationType.SUCCESS);
+            } else {
+                showNotification("Không tìm thấy kết quả phù hợp!", NotificationType.WARNING);
+            }
         }
     }
     private void xemChiTiet() {

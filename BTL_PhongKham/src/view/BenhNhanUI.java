@@ -14,7 +14,10 @@ import com.toedter.calendar.JDateChooser; // Import JDateChooser
 import controller.BenhNhanController;
 import model.BenhNhan;
 import util.ExportManager;
+import util.RoundedPanel;
 import util.ValidationUtils;
+import view.DoanhThuUI.NotificationType;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -37,6 +40,8 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private JDateChooser dateChooserNgaySinh; // Replace JTextField with JDateChooser
     private JComboBox<String> cbGioiTinh;
     private JDialog inputDialog;
+    private JPopupMenu popupMenu;
+    private JMenuItem menuItemXemChiTiet, menuItemSuaBenhNhan, menuItemXoaBenhNhan;
     private JButton btnThem, btnXoa, btnTimKiem;
     private JTextField txtTimKiem;
     private JButton btnXuatFile;
@@ -92,7 +97,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         // Button Panel
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
-
+        setupEventListeners();
         // Create input dialog
         createInputDialog();
 
@@ -247,31 +252,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         columnModel.getColumn(5).setPreferredWidth(120); // CCCD
         columnModel.getColumn(6).setPreferredWidth(200); // Địa chỉ wider
 
-        // Mouse listener for showing popup menu
-        tableBenhNhan.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = tableBenhNhan.rowAtPoint(e.getPoint());
-                if (row >= 0) {
-                    tableBenhNhan.setRowSelectionInterval(row, row);
-                    if (SwingUtilities.isLeftMouseButton(e)) {
-                        showPopupMenu(e.getComponent(), e.getX(), e.getY());
-                    }
-                }
-            }
-            
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                // Alternative approach for right-click context menu
-                if (e.isPopupTrigger()) {
-                    int row = tableBenhNhan.rowAtPoint(e.getPoint());
-                    if (row >= 0) {
-                        tableBenhNhan.setRowSelectionInterval(row, row);
-                        showPopupMenu(e.getComponent(), e.getX(), e.getY());
-                    }
-                }
-            }
-        });
+        setupPopupMenu();
 
         JScrollPane scrollPane = new JScrollPane(tableBenhNhan);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -301,63 +282,143 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         return buttonPanel;
     }
 
-    private void showPopupMenu(Component invoker, int x, int y) {
-        // Make sure we have a row selected
-        int selectedRow = tableBenhNhan.getSelectedRow();
-        if (selectedRow == -1) {
-            return;
-        }
-
-        JPopupMenu popupMenu = new JPopupMenu();
-        popupMenu.setBorder(BorderFactory.createLineBorder(borderColor, 1));
-
-        JMenuItem editItem = new JMenuItem("Chỉnh Sửa");
-        editItem.setFont(regularFont);
-        editItem.setForeground(primaryColor);
-        editItem.addActionListener(e -> showInputDialog(false));
+    private void setupPopupMenu() {
+        popupMenu = new JPopupMenu();
+        popupMenu.setBorder(new LineBorder(borderColor, 1));
         
-        JMenuItem deleteItem = new JMenuItem("Xóa");
-        deleteItem.setFont(regularFont);
-        deleteItem.setForeground(accentColor);
-        deleteItem.addActionListener(e -> xoaBenhNhan());
+        menuItemXemChiTiet = createStyledMenuItem("Xem Chi Tiết");
+        menuItemSuaBenhNhan = createStyledMenuItem("Chỉnh Sửa");
+        menuItemXoaBenhNhan = createStyledMenuItem("Xóa");
         
-        JMenuItem viewDetailsItem = new JMenuItem("Xem chi tiết");
-        viewDetailsItem.setFont(regularFont);
-        viewDetailsItem.setForeground(textColor);
-        viewDetailsItem.addActionListener(e -> xemChiTietBenhNhan());
+        menuItemXoaBenhNhan.setForeground(accentColor);
+        
+        popupMenu.add(menuItemXemChiTiet);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemSuaBenhNhan);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemXoaBenhNhan);
 
-        // Add visual feedback on hover
-        MouseAdapter menuItemHover = new MouseAdapter() {
+        menuItemXemChiTiet.addActionListener(e -> {
+            if (tableBenhNhan.getSelectedRow() != -1) {
+                xemChiTietBenhNhan();
+            }
+        });
+
+        menuItemSuaBenhNhan.addActionListener(e -> {
+            if (tableBenhNhan.getSelectedRow() != -1) {
+                showInputDialog(false); // false means we're updating, not adding
+            }
+        });
+        
+        menuItemXoaBenhNhan.addActionListener(e -> {
+            if (tableBenhNhan.getSelectedRow() != -1) {
+                xoaBenhNhan();
+            }
+        });
+        
+        // Add mouse listener to table for right-click popup menu
+        tableBenhNhan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+            
+            private void showPopupMenu(MouseEvent e) {
+                int row = tableBenhNhan.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < tableBenhNhan.getRowCount()) {
+                    tableBenhNhan.setRowSelectionInterval(row, row);
+                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+        });
+    }
+    private void setupEventListeners() {
+        // Setup search button action
+        btnTimKiem.addActionListener(e -> {
+            // Check if search field is empty
+            if (txtTimKiem.getText().trim().isEmpty()) {
+                // If empty, refresh the data
+                loadDanhSachBenhNhan();
+                showSuccessToast("Dữ liệu đã được làm mới!");
+            } else {
+                // If not empty, filter the data
+                timKiemBenhNhan();
+            }
+        });
+        
+        // Setup enter key on search field
+        txtTimKiem.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (txtTimKiem.getText().trim().isEmpty()) {
+                        // If empty, refresh the data
+                        loadDanhSachBenhNhan();
+                        showSuccessToast("Dữ liệu đã được làm mới!");
+                    } else {
+                        // If not empty, filter the data
+                        timKiemBenhNhan();
+                    }
+                }
+            }
+        });
+        
+        // Setup table mouse listener for double-click action and context menu
+        tableBenhNhan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = tableBenhNhan.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < tableBenhNhan.getRowCount()) {
+                    tableBenhNhan.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    } else if (e.getClickCount() == 2) {
+                        xemChiTietBenhNhan();
+                    }
+                } else {
+                    tableBenhNhan.clearSelection();
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+        });
+    }
+    // Add this method to create styled menu items
+    private JMenuItem createStyledMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(regularFont);
+        menuItem.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        menuItem.setBackground(Color.WHITE);
+        
+        menuItem.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(new Color(245, 247, 250));
+                menuItem.setBackground(new Color(240, 240, 240));
             }
             
             @Override
             public void mouseExited(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(null);
+                menuItem.setBackground(Color.WHITE);
             }
-        };
+        });
         
-        editItem.addMouseListener(menuItemHover);
-        deleteItem.addMouseListener(menuItemHover);
-        viewDetailsItem.addMouseListener(menuItemHover);
-
-        popupMenu.add(editItem);
-        popupMenu.add(deleteItem);
-        popupMenu.addSeparator();
-        popupMenu.add(viewDetailsItem);
-
-        // Customize popup menu appearance
-        popupMenu.setBackground(Color.WHITE);
-        popupMenu.setBorderPainted(true);
-
-        // Show the popup menu
-        popupMenu.show(invoker, x, y);
+        return menuItem;
     }
-
     private void xemChiTietBenhNhan() {
         int selectedRow = tableBenhNhan.getSelectedRow();
         if (selectedRow == -1) {
@@ -889,9 +950,8 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                     });
                 }
             }
-
             if (tableModel.getRowCount() == 0) {
-                showInfoMessage("Không tìm thấy", "Không tìm thấy bệnh nhân phù hợp với từ khóa \"" + keyword + "\"");
+                showNotification("Không tìm thấy kết quả nào cho: '" + keyword + "'", NotificationType.WARNING);
             }
         } catch (SQLException e) {
             showErrorMessage("Lỗi khi tìm kiếm", e.getMessage());
@@ -1009,36 +1069,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     }
     
     // Panel with rounded corners and optional shadow
-    class RoundedPanel extends JPanel {
-        private int cornerRadius;
-        private boolean shadowEnabled;
-        
-        public RoundedPanel(int radius, boolean shadow) {
-            super();
-            this.cornerRadius = radius;
-            this.shadowEnabled = shadow;
-            setOpaque(false);
-        }
-        
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
-            // Draw shadow if enabled
-            if (shadowEnabled) {
-                for (int i = 0; i < 4; i++) {
-                    g2d.setColor(new Color(0, 0, 0, 10 - i * 2));
-                    g2d.fillRoundRect(i, i, getWidth() - i * 2, getHeight() - i * 2, cornerRadius, cornerRadius);
-                }
-            }
-            
-            g2d.setColor(getBackground());
-            g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, cornerRadius, cornerRadius);
-            g2d.dispose();
-        }
-    }
+  
     private void setupEnterKeyNavigation() {
         // Create an array of components in the desired tab order
         JComponent[] components = new JComponent[] {
@@ -1096,6 +1127,69 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 }
             }
         });
+    }
+    public enum NotificationType {
+        SUCCESS(new Color(86, 156, 104), "Thành công"),
+        WARNING(new Color(237, 187, 85), "Cảnh báo"),
+        ERROR(new Color(192, 80, 77), "Lỗi");
+        
+        private final Color color;
+        private final String title;
+        
+        NotificationType(Color color, String title) {
+            this.color = color;
+            this.title = title;
+        }
+    }
+    private void showNotification(String message, NotificationType type) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);
+
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(type.color);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+
+        JLabel titleLabel = new JLabel(type.title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(Color.WHITE);
+        toastPanel.add(titleLabel);
+        
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);
+
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+
+        // Position at bottom right
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );
+
+        toastDialog.setVisible(true);
+
+        // Auto-hide after 3 seconds
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
     @Override
 	public void showMessage(String message, String title, int messageType) {

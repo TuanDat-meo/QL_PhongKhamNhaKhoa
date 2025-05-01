@@ -42,7 +42,8 @@ public class GiaoDienChinh extends JFrame {
     private String[] menuItems;
 
     private JPanel mainPanel;
-    private ThongTinNguoiDungUI thongTinNguoiDungPanel;
+    // Dialog là null, sẽ được tạo khi cần
+    private ThongTinNguoiDungDialog thongTinNguoiDungDialog = null;
     private static NguoiDung loggedInUser;
     private NguoiDungController thongTinNguoiDungController = new NguoiDungController();
 
@@ -64,8 +65,6 @@ public class GiaoDienChinh extends JFrame {
 
         mainPanel = new JPanel(new BorderLayout());
         setContentPane(mainPanel);
-
-        thongTinNguoiDungPanel = new ThongTinNguoiDungUI(user.getIdNguoiDung(), thongTinNguoiDungController);
 
         JPanel headerPanel = createHeaderPanel();
         mainPanel.add(headerPanel, BorderLayout.NORTH);
@@ -166,9 +165,16 @@ public class GiaoDienChinh extends JFrame {
     }
 
     private void showThongTinNguoiDung() {
-        thongTinNguoiDungPanel.loadUserData(loggedInUser.getIdNguoiDung());
-        CardLayout cl = (CardLayout) contentPanel.getLayout();
-        cl.show(contentPanel, "Thông tin Người Dùng");
+        // Tạo dialog khi cần thiết
+        if (thongTinNguoiDungDialog == null) {
+            thongTinNguoiDungDialog = new ThongTinNguoiDungDialog(this, loggedInUser.getIdNguoiDung(), thongTinNguoiDungController);
+        } else {
+            // Cập nhật lại dữ liệu người dùng nếu dialog đã tồn tại
+            thongTinNguoiDungDialog.loadUserData(loggedInUser.getIdNguoiDung());
+        }
+        
+        // Hiển thị dialog
+        thongTinNguoiDungDialog.setVisible(true);
     }
 
     private void highlightMenuItem(String menuItemText) {
@@ -214,7 +220,7 @@ public class GiaoDienChinh extends JFrame {
 
     private JPanel createMenuPanel() {
         JPanel menuContainerPanel = new JPanel(new BorderLayout());
-     // Thêm các dòng sau vào phương thức createMenuPanel() của bạn:
+        // Thêm các dòng sau vào phương thức createMenuPanel() của bạn:
         menuContainerPanel.setPreferredSize(new Dimension(MENU_WIDTH, getHeight()));
         menuContainerPanel.setMinimumSize(new Dimension(MENU_WIDTH, getHeight()));  // Thêm kích thước tối thiểu
         menuContainerPanel.setBackground(DARK_COLOR);
@@ -444,8 +450,8 @@ public class GiaoDienChinh extends JFrame {
         LichHenGUI lichHenPanel = new LichHenGUI();
         contentPanel.add(lichHenPanel, "Quản lý Lịch Hẹn");
         
-        // Add ThongTinNguoiDungUI panel for user profile (used by header button)
-        contentPanel.add(thongTinNguoiDungPanel, "Thông tin Người Dùng");
+        // Loại bỏ dòng này vì ThongTinNguoiDungDialog là JDialog, không phải JPanel
+        // contentPanel.add(thongTinNguoiDungDialog, "Thông tin Người Dùng");
         
         // HoSoBenhAnUI for the "Quản lý Hồ Sơ" menu item
         HoSoBenhAnUI hoSoBenhAnPanel = new HoSoBenhAnUI();

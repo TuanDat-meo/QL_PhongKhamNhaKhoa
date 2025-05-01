@@ -21,13 +21,14 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 import java.sql.SQLException;
+import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class HoaDonUI extends JPanel implements MessageCallback {
-    // Color scheme based on DoanhThuUI
     private Color primaryColor = new Color(79, 129, 189);     // Professional blue
     private Color secondaryColor = new Color(141, 180, 226);  // Lighter blue
     private Color accentColor = new Color(192, 80, 77);       // Refined red for delete
@@ -42,7 +43,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private Color borderColor = new Color(222, 226, 230);     // Light gray borders
     private Color totalRowColor = new Color(232, 240, 254);   // Light blue for total row
     
-    // Font settings
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
@@ -51,11 +51,9 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
     private Font totalRowFont = new Font("Segoe UI", Font.BOLD, 14);
     
-    // Controllers
     private HoaDonController hoaDonController;
     private BenhNhanController benhNhanController;
     
-    // UI Components
     private DefaultTableModel modelHoaDon;
     private JTable tableHoaDon;
     private JTable tableTotalRow;
@@ -82,59 +80,38 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         buildButtonPanel();
         setupEventListeners();
         setupPopupMenu();
-        
-        // Load initial data
         loadTableData();
     }
-    
-    /**
-     * Initializes controllers
-     */
     private void initializeControllers() {
         hoaDonController = new HoaDonController();
         benhNhanController = new BenhNhanController();
         exportManager = new ExportManager(this, modelHoaDon, this);
     }
-    
-    /**
-     * Initializes panel properties
-     */
     private void initializePanel() {
         setLayout(new BorderLayout(0, 0));
         setBackground(backgroundColor);
         setBorder(new EmptyBorder(20, 20, 20, 20));
     }
-    
-    /**
-     * Initializes formatters for currency display
-     */
     private void initializeFormatters() {
         Locale localeVN = new Locale("vi", "VN");
         currencyFormat = NumberFormat.getInstance(localeVN);
         currencyFormat.setMinimumFractionDigits(0);
         currencyFormat.setGroupingUsed(true);
     }
-    
-    /**
-     * Builds the header panel with title and search controls
-     */
     private void buildHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
         headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
 
-        // Title panel on the left
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
         
         JLabel titleLabel = new JLabel("QUẢN LÝ HÓA ĐƠN");
         titleLabel.setFont(titleFont);
         titleLabel.setForeground(primaryColor);
-        titlePanel.add(titleLabel);
-        
+        titlePanel.add(titleLabel);        
         headerPanel.add(titlePanel, BorderLayout.WEST);
 
-        // Search panel on the right
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
         
@@ -158,13 +135,10 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         headerPanel.add(searchPanel, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
-    }
-    
+    }    
     private void buildTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
-        
-        // Create a rounded panel that will contain the table
         JPanel tablePanel = new RoundedPanel(15, true);
         tablePanel.setLayout(new BorderLayout());
         tablePanel.setBackground(panelColor);
@@ -172,17 +146,13 @@ public class HoaDonUI extends JPanel implements MessageCallback {
 
         initializeTable();
         styleTable();
-        
-        // Create a panel to contain both main table and total table
         JPanel tablesContainer = new JPanel(new BorderLayout());
         tablesContainer.setBackground(Color.WHITE);
         
-        // Main table with scrolling
         JScrollPane scrollPane = new JScrollPane(tableHoaDon);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
         
-        // Total row table fixed at bottom
         JPanel totalPanel = new JPanel(new BorderLayout());
         totalPanel.setBackground(Color.WHITE);
         totalPanel.add(tableTotalRow, BorderLayout.CENTER);
@@ -194,10 +164,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
     }
-    
-    /**
-     * Initializes the table with appropriate columns
-     */
     private void initializeTable() {
         String[] columns = {"ID", "ID Bệnh Nhân", "Tên Bệnh Nhân", "Ngày Tạo", "Tổng Tiền", "Trạng Thái"};
         
@@ -216,8 +182,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 }
                 return String.class;
             }
-        };
-        
+        };        
         tableHoaDon = new JTable(tableModel) {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
@@ -227,12 +192,9 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 }
                 return comp;
             }
-        };
-        
+        };        
         sorter = new TableRowSorter<>(tableModel);
         tableHoaDon.setRowSorter(sorter);
-        
-        // Create the total row table
         modelTotalRow = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -252,21 +214,14 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         // Add total row
         modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", 0.0, null});
     }
-    
-    /**
-     * Applies styling to the tables
-     */
     private void styleTable() {
         // Style main table
         styleMainTable(tableHoaDon);
-        
-        // Style total row table
         styleMainTable(tableTotalRow);
         tableTotalRow.setFont(totalRowFont);
         tableTotalRow.setRowHeight(45); // Make total row taller
-        tableTotalRow.setTableHeader(null); // No header for total table
+        tableTotalRow.setTableHeader(null);
         
-        // Format the total row
         tableTotalRow.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -275,9 +230,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 
                 c.setBackground(totalRowColor);
                 
-                // Set alignment based on column
                 if (column == 3) {
-                    // "Tổng:" column - right align
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.RIGHT);
                     ((JLabel) c).setFont(totalRowFont);
                 } else if (column == 4 && value instanceof Double) {
@@ -288,20 +241,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 } else {
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                 }
-                
-                // Add padding
                 ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
                 return c;
             }
         });
     }
-    
-    /**
-     * Applies common styling to tables
-     */
-    /**
-     * Applies common styling to tables
-     */
     private void styleMainTable(JTable table) {
         table.setFont(tableFont);
         table.setRowHeight(40);
@@ -312,8 +256,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         table.setFocusable(false);
         table.setAutoCreateRowSorter(true);
         table.setBorder(null);
-        
-        // Only style header for main table
         if (table == tableHoaDon) {
             // Style table header
             JTableHeader header = table.getTableHeader();
@@ -323,12 +265,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             header.setPreferredSize(new Dimension(header.getWidth(), 45));
             header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
             header.setReorderingAllowed(false);
-            
-            // Center align table headers
             ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
-        }
-        
-        // Set column widths - proportional to content
+        }        
         table.getColumnModel().getColumn(0).setPreferredWidth(50);   // ID
         table.getColumnModel().getColumn(1).setPreferredWidth(80);   // ID Bệnh Nhân
         table.getColumnModel().getColumn(2).setPreferredWidth(200);  // Tên Bệnh Nhân
@@ -336,7 +274,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         table.getColumnModel().getColumn(4).setPreferredWidth(150);  // Tổng Tiền
         table.getColumnModel().getColumn(5).setPreferredWidth(120);  // Trạng Thái
         
-        // Cell renderer for formatting - Đảm bảo căn giữa tất cả các cell
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -345,37 +282,26 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 
                 if (!isSelected) {
                     c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
-                }
-                
-                // Center align all cells
+                }                
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                 
-                // Format currency for column 4 (Tổng Tiền)
                 if (column == 4 && value instanceof Double) {
                     ((JLabel) c).setText(currencyFormat.format((Double) value) + " VND");
                 }
-                
-                // Add padding
                 ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
                 return c;
             }
-        });
-        
-        // Explicitly center align all cell renderers for each column type
+        });        
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         
         for (int i = 0; i < table.getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
         }
-        
-        // Make sure number columns are centered
         DefaultTableCellRenderer numberRenderer = new DefaultTableCellRenderer();
         numberRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         table.getColumnModel().getColumn(0).setCellRenderer(numberRenderer); // ID
         table.getColumnModel().getColumn(1).setCellRenderer(numberRenderer); // ID Bệnh Nhân
-        
-        // Special renderer for currency column
         DefaultTableCellRenderer currencyRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -393,14 +319,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 return c;
             }
         };
-        
-        // Apply currency renderer to the total amount column
         table.getColumnModel().getColumn(4).setCellRenderer(currencyRenderer); // Tổng Tiền
     }
-    
-    /**
-     * Builds the button panel at the bottom
-     */
     private void buildButtonPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(backgroundColor);
@@ -426,22 +346,32 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         add(buttonPanel, BorderLayout.SOUTH);
     }
-    
-    /**
-     * Sets up event listeners for table and controls
-     */
     private void setupEventListeners() {
-        btnTimKiem.addActionListener(e -> filterTable());
-        
+        btnTimKiem.addActionListener(e -> {
+            if (txtTimKiem.getText().trim().isEmpty()) {
+                tableHoaDon.setRowSorter(null); // Reset any active filter
+                loadTableData();
+                showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            } else {
+                filterTable();
+            }
+        });        
         txtTimKiem.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    filterTable();
+                    if (txtTimKiem.getText().trim().isEmpty()) {
+                        tableHoaDon.setRowSorter(null); // Reset any active filter
+                        loadTableData();
+                        showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+                    } else {
+                        filterTable();
+                    }
                 }
             }
         });
         
+        // Rest of the event listeners remain unchanged
         tableHoaDon.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -467,10 +397,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             }
         });
     }
-    
-    /**
-     * Sets up the popup menu for table row actions
-     */
     private void setupPopupMenu() {
         popupMenu = new JPopupMenu();
         popupMenu.setBorder(new LineBorder(borderColor, 1));
@@ -492,44 +418,29 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 xemChiTietHoaDon();
             }
         });
-
         menuItemSua.addActionListener(e -> {
             if (tableHoaDon.getSelectedRow() != -1) {
                 try {
 					suaHoaDon();
 				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
             }
-        });
-        
+        });        
         menuItemXoa.addActionListener(e -> {
             if (tableHoaDon.getSelectedRow() != -1) {
                 xoaHoaDon();
             }
         });
     }
-    
-    /**
-     * Shows the popup menu at the specified location
-     */
     private void showPopupMenu(MouseEvent e) {
         if (tableHoaDon.getSelectedRow() >= 0) {
             popupMenu.show(e.getComponent(), e.getX(), e.getY());
         }
     }
-    
-    /**
-     * Creates a styled button with hover effects
-     */
     private JButton createStyledButton(String text) {
         return createRoundedButton(text, primaryColor, buttonTextColor, 10);
     }
-    
-    /**
-     * Creates a rounded button with hover effects
-     */
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
         JButton button = new JButton(text) {
             @Override
@@ -556,8 +467,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         button.setContentAreaFilled(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-
-        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -572,10 +481,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
 
         return button;
     }
-    
-    /**
-     * Creates a styled menu item with hover effects
-     */
     private JMenuItem createStyledMenuItem(String text) {
         JMenuItem menuItem = new JMenuItem(text);
         menuItem.setFont(regularFont);
@@ -594,26 +499,16 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             public void mouseExited(MouseEvent e) {
                 menuItem.setBackground(Color.WHITE);
             }
-        });
-        
+        });        
         return menuItem;
     }
-    
-    /**
-     * Darkens a color for hover effects
-     */
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
-    
-    /**
-     * Loads table data from controller
-     */
     public void loadTableData() {
         tableModel.setRowCount(0);
-        totalAmount = 0.0;
-        
+        totalAmount = 0.0;        
         List<HoaDon> danhSach = hoaDonController.layDanhSachHoaDon();
         for (HoaDon hd : danhSach) {
             BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hd.getIdBenhNhan());
@@ -624,18 +519,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 dateFormatter.format(hd.getNgayTao()),  // Format date consistently here
                 hd.getTongTien(),
                 hd.getTrangThai()
-            });
-            
+            });            
             totalAmount += hd.getTongTien();
-        }
-        
-        // Update total row
+        }        
         updateTotalRow();
     }
-    
-    /**
-     * Updates the total row to show the current sum
-     */
     private void updateTotalRow() {
         if (modelTotalRow.getRowCount() == 0) {
             modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", totalAmount, null});
@@ -645,25 +533,83 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         }
         tableTotalRow.repaint();
     }
-    
-    /**
-     * Filters the table based on search text
-     */
     private void filterTable() {
-        String text = txtTimKiem.getText().trim();
-        if (text.isEmpty()) {
-            // If search field is empty, refresh data instead of just clearing filter
-            sorter.setRowFilter(null);
-            loadTableData(); // Refresh data
-            showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
-        } else {
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+        String searchText = txtTimKiem.getText().trim().toLowerCase();
+        
+        if (searchText.isEmpty()) {
+            loadTableData();
+            return;
+        }
+        
+        try {
+            // Reset the sorter if needed
+            tableHoaDon.setRowSorter(null);
+            sorter = new TableRowSorter<>(tableModel);
+            tableHoaDon.setRowSorter(sorter);
+            
+            RowFilter<DefaultTableModel, Object> rf = new RowFilter<DefaultTableModel, Object>() {
+                @Override
+                public boolean include(Entry<? extends DefaultTableModel, ? extends Object> entry) {
+                    boolean matches = false;
+                    for (int i = 0; i < entry.getValueCount(); i++) {
+                        if (entry.getValue(i) != null) {
+                            String value;
+                            if (entry.getValue(i) instanceof Double) {
+                                value = currencyFormat.format((Double) entry.getValue(i));
+                            } else if (entry.getValue(i) instanceof Date) {
+                                value = dateFormatter.format((Date) entry.getValue(i));
+                            } else if (entry.getValue(i) instanceof Integer) {
+                                value = String.valueOf(entry.getValue(i));
+                            } else {
+                                value = entry.getValue(i).toString();
+                            }
+                            String normalizedValue = normalizeVietnameseString(value.toLowerCase());
+                            String normalizedSearch = normalizeVietnameseString(searchText);
+                            
+                            if (normalizedValue.contains(normalizedSearch) || value.toLowerCase().contains(searchText)) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                    }
+                    return matches;
+                }
+            };
+            
+            sorter.setRowFilter(rf);
+            updateTotalForFilteredRows();
+            
+            // Add a visual indicator that the table is filtered
+            if (tableHoaDon.getRowCount() == 0) {
+                showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showNotification("Có lỗi xảy ra khi tìm kiếm: " + e.getMessage(), NotificationType.ERROR);
+            // Khôi phục lại dữ liệu nếu có lỗi
+            loadTableData();
         }
     }
-    
-    /**
-     * Handles the view details action
-     */
+    private String normalizeVietnameseString(String str) {
+        String temp = Normalizer.normalize(str, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(temp).replaceAll("").replace('đ', 'd').replace('Đ', 'D');
+    }
+    private void updateTotalForFilteredRows() {
+        double filteredTotal = 0.0;
+        for (int i = 0; i < tableHoaDon.getRowCount(); i++) {
+            int modelRow = tableHoaDon.convertRowIndexToModel(i);
+            double amount = (Double) tableModel.getValueAt(modelRow, 4); // Tổng tiền is at column 4
+            filteredTotal += amount;
+        }
+        if (modelTotalRow.getRowCount() == 0) {
+            modelTotalRow.addRow(new Object[]{null, null, null, "Tổng :", filteredTotal, null});
+        } else {
+            modelTotalRow.setValueAt("Tổng:", 0, 3);
+            modelTotalRow.setValueAt(filteredTotal, 0, 4);
+        }
+        tableTotalRow.repaint();
+    }
     private void xemChiTietHoaDon() {
         int selectedRow = tableHoaDon.getSelectedRow();
         if (selectedRow >= 0) {
@@ -680,11 +626,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             showNotification("Vui lòng chọn một hóa đơn để xem chi tiết!", NotificationType.WARNING);
         }
     }
-    
-    /**
-     * Handles the edit action
-     * @throws SQLException 
-     */
     private void suaHoaDon() throws SQLException {
         int selectedRow = tableHoaDon.getSelectedRow();
         if (selectedRow >= 0) {
@@ -701,10 +642,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             showNotification("Vui lòng chọn một hóa đơn để chỉnh sửa!", NotificationType.WARNING);
         }
     }
-    
-    /**
-     * Handles the delete action
-     */
     private void xoaHoaDon() {
         int selectedRow = tableHoaDon.getSelectedRow();
         if (selectedRow >= 0) {
@@ -717,8 +654,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 "Xác nhận xóa",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
-            );
-            
+            );            
             if (choice == JOptionPane.YES_OPTION) {
                 try {
                     hoaDonController.xoaHoaDon(idHoaDon);
@@ -732,17 +668,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             showNotification("Vui lòng chọn một hóa đơn để xóa!", NotificationType.WARNING);
         }
     }
-    
-    /**
-     * Show dialog to add a new invoice
-     */
     private void hienThiFormThemHoaDon() throws SQLException {
         JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thêm Hóa Đơn Mới", true);
         dialog.setLayout(new BorderLayout());
         dialog.setSize(500, 450);
         dialog.setResizable(false);
-        
-        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -750,49 +680,35 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         JLabel titleLabel = new JLabel("THÊM HÓA ĐƠN MỚI");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         titleLabel.setForeground(Color.WHITE);
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
-        
-        // Form panel
+        headerPanel.add(titleLabel, BorderLayout.CENTER);        
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        formPanel.setBackground(Color.WHITE);
-        
-        // Lấy danh sách bệnh nhân từ controller
+        formPanel.setBackground(Color.WHITE);        
         List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
         DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
         comboBoxModel.addElement("Chọn bệnh nhân");
         
         for (BenhNhan bn : danhSachBenhNhan) {
             comboBoxModel.addElement(bn.getHoTen());
-        }
-        
+        }        
         JComboBox<String> cmbTenBenhNhan = new JComboBox<>(comboBoxModel);
         styleComboBox(cmbTenBenhNhan);
         
         JTextField txtTongTien = new JTextField();
         styleTextField(txtTongTien);
-        
-        // Format date field with placeholder text
         JTextField txtNgayTao = new JTextField();
         txtNgayTao.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         txtNgayTao.setToolTipText("Định dạng: YYYY-MM-DD");
         styleTextField(txtNgayTao);
-        
-        // Thay đổi từ JTextField sang JComboBox cho trạng thái
         String[] trangThaiOptions = {"Đã thanh toán", "Chưa thanh toán", "Đang xử lý", "Đã hủy"};
         JComboBox<String> cmbTrangThai = new JComboBox<>(trangThaiOptions);
         styleComboBox(cmbTrangThai);
-        
-        // Create form fields
         addFormField(formPanel, "Tên Bệnh Nhân:", cmbTenBenhNhan);
         addFormField(formPanel, "Ngày Tạo:", txtNgayTao);
         addFormField(formPanel, "Tổng Tiền (VND):", txtTongTien);
-        addFormField(formPanel, "Trạng Thái:", cmbTrangThai);
-        
-        formPanel.add(Box.createVerticalGlue());
-        
-        // Button panel
+        addFormField(formPanel, "Trạng Thái:", cmbTrangThai);        
+        formPanel.add(Box.createVerticalGlue());        
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
@@ -816,8 +732,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     showNotification("Vui lòng nhập tổng tiền.", NotificationType.WARNING);
                     return;
                 }
-                
-                // Validate date format
                 String ngayTaoStr = txtNgayTao.getText().trim();
                 Date ngayTao;
                 try {
@@ -828,11 +742,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     showNotification("Vui lòng nhập ngày tạo đúng định dạng YYYY-MM-DD.", NotificationType.WARNING);
                     return;
                 }
-                
-                // Lấy trạng thái từ combobox
                 String trangThaiUI = (String) cmbTrangThai.getSelectedItem();
-                
-                // Chuyển đổi trạng thái từ UI sang định dạng trong Controller
                 String trangThaiController;
                 switch (trangThaiUI) {
                     case "Đã thanh toán":
@@ -850,21 +760,17 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     default:
                         trangThaiController = "ChuaThanhToan";
                 }
-                
-                // Tìm ID bệnh nhân dựa trên tên đã chọn
                 BenhNhan benhNhanDaTim = null;
                 for (BenhNhan bn : danhSachBenhNhan) {
                     if (bn.getHoTen().equals(tenBenhNhanDaChon)) {
                         benhNhanDaTim = bn;
                         break;
                     }
-                }
-                
+                }                
                 if (benhNhanDaTim == null) {
                     showNotification("Không tìm thấy ID bệnh nhân cho tên đã chọn.", NotificationType.ERROR);
                     return;
-                }
-                
+                }                
                 int idBenhNhan = benhNhanDaTim.getIdBenhNhan();
                 double tongTien = Double.parseDouble(txtTongTien.getText().trim());
                 
@@ -874,21 +780,15 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 hoaDon.setTongTien(tongTien);
                 hoaDon.setTrangThai(trangThaiController);
                 
-                // Thêm hóa đơn (HoaDonController sẽ tự động cập nhật DoanhThu nếu trạng thái là "DaThanhToan")
                 hoaDonController.themHoaDon(hoaDon);
-                
-                // Nếu trạng thái là "Đã thanh toán", thêm bản ghi thanh toán
                 if (trangThaiController.equals("DaThanhToan")) {
                     try {
-                        // Tạo đối tượng ThanhToanBenhNhan
                         ThanhToanBenhNhan thanhToan = new ThanhToanBenhNhan();
                         thanhToan.setIdHoaDon(hoaDon.getIdHoaDon());  // Lấy ID hóa đơn sau khi đã thêm
                         thanhToan.setSoTien(tongTien);
                         thanhToan.setHinhThucThanhToan("Tiền mặt");  // Mặc định hoặc thêm field để chọn
                         thanhToan.setMaQR("");  // Để trống nếu là tiền mặt
                         thanhToan.setTrangThai("ThanhToanThanhCong");
-                        
-                        // Thêm vào bảng thanh toán
                         hoaDonController.themThanhToan(thanhToan);
                     } catch (Exception ex) {
                         System.err.println("Warning: Không thể thêm thanh toán: " + ex.getMessage());
@@ -908,8 +808,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         buttonPanel.add(cancelButton);
         buttonPanel.add(submitButton);
-        
-        // Add all panels to dialog
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
@@ -917,17 +815,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
     }
-    
-    /**
-     * Displays a detail popup for the selected invoice
-     */
     private void hienThiPopupChiTiet(HoaDon hoaDon) {
         JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chi tiết Hóa Đơn", true);
         dialog.setLayout(new BorderLayout());
         dialog.setSize(450, 450);
         dialog.setResizable(false);
         
-        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -937,7 +830,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         titleLabel.setForeground(Color.WHITE);
         headerPanel.add(titleLabel, BorderLayout.CENTER);
         
-        // Detail panel
         JPanel detailPanel = new JPanel();
         detailPanel.setLayout(new BoxLayout(detailPanel, BoxLayout.Y_AXIS));
         detailPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -946,7 +838,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hoaDon.getIdBenhNhan());
         ThanhToanBenhNhan thanhToan = hoaDonController.layThanhToanTheoIdHoaDon(hoaDon.getIdHoaDon());
         
-        // Create detail fields
         addDetailField(detailPanel, "ID Hóa Đơn:", String.valueOf(hoaDon.getIdHoaDon()));
         addDetailField(detailPanel, "ID Bệnh Nhân:", String.valueOf(hoaDon.getIdBenhNhan()));
         addDetailField(detailPanel, "Tên Bệnh Nhân:", benhNhan != null ? benhNhan.getHoTen() : "N/A");
@@ -955,36 +846,25 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         addDetailField(detailPanel, "Trạng Thái:", hoaDon.getTrangThai());
         addDetailField(detailPanel, "Phương thức TT:", thanhToan != null ? thanhToan.getHinhThucThanhToan() : "Chưa có");
         
-        // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
-        
+        buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));        
         JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10);
-        closeButton.addActionListener(e -> dialog.dispose());
-        
+        closeButton.addActionListener(e -> dialog.dispose());        
         buttonPanel.add(closeButton);
-        
-        // Add all panels to dialog
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(detailPanel, BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
         
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
-    }
-    
-    /**
-     * Displays an edit popup for the selected invoice
-     * @throws SQLException 
-     */
+    }    
     private void hienThiPopupSua(HoaDon hoaDon) throws SQLException {
         JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chỉnh sửa Hóa Đơn", true);
         dialog.setLayout(new BorderLayout());
         dialog.setSize(450, 400);
         dialog.setResizable(false);
         
-        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -994,18 +874,15 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         titleLabel.setForeground(Color.WHITE);
         headerPanel.add(titleLabel, BorderLayout.CENTER);
         
-        // Form panel
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         formPanel.setBackground(Color.WHITE);
         
-        // Create read-only fields
         JTextField txtIdHoaDon = new JTextField(String.valueOf(hoaDon.getIdHoaDon()));
         txtIdHoaDon.setEnabled(false);
         txtIdHoaDon.setBackground(new Color(245, 245, 245));
         
-        // Lấy danh sách bệnh nhân từ controller
         List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
         DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
         
@@ -1017,19 +894,16 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             if (!bn.getHoTen().equals(tenBenhNhanHienTai)) {
                 comboBoxModel.addElement(bn.getHoTen());
             }
-        }
-        
+        }        
         JComboBox<String> cmbTenBenhNhan = new JComboBox<>(comboBoxModel);
         styleComboBox(cmbTenBenhNhan);
         
         JTextField txtTongTien = new JTextField(String.valueOf(hoaDon.getTongTien()));
         styleTextField(txtTongTien);
         
-        // Thay đổi từ JTextField sang JComboBox cho trạng thái
         String[] trangThaiOptions = {"Đã thanh toán", "Chưa thanh toán", "Đang xử lý", "Đã hủy"};
         DefaultComboBoxModel<String> trangThaiModel = new DefaultComboBoxModel<>(trangThaiOptions);
         
-        // Đặt trạng thái hiện tại làm mục được chọn mặc định
         String currentTrangThai = hoaDon.getTrangThai();
         boolean found = false;
         for (String option : trangThaiOptions) {
@@ -1040,13 +914,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         }
         if (!found) {
             trangThaiModel.insertElementAt(currentTrangThai, 0);
-        }
-        
+        }        
         JComboBox<String> cmbTrangThai = new JComboBox<>(trangThaiModel);
         cmbTrangThai.setSelectedItem(currentTrangThai);
         styleComboBox(cmbTrangThai);
         
-        // Create form fields
         addFormField(formPanel, "ID Hóa Đơn:", txtIdHoaDon);
         addFormField(formPanel, "Tên Bệnh Nhân:", cmbTenBenhNhan);
         addFormField(formPanel, "Tổng Tiền (VND):", txtTongTien);
@@ -1054,7 +926,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         formPanel.add(Box.createVerticalGlue());
         
-        // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
@@ -1067,22 +938,17 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         submitButton.addActionListener(e -> {
             try {
                 String tenBenhNhanDaChon = (String) cmbTenBenhNhan.getSelectedItem();
-                
-                // Tìm ID bệnh nhân dựa trên tên đã chọn
                 BenhNhan benhNhanDaTim = null;
                 for (BenhNhan bn : danhSachBenhNhan) {
                     if (bn.getHoTen().equals(tenBenhNhanDaChon)) {
                         benhNhanDaTim = bn;
                         break;
                     }
-                }
-                
+                }                
                 if (benhNhanDaTim != null) {
                     hoaDon.setIdBenhNhan(benhNhanDaTim.getIdBenhNhan());
-                }
-                
+                }                
                 hoaDon.setTongTien(Double.parseDouble(txtTongTien.getText().trim()));
-                // Lấy trạng thái từ combobox thay vì text field
                 hoaDon.setTrangThai((String) cmbTrangThai.getSelectedItem());
                 
                 hoaDonController.capNhatHoaDon(hoaDon);
@@ -1098,8 +964,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         buttonPanel.add(cancelButton);
         buttonPanel.add(submitButton);
-        
-        // Add all panels to dialog
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
@@ -1107,10 +971,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
     }
-    
-    /**
-     * Helper method to add form fields with consistent styling
-     */
     private void addFormField(JPanel panel, String labelText, JComponent field) {
         JPanel fieldPanel = new JPanel(new BorderLayout(10, 5));
         fieldPanel.setBackground(Color.WHITE);
@@ -1125,10 +985,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         
         panel.add(fieldPanel);
     }
-    
-    /**
-     * Helper method to add detail fields with consistent styling
-     */
     private void addDetailField(JPanel panel, String labelText, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(10, 5));
         fieldPanel.setBackground(Color.WHITE);
@@ -1147,10 +1003,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         panel.add(fieldPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 5)));
     }
-    
-    /**
-     * Styles a text field with consistent formatting
-     */
     private void styleTextField(JTextField textField) {
         textField.setFont(regularFont);
         textField.setPreferredSize(new Dimension(200, 35));
@@ -1158,19 +1010,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 new CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
     }
-    
-    /**
-     * Styles a combo box with consistent formatting
-     */
     private void styleComboBox(JComboBox<?> comboBox) {
         comboBox.setFont(regularFont);
         comboBox.setPreferredSize(new Dimension(200, 35));
         ((JComponent) comboBox.getRenderer()).setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
     }
-    
-    /**
-     * Shows a styled notification popup
-     */
     private void showNotification(String message, NotificationType type) {
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
@@ -1210,8 +1054,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         );
 
         toastDialog.setVisible(true);
-
-        // Auto-hide after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
@@ -1221,10 +1063,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             }
         }).start();
     }
-    
-    /**
-     * Enum for notification types
-     */
     private enum NotificationType {
         SUCCESS(new Color(86, 156, 104), "Thành công"),
         WARNING(new Color(237, 187, 85), "Cảnh báo"),
@@ -1238,10 +1076,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             this.title = title;
         }
     }
-    
-    /**
-     * Custom rounded border for components
-     */
     private class CustomBorder extends LineBorder {
         private int radius;
         
@@ -1259,16 +1093,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             g2d.dispose();
         }
     }
-    
-    /**
-     * Panel with rounded corners
-     */
-    /**
-     * Panel with rounded corners and enhanced shadow effect
-     */
-    /**
-     * Panel with rounded corners and subtle shadow effect
-     */
     private class RoundedPanel extends JPanel {
         private int cornerRadius;
         private boolean hasShadow;
@@ -1280,25 +1104,19 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             this.cornerRadius = radius;
             this.hasShadow = hasShadow;
             setOpaque(false);
-            
-            // Add minimal padding to accommodate the shadow
             if (hasShadow) {
                 setBorder(BorderFactory.createEmptyBorder(shadowSize, shadowSize, shadowSize, shadowSize));
             }
-        }
-        
+        }        
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             
-            // Draw shadow if enabled - with very light opacity
             if (hasShadow) {
-                // Create multiple layers of shadow with reduced opacity
                 for (int i = 0; i < shadowSize; i++) {
                     float opacity = shadowOpacity / 255f * (shadowSize - i) / shadowSize;
-                    // Use a lighter color like light gray instead of black
                     g2.setColor(new Color(120, 120, 120, (int)(opacity * 255)));
                     g2.fill(new RoundRectangle2D.Float(
                         i, i, 
@@ -1307,16 +1125,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                         cornerRadius + i, cornerRadius + i));
                 }
             }
-            
-            // Draw panel background
             g2.setColor(getBackground());
             g2.fill(new RoundRectangle2D.Float(
                 shadowSize, shadowSize, 
                 getWidth() - (shadowSize * 2), 
                 getHeight() - (shadowSize * 2), 
                 cornerRadius, cornerRadius));
-            
-            // Draw a very light border
             g2.setColor(new Color(222, 226, 230)); // Very light gray border
             g2.setStroke(new BasicStroke(1));
             g2.draw(new RoundRectangle2D.Float(
@@ -1328,21 +1142,15 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             g2.dispose();
         }
     }
-
-	@Override
+    @Override
 	public void showSuccessToast(String message) {
-		// TODO Auto-generated method stub
-		
+		showNotification(message, NotificationType.SUCCESS);
 	}
-
-	@Override
+    @Override
 	public void showErrorMessage(String title, String message) {
-		// TODO Auto-generated method stub
-		
+		JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
 	}
 	@Override
-	public void showMessage(String message, String title, int messageType) {
-		// TODO Auto-generated method stub
-		
+	public void showMessage(String message, String title, int messageType) {	
 	}
 }

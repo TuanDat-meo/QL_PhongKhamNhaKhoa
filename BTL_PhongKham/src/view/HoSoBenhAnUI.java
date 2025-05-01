@@ -5,12 +5,14 @@ import controller.BenhNhanController;
 import controller.DonThuocController;
 import model.HoSoBenhAn;
 import util.ExportManager;
+import view.DoanhThuUI.NotificationType;
 import model.BenhNhan;
 import model.DonThuoc;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
@@ -37,7 +39,9 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private ThemHoSoBenhAnDialog themHoSoDialog;
     private Map<String, Integer> tenBenhNhanToId;
     private ExportManager exportManager;
-
+    private JPopupMenu popupMenu;
+    private JMenuItem menuItemSua;
+    private JMenuItem menuItemXoa;
     // Modern Theme Colors
     private Color primaryColor = new Color(79, 129, 189); // Professional blue
     private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
@@ -87,7 +91,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         contentPanel.add(tablePanel, BorderLayout.CENTER);
         
         add(contentPanel, BorderLayout.CENTER);
-
+        setupEventListeners();
         // Button Panel
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
@@ -271,31 +275,8 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         columnModel.getColumn(3).setPreferredWidth(200); // Ghi chú
         columnModel.getColumn(4).setPreferredWidth(100); // Ngày tạo
         columnModel.getColumn(5).setPreferredWidth(100); // Trạng thái
+        setupPopupMenu();
 
-        // Mouse listener for showing popup menu
-        hoSoBenhAnTable.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = hoSoBenhAnTable.rowAtPoint(e.getPoint());
-                if (row >= 0) {
-                    hoSoBenhAnTable.setRowSelectionInterval(row, row);
-                    if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
-                        xemChiTietHoSoBenhAn();
-                    }
-                }
-            }
-            
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    int row = hoSoBenhAnTable.rowAtPoint(e.getPoint());
-                    if (row >= 0) {
-                        hoSoBenhAnTable.setRowSelectionInterval(row, row);
-                        showPopupMenu(e.getComponent(), e.getX(), e.getY());
-                    }
-                }
-            }
-        });
 
         JScrollPane scrollPane = new JScrollPane(hoSoBenhAnTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -328,61 +309,122 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         return buttonPanel;
     }
-
-    private void showPopupMenu(Component invoker, int x, int y) {
-        // Make sure we have a row selected
-        int selectedRow = hoSoBenhAnTable.getSelectedRow();
-        if (selectedRow == -1) {
-            return;
-        }
-
-        JPopupMenu popupMenu = new JPopupMenu();
-        popupMenu.setBorder(BorderFactory.createLineBorder(borderColor, 1));
-
-        JMenuItem editItem = new JMenuItem("Chỉnh Sửa");
-        editItem.setFont(regularFont);
-        editItem.setForeground(primaryColor);
-        editItem.addActionListener(e -> hienThiDialogSuaHoSoBenhAn());
+    private void setupEventListeners() {
+        btnTimKiem.addActionListener(e -> {
+            if (txtTimKiem.getText().trim().isEmpty()) {
+                // If search text is empty, refresh the list
+                lamMoiDanhSach();
+                showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            } else {
+                // If there's search text, perform search
+                timKiemHoSoBenhAn();
+            }
+        });        
         
-        JMenuItem deleteItem = new JMenuItem("Xóa");
-        deleteItem.setFont(regularFont);
-        deleteItem.setForeground(accentColor);
-        deleteItem.addActionListener(e -> xoaHoSoBenhAn());
-        
-        JMenuItem viewDetailsItem = new JMenuItem("Xem chi tiết");
-        viewDetailsItem.setFont(regularFont);
-        viewDetailsItem.setForeground(textColor);
-        viewDetailsItem.addActionListener(e -> xemChiTietHoSoBenhAn());
-
-        // Add visual feedback on hover
-        MouseAdapter menuItemHover = new MouseAdapter() {
+        txtTimKiem.addKeyListener(new KeyAdapter() {
             @Override
-            public void mouseEntered(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(new Color(245, 247, 250));
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (txtTimKiem.getText().trim().isEmpty()) {
+                        // If search text is empty, refresh the list
+                        lamMoiDanhSach();
+                        showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+                    } else {
+                        // If there's search text, perform search
+                        timKiemHoSoBenhAn();
+                    }
+                }
+            }
+        });
+        
+        // Handle table mouse events for popup menu and double-click
+        hoSoBenhAnTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                int row = hoSoBenhAnTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < hoSoBenhAnTable.getRowCount()) {
+                    hoSoBenhAnTable.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    } else if (e.getClickCount() == 2) {
+                        xemChiTietHoSoBenhAn();
+                    }
+                } else {
+                    hoSoBenhAnTable.clearSelection();
+                }
             }
             
             @Override
-            public void mouseExited(MouseEvent e) {
-                JMenuItem item = (JMenuItem) e.getSource();
-                item.setBackground(null);
+            public void mousePressed(MouseEvent e) {
+                int row = hoSoBenhAnTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < hoSoBenhAnTable.getRowCount()) {
+                    hoSoBenhAnTable.setRowSelectionInterval(row, row);
+                    
+                    if (e.isPopupTrigger()) {
+                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
             }
-        };
-        
-        editItem.addMouseListener(menuItemHover);
-        deleteItem.addMouseListener(menuItemHover);
-        viewDetailsItem.addMouseListener(menuItemHover);
+        });
+    }
+    private void setupPopupMenu() {
+        popupMenu = new JPopupMenu();
+        popupMenu.setBorder(new LineBorder(borderColor, 1));        
+        JMenuItem menuItemXemChiTiet = createStyledMenuItem("Xem Chi Tiết");
+        menuItemSua = createStyledMenuItem("Chỉnh Sửa");
+        menuItemXoa = createStyledMenuItem("Xóa");        
+        menuItemXoa.setForeground(accentColor);        
+        popupMenu.add(menuItemXemChiTiet);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemSua);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemXoa);
+        menuItemXemChiTiet.addActionListener(e -> {
+            if (hoSoBenhAnTable.getSelectedRow() != -1) {
+                xemChiTietHoSoBenhAn();
+            }
+        });
+        menuItemSua.addActionListener(e -> {
+            if (hoSoBenhAnTable.getSelectedRow() != -1) {
+                hienThiDialogSuaHoSoBenhAn();
+            }
+        });        
+        menuItemXoa.addActionListener(e -> {
+            if (hoSoBenhAnTable.getSelectedRow() != -1) {
+                xoaHoSoBenhAn();
+            }
+        });
+        hoSoBenhAnTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                showPopup(e);
+            }            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                // Make sure the row is selected when right-clicking
+                int row = hoSoBenhAnTable.rowAtPoint(e.getPoint());
+                if (row >= 0 && row < hoSoBenhAnTable.getRowCount()) {
+                    hoSoBenhAnTable.setRowSelectionInterval(row, row);
+                } else {
+                    hoSoBenhAnTable.clearSelection();
+                }                
+                showPopup(e);
+            }            
+            private void showPopup(MouseEvent e) {
+                if (e.isPopupTrigger() && hoSoBenhAnTable.getSelectedRow() != -1) {
+                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+        });
+    }
 
-        popupMenu.add(viewDetailsItem);
-        popupMenu.add(editItem);
-        popupMenu.add(deleteItem);
-
-        // Customize popup menu appearance
-        popupMenu.setBackground(Color.WHITE);
-        popupMenu.setBorderPainted(true);
-
-        // Show the popup menu
-        popupMenu.show(invoker, x, y);
+    private JMenuItem createStyledMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(regularFont);
+        menuItem.setBackground(panelColor);
+        menuItem.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        return menuItem;
     }
 
     private void loadDanhSachBenhNhan() {
@@ -450,7 +492,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             }
             
             if (danhSachTimKiem.isEmpty()) {
-                showInfoMessage("Không tìm thấy kết quả phù hợp.");
+            	showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
             }
         } catch (Exception e) {
             showErrorMessage("Lỗi tìm kiếm", "Không thể thực hiện tìm kiếm: " + e.getMessage());
@@ -797,16 +839,69 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         dialog.setVisible(true);
     }
 
-    private void showInfoMessage(String message) {
-        JOptionPane optionPane = new JOptionPane(
-            message,
-            JOptionPane.INFORMATION_MESSAGE
-        );
-        JDialog dialog = optionPane.createDialog("Thông báo");
-        dialog.setAlwaysOnTop(true);
-        dialog.setVisible(true);
-    }
+    private void showNotification(String message, NotificationType type) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);
 
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(type.color);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+
+        JLabel titleLabel = new JLabel(type.title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(Color.WHITE);
+        toastPanel.add(titleLabel);
+        
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);
+
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+
+        // Position at bottom right
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );
+
+        toastDialog.setVisible(true);
+
+        // Auto-hide after 3 seconds
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    public enum NotificationType {
+        SUCCESS(new Color(86, 156, 104), "Thành công"),
+        WARNING(new Color(237, 187, 85), "Cảnh báo"),
+        ERROR(new Color(192, 80, 77), "Lỗi");
+        
+        private final Color color;
+        private final String title;
+        
+        NotificationType(Color color, String title) {
+            this.color = color;
+            this.title = title;
+        }
+    }
     private void showWarningMessage(String message) {
         JOptionPane optionPane = new JOptionPane(
             message,

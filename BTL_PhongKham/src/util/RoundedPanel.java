@@ -3,6 +3,7 @@ package util;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 
 import javax.swing.JPanel;
@@ -10,14 +11,17 @@ import javax.swing.JPanel;
 public class RoundedPanel extends JPanel {
     private int cornerRadius;
     private boolean shadowEnabled;
-    
     public RoundedPanel(int radius, boolean shadow) {
         super();
         this.cornerRadius = radius;
         this.shadowEnabled = shadow;
         setOpaque(false);
     }
-    
+    public RoundedPanel(int radius, LayoutManager layout) {
+        super(layout);
+        this.cornerRadius = radius;
+        setOpaque(false);
+    }
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

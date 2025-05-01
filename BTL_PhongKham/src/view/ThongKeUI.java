@@ -8,7 +8,7 @@ public class ThongKeUI extends JPanel {
     private JTabbedPane tabbedPane;
     private ThongKeDoanhThuPanel doanhThuPanel;
     private ThongKeBacSiPanel bacSiPanel;
-    private ThongKeLichHenKhachHangPanel lichHenKhachHangPanel;
+    private ThongKeLichHenPanel lichHenKhachHangPanel;
     private ThongKeKhoVatTuPanel khoVatTuPanel;
 
     public ThongKeUI() {
@@ -18,31 +18,23 @@ public class ThongKeUI extends JPanel {
 
     private void initComponents() {
         tabbedPane = new JTabbedPane();
-        
-        // Khởi tạo các panel thống kê
+
         doanhThuPanel = new ThongKeDoanhThuPanel();
         bacSiPanel = new ThongKeBacSiPanel();
-        lichHenKhachHangPanel = new ThongKeLichHenKhachHangPanel();
+        lichHenKhachHangPanel = new ThongKeLichHenPanel();
         khoVatTuPanel = new ThongKeKhoVatTuPanel();
-        
-        // Thêm các panel vào JTabbedPane với tiêu đề và icon
-        ImageIcon doanhThuIcon = new ImageIcon(getClass().getResource("/icons/doanhthu.png"));
-        ImageIcon bacSiIcon = new ImageIcon(getClass().getResource("/icons/bacsi.png"));
-        ImageIcon lichHenIcon = new ImageIcon(getClass().getResource("/icons/lichhen.png"));
-        ImageIcon khoVatTuIcon = new ImageIcon(getClass().getResource("/icons/khovattu.png"));
-        
-        tabbedPane.addTab("Doanh Thu", doanhThuIcon, doanhThuPanel);
-        tabbedPane.addTab("Bác sĩ", bacSiIcon, bacSiPanel);
-        tabbedPane.addTab("Lịch hẹn & Khách hàng", lichHenIcon, lichHenKhachHangPanel);
-        tabbedPane.addTab("Kho vật tư", khoVatTuIcon, khoVatTuPanel);
-        
-        // Thiết lập tab appearance
+        tabbedPane.addTab("Doanh Thu", doanhThuPanel);
+        tabbedPane.addTab("Bác sĩ", bacSiPanel);
+        tabbedPane.addTab("Lịch hẹn & Khách hàng", lichHenKhachHangPanel);
+        tabbedPane.addTab("Kho vật tư", khoVatTuPanel);
+
         tabbedPane.setFont(new Font("Arial", Font.BOLD, 14));
         tabbedPane.setBackground(new Color(240, 240, 240));
-        
+
         add(tabbedPane, BorderLayout.CENTER);
         setBorder(new EmptyBorder(10, 10, 10, 10));
     }
+
     
     public static void main(String[] args) {
         try {

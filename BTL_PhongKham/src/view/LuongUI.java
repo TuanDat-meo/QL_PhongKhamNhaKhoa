@@ -69,7 +69,6 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
     private JTextField txtKhauTru;
     private JTextField txtTongLuong;
     private JButton btnThem;
-    private JButton btnLamMoi;
     private JButton btnTimKiem;
     private JButton btnXuatFile;
     private com.toedter.calendar.JDateChooser dateThangNam;
@@ -446,12 +445,6 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
         
-        // Initialize btnLamMoi (Refresh button)
-        btnLamMoi = createRoundedButton("Làm mới", secondaryColor, buttonTextColor, 10);
-        btnLamMoi.setPreferredSize(new Dimension(100, 45));
-        btnLamMoi.addActionListener(e -> lamMoi());
-        
-        // Create Export Button
         btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
@@ -461,8 +454,6 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> showLuongDialog(null, DialogMode.ADD));
                 
-        // Add buttons to panel
-        buttonPanel.add(btnLamMoi);
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThem);
         
@@ -652,12 +643,30 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         }
     }
     private void timKiem() {
-        String keyword = txtTimKiem.getText().trim();        
+    	String keyword = txtTimKiem.getText().trim();
+        
+        // Nếu từ khóa trống thì làm mới dữ liệu
         if (keyword.isEmpty()) {
             lamMoi();
             showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            return;
+        }
+        
+        // Lưu lại số lượng hàng trước khi tìm kiếm
+        int rowCountBefore = modelLuong.getRowCount();
+        
+        // Thực hiện tìm kiếm
+        controller.timKiemLuong(keyword);
+        
+        // Lấy số lượng kết quả tìm thấy
+        int rowCountAfter = modelLuong.getRowCount();
+        
+        // Hiển thị thông báo dựa trên kết quả tìm kiếm
+        if (rowCountAfter > 0) {
+            String message = String.format("Tìm thấy %d kết quả phù hợp!", rowCountAfter);
+            showNotification(message, NotificationType.SUCCESS);
         } else {
-            controller.timKiemLuong(keyword);
+            showNotification("Không tìm thấy kết quả phù hợp!", NotificationType.WARNING);
         }
     }
     private enum DialogMode {
