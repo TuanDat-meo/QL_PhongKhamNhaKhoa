@@ -589,19 +589,19 @@ public class LoginFrame extends JFrame {
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
-    
-    public static void main(String[] args) {
-        try {
-            UIManager.put("TextField.arc", RADIUS);
-            UIManager.put("Button.arc", RADIUS);
-            UIManager.put("Component.arc", RADIUS);
-            UIManager.put("TextComponent.arc", RADIUS);
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        SwingUtilities.invokeLater(() -> {
-            new LoginFrame();
-        });
-    }
+//    
+//    public static void main(String[] args) {
+//        try {
+//            UIManager.put("TextField.arc", RADIUS);
+//            UIManager.put("Button.arc", RADIUS);
+//            UIManager.put("Component.arc", RADIUS);
+//            UIManager.put("TextComponent.arc", RADIUS);
+//            
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        SwingUtilities.invokeLater(() -> {
+//            new LoginFrame();
+//        });
+//    }
 }
