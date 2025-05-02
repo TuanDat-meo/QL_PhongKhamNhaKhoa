@@ -1,2 +1,9 @@
-/view/
 /controller/
+/view/
+/connect/
+/data/
+/database.properties
+/database.sql
+/image/
+/model/
+/util/
