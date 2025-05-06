@@ -4,10 +4,24 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
 import java.awt.event.MouseEvent;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.regex.Pattern;
+
+// Thêm imports cho Excel
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+// Thêm imports cho PDF
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.*;
+import com.itextpdf.text.Rectangle;
 
 /**
  * Lớp tiện ích để xuất dữ liệu từ JTable sang các định dạng CSV và khác
@@ -27,7 +41,7 @@ public class ExportManager {
     public interface MessageCallback {
         void showSuccessToast(String message);
         void showErrorMessage(String title, String message);
-		void showMessage(String message, String title, int messageType);
+        void showMessage(String message, String title, int messageType);
     }
 
     // Fields
@@ -42,6 +56,7 @@ public class ExportManager {
         this.callback = callback;
         this.defaultFileName = generateDefaultFileName();
     }
+    
     public void showExportOptions(Color primaryColor, Color secondaryColor, Color buttonTextColor) {
         // Tạo dialog chính
         JDialog exportDialog = createDialog();
@@ -67,6 +82,7 @@ public class ExportManager {
         exportDialog.setContentPane(mainPanel);
         exportDialog.setVisible(true);
     }
+    
     private JDialog createDialog() {
         JDialog exportDialog = new JDialog(SwingUtilities.getWindowAncestor(parentComponent), "Xuất dữ liệu");
         exportDialog.setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
@@ -75,6 +91,7 @@ public class ExportManager {
         exportDialog.setModal(true);
         return exportDialog;
     }
+    
     private JPanel createHeaderPanel(Color primaryColor) {
         JPanel headerPanel = new JPanel(new BorderLayout(10, 0));
         headerPanel.setBackground(Color.WHITE);
@@ -97,6 +114,7 @@ public class ExportManager {
         
         return titlePanel;
     }
+    
     private JPanel createContentPanel() {
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
@@ -115,6 +133,7 @@ public class ExportManager {
         
         return contentPanel;
     }
+    
     private JPanel createFileNamePanel() {
         JPanel fileNamePanel = new JPanel(new BorderLayout(10, 5));
         fileNamePanel.setBackground(Color.WHITE);
@@ -142,6 +161,7 @@ public class ExportManager {
         
         return fileNamePanel;
     }
+    
     private JPanel createFormatPanel() {
         JPanel formatPanel = new JPanel(new BorderLayout());
         formatPanel.setBackground(Color.WHITE);
@@ -178,6 +198,7 @@ public class ExportManager {
         
         return formatPanel;
     }
+    
     private JRadioButton createFormatRadioButton(String text, boolean selected) {
         JRadioButton radioButton = new JRadioButton(text);
         radioButton.setFont(LABEL_FONT);
@@ -186,6 +207,7 @@ public class ExportManager {
         radioButton.setFocusPainted(false);
         return radioButton;
     }
+    
     private JPanel createButtonPanel(Color primaryColor, Color secondaryColor, Color buttonTextColor, JDialog exportDialog) {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Color.WHITE);
@@ -203,6 +225,7 @@ public class ExportManager {
         
         return buttonPanel;
     }
+    
     private JButton createButton(String text, Color bgColor, Color fgColor) {
         JButton button = new JButton(text);
         button.setFont(BUTTON_FONT);
@@ -227,10 +250,12 @@ public class ExportManager {
         
         return button;
     }
+    
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
+    
     private void handleExport(JDialog exportDialog) {
         // Lấy tên tệp từ TextField
         JTextField fileNameField = (JTextField) findComponentByName(exportDialog, "fileNameField");
@@ -248,6 +273,7 @@ public class ExportManager {
         exportData(fileName, format);
         exportDialog.dispose();
     }
+    
     private Component findComponentByName(Container container, String name) {
         for (Component comp : container.getComponents()) {
             if (name.equals(comp.getName())) {
@@ -261,6 +287,7 @@ public class ExportManager {
         }
         return null;
     }
+    
     private String determineSelectedFormat(JDialog dialog) {
         JRadioButton csvRadio = (JRadioButton) findComponentByName(dialog, "csvRadio");
         JRadioButton excelRadio = (JRadioButton) findComponentByName(dialog, "excelRadio");
@@ -272,6 +299,7 @@ public class ExportManager {
         
         return "csv"; // Mặc định
     }
+    
     private void exportData(String baseFileName, String format) {
         // Chuẩn bị thông tin cho định dạng tệp tin
         FileFormatInfo formatInfo = getFileFormatInfo(format);
@@ -311,6 +339,7 @@ public class ExportManager {
             }
         }
     }
+    
     private static class FileFormatInfo {
         String extension;
         String description;
@@ -320,6 +349,7 @@ public class ExportManager {
             this.description = description;
         }
     }
+    
     private FileFormatInfo getFileFormatInfo(String format) {
         switch (format) {
             case "excel":
@@ -331,6 +361,7 @@ public class ExportManager {
                 return new FileFormatInfo("csv", "CSV Files (*.csv)");
         }
     }
+    
     private JFileChooser configureFileChooser(String baseFileName, FileFormatInfo formatInfo) {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Chọn vị trí lưu tệp tin");
@@ -339,6 +370,7 @@ public class ExportManager {
                 formatInfo.description, formatInfo.extension));
         return fileChooser;
     }
+    
     private File ensureFileExtension(File file, String extension) {
         String filePath = file.getAbsolutePath();
         if (!filePath.toLowerCase().endsWith("." + extension)) {
@@ -346,67 +378,312 @@ public class ExportManager {
         }
         return file;
     }
+    
+    
     private void exportToExcel(File file) throws IOException {
-        JOptionPane.showMessageDialog(parentComponent,
-            "Chức năng xuất Excel cần thư viện Apache POI.\n" +
-            "Vui lòng thêm thư viện và cập nhật mã nguồn.",
-            "Chức năng chưa khả dụng",
-            JOptionPane.INFORMATION_MESSAGE);
-    }
-    private void exportToPDF(File file) throws Exception {
-        JOptionPane.showMessageDialog(parentComponent,
-            "Chức năng xuất PDF cần thư viện iText.\n" +
-            "Vui lòng thêm thư viện và cập nhật mã nguồn.",
-            "Chức năng chưa khả dụng",
-            JOptionPane.INFORMATION_MESSAGE);
-    }
-    private void exportToCSV(File file) throws IOException {
-        try (FileWriter fw = new FileWriter(file);
-             BufferedWriter bw = new BufferedWriter(fw)) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Data");
+            
+            // Tạo font đậm cho tiêu đề
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            
+            // Tạo CellStyle cho tiêu đề
+            CellStyle headerCellStyle = workbook.createCellStyle();
+            headerCellStyle.setFont(headerFont);
+            headerCellStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerCellStyle.setBorderBottom(BorderStyle.THIN);
+            headerCellStyle.setBorderTop(BorderStyle.THIN);
+            headerCellStyle.setBorderLeft(BorderStyle.THIN);
+            headerCellStyle.setBorderRight(BorderStyle.THIN);
+            headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
+            
+            // Tạo CellStyle cho số điện thoại và CCCD - định dạng văn bản
+            CellStyle textCellStyle = workbook.createCellStyle();
+            DataFormat format = workbook.createDataFormat();
+            textCellStyle.setDataFormat(format.getFormat("@"));
+            
+            // Tạo CellStyle cho ngày tháng
+            CellStyle dateCellStyle = workbook.createCellStyle();
+            dateCellStyle.setDataFormat(format.getFormat("dd/mm/yyyy"));
+            
+            // Tạo CellStyle cho dữ liệu thông thường
+            CellStyle normalCellStyle = workbook.createCellStyle();
+            normalCellStyle.setBorderBottom(BorderStyle.THIN);
+            normalCellStyle.setBorderTop(BorderStyle.THIN);
+            normalCellStyle.setBorderLeft(BorderStyle.THIN);
+            normalCellStyle.setBorderRight(BorderStyle.THIN);
             
             // Ghi tiêu đề cột
-            writeCSVHeader(bw);
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < tableModel.getColumnCount(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(tableModel.getColumnName(i));
+                cell.setCellStyle(headerCellStyle);
+            }
             
-            // Ghi dữ liệu hàng
-            writeCSVData(bw);
-        }
-    }
-    private void writeCSVHeader(BufferedWriter bw) throws IOException {
-        for (int i = 0; i < tableModel.getColumnCount(); i++) {
-            bw.write(escapeCSV(tableModel.getColumnName(i)));
-            if (i < tableModel.getColumnCount() - 1) {
-                bw.write(",");
+            // Ghi dữ liệu
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                Row row = sheet.createRow(i + 1);
+                
+                for (int j = 0; j < tableModel.getColumnCount(); j++) {
+                    Cell cell = row.createCell(j);
+                    Object value = tableModel.getValueAt(i, j);
+                    String colName = tableModel.getColumnName(j).toLowerCase();
+                    
+                    if (value == null) {
+                        cell.setCellValue("");
+                    } else if (value instanceof Number && 
+                              (colName.contains("cccd") || 
+                               colName.contains("phone") || 
+                               colName.contains("điện thoại") || 
+                               colName.contains("thoại"))) {
+                        // Định dạng số điện thoại và CCCD như văn bản
+                        cell.setCellValue(String.format("%.0f", ((Number)value).doubleValue()));
+                        cell.setCellStyle(textCellStyle);
+                    } else if (value instanceof Date) {
+                        // Định dạng ngày tháng
+                        cell.setCellValue((Date)value);
+                        cell.setCellStyle(dateCellStyle);
+                    } else if (value instanceof Number) {
+                        cell.setCellValue(((Number)value).doubleValue());
+                    } else {
+                        cell.setCellValue(value.toString());
+                    }
+                    
+                    cell.setCellStyle(normalCellStyle);
+                }
+            }
+            
+            // Tự động điều chỉnh độ rộng cột
+            for (int i = 0; i < tableModel.getColumnCount(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            // Ghi workbook ra file
+            try (FileOutputStream fileOut = new FileOutputStream(file)) {
+                workbook.write(fileOut);
             }
         }
-        bw.newLine();
     }
-    private void writeCSVData(BufferedWriter bw) throws IOException {
+    
+    /**
+     * Xuất dữ liệu sang định dạng PDF
+     */
+    private void exportToPDF(File file) throws Exception {
+        Document document = new Document(PageSize.A4.rotate(), 36, 36, 50, 36);
+        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(file));
+        
+        // Thêm header và footer
+        writer.setPageEvent(new PDFHeaderFooter());
+        
+        document.open();
+        
+        // Thêm tiêu đề
+        com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 16, com.itextpdf.text.Font.BOLD);
+        Paragraph title = new Paragraph("BÁO CÁO DỮ LIỆU", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+        
+        // Thêm ngày tháng
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        String dateString = "Ngày xuất: " + sdf.format(new Date());
+        Paragraph dateParagraph = new Paragraph(dateString);
+        dateParagraph.setAlignment(Element.ALIGN_RIGHT);
+        dateParagraph.setSpacingAfter(20);
+        document.add(dateParagraph);
+        
+        // Tạo bảng
+        PdfPTable table = new PdfPTable(tableModel.getColumnCount());
+        table.setWidthPercentage(100);
+        
+        // Định nghĩa font
+        com.itextpdf.text.Font headerFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 12, com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font contentFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 11, com.itextpdf.text.Font.NORMAL);
+        
+        // Thiết lập header cho bảng
+        for (int i = 0; i < tableModel.getColumnCount(); i++) {
+            PdfPCell cell = new PdfPCell(new Phrase(tableModel.getColumnName(i), headerFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            cell.setPadding(5);
+            table.addCell(cell);
+        }
+        
+        // Thiết lập nội dung bảng
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 0; j < tableModel.getColumnCount(); j++) {
                 Object value = tableModel.getValueAt(i, j);
-                String cellText = value != null ? value.toString() : "";
-                bw.write(escapeCSV(cellText));
+                String text;
+                String colName = tableModel.getColumnName(j).toLowerCase();
+                
+                if (value == null) {
+                    text = "";
+                } else if (value instanceof Date) {
+                    // Định dạng ngày tháng
+                    text = sdf.format((Date)value);
+                } else if (value instanceof Number && 
+                          (colName.contains("cccd") || 
+                           colName.contains("phone") || 
+                           colName.contains("điện thoại") || 
+                           colName.contains("thoại"))) {
+                    // Định dạng số điện thoại và CCCD
+                    text = String.format("%.0f", ((Number)value).doubleValue());
+                } else {
+                    text = value.toString();
+                }
+                
+                // Tạo ô
+                PdfPCell cell = new PdfPCell(new Phrase(text, contentFont));
+                cell.setPadding(5);
+                
+                // Căn giữa nếu là số
+                if (value instanceof Number && 
+                    !(colName.contains("cccd") || 
+                      colName.contains("phone") || 
+                      colName.contains("điện thoại") || 
+                      colName.contains("thoại"))) {
+                    cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                }
+                
+                // Thêm ô vào bảng
+                table.addCell(cell);
+            }
+        }
+        
+        // Thêm bảng vào tài liệu
+        document.add(table);
+        
+        // Đóng tài liệu
+        document.close();
+    }
+    
+    /**
+     * Class để tạo header/footer cho PDF
+     */
+    private class PDFHeaderFooter extends PdfPageEventHelper {
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            // Footer
+            PdfContentByte cb = writer.getDirectContent();
+            com.itextpdf.text.Font font = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 8);
+            
+            // Tạo ô chứa số trang
+            Phrase footer = new Phrase("Trang " + writer.getPageNumber(), font);
+            ColumnText.showTextAligned(cb, Element.ALIGN_CENTER, footer, 
+                (document.right() - document.left()) / 2 + document.leftMargin(), 
+                document.bottom() - 10, 0);
+        }
+    }
+    
+    private void exportToCSV(File file) throws IOException {
+        // Thêm BOM UTF-8 để Excel nhận dạng đúng tiếng Việt
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            // Thêm BOM (Byte Order Mark) cho UTF-8
+            fos.write(0xEF);
+            fos.write(0xBB);
+            fos.write(0xBF);
+            
+            // Tiếp tục ghi nội dung CSV với UTF-8
+            try (OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+                 BufferedWriter bw = new BufferedWriter(osw)) {
+                
+                // Ghi tiêu đề cột
+                writeCSVHeader(bw);
+                
+                // Ghi dữ liệu hàng
+                writeCSVData(bw);
+            }
+        }
+    }
+    
+    private void writeCSVHeader(BufferedWriter bw) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        
+        for (int i = 0; i < tableModel.getColumnCount(); i++) {
+            String columnName = tableModel.getColumnName(i);
+            
+            sb.append(escapeCSV(columnName));
+            if (i < tableModel.getColumnCount() - 1) {
+                sb.append(",");
+            }
+        }
+        
+        bw.write(sb.toString());
+        bw.newLine();
+    }
+    
+    private void writeCSVData(BufferedWriter bw) throws IOException {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            StringBuilder sb = new StringBuilder();
+            
+            for (int j = 0; j < tableModel.getColumnCount(); j++) {
+                Object value = tableModel.getValueAt(i, j);
+                String cellText;
+                String colName = tableModel.getColumnName(j).toLowerCase();
+                
+                // Xử lý đặc biệt cho các kiểu dữ liệu khác nhau
+                if (value == null) {
+                    cellText = "";
+                } else if (value instanceof Date) {
+                    // Định dạng ngày tháng
+                    cellText = sdf.format((Date)value);
+                } else if (value instanceof Number && 
+                          (colName.contains("cccd") || 
+                           colName.contains("phone") || 
+                           colName.contains("điện thoại") || 
+                           colName.contains("thoại"))) {
+                    // Định dạng số điện thoại và CCCD như văn bản (không có dấu phẩy, không ký hiệu khoa học)
+                    cellText = String.format("%.0f", ((Number) value).doubleValue());
+                } else {
+                    cellText = value.toString();
+                }
+                
+                sb.append(escapeCSV(cellText));
                 
                 if (j < tableModel.getColumnCount() - 1) {
-                    bw.write(",");
+                    sb.append(",");
                 }
             }
+            
+            bw.write(sb.toString());
             bw.newLine();
         }
     }
-    private String escapeCSV(String text) {
-        if (text == null) {
+    private String normalizeString(String text) {
+        if (text == null || text.isEmpty()) {
             return "";
         }
         
-        boolean needQuotes = text.contains(",") || text.contains("\"") || text.contains("\n");
+        // Bước 1: Chuẩn hóa Unicode (ví dụ: chuyển "ế" thành "e")
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKD);
         
-        if (needQuotes) {
-            return "\"" + text.replace("\"", "\"\"") + "\"";
-        } else {
-            return text;
-        }
+        // Bước 2: Loại bỏ các ký tự dấu
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        normalized = pattern.matcher(normalized).replaceAll("");
+        
+        // Bước 3: Thay thế các ký tự đặc biệt bằng khoảng trắng hoặc ký tự an toàn
+        normalized = normalized.replaceAll("[^\\p{ASCII}]", "");
+        
+        // Bước 4: Loại bỏ các ký tự có thể gây vấn đề cho CSV
+        normalized = normalized.replace("\r", " ").replace("\n", " ");
+        
+        // Trả về chuỗi đã xử lý
+        return normalized.trim();
     }
+    private String escapeCSV(String text) {
+        if (text == null || text.isEmpty()) {
+            return "\"\"";
+        }
+        
+        // Luôn đặt trong dấu ngoặc kép để đảm bảo tính nhất quán và hỗ trợ Unicode
+        return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+    
     private String generateDefaultFileName() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         return "export_data_" + sdf.format(new Date());
