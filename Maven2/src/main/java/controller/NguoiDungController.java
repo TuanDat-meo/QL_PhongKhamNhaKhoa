@@ -143,7 +143,7 @@ public class NguoiDungController {
             statement.setString(4, nguoiDung.getMatKhau());
             statement.setDate(5, nguoiDung.getNgaySinh());
             statement.setString(6, nguoiDung.getGioiTinh());
-            statement.setString(7, nguoiDung.getVaiTro() != null ? nguoiDung.getVaiTro() : "USER"); // Mặc định là USER
+            statement.setString(7, nguoiDung.getVaiTro() != null ? nguoiDung.getVaiTro() : null); // Mặc định là USER
 
             int rowsInserted = statement.executeUpdate();
             success = (rowsInserted > 0);
@@ -539,7 +539,7 @@ public class NguoiDungController {
             // Default values for new user
             String gender = "Unknown"; // Default gender
             Date birthDate = null;     // Default birth date (null)
-            String role = "USER";      // Default role
+            String role = null;      // Default role
             
             String query = "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, NgaySinh, GioiTinh, VaiTro) " +
                            "VALUES (?, ?, ?, ?, ?, ?, ?)";
