@@ -36,7 +36,7 @@
           </descriptorRefs>
           <archive>
             <manifest>
-              <mainClass>view.GiaoDienChinh</mainClass>
+              <mainClass>view.LoginFrame</mainClass>
             </manifest>
           </archive>
         </configuration>
