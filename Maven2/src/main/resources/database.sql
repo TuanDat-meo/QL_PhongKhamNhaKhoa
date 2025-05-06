@@ -196,10 +196,11 @@ INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, v
 (N'Lê Văn C', N'letan@gmail.com', N'letan123', N'0905123456', '1992-07-10', N'Nam', N'Lễ tân'),
 (N'Hoàng Thị D', N'ketoan@gmail.com', N'ketoan123', N'0934567890', '1988-11-30', N'Nữ', N'Kế toán'),
 (N'Phạm Văn E', N'quankho@gmail.com', N'quankho123', N'0976543210', '1995-03-25', N'Nam', N'Quản kho');
+
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
-(N'Nguyễn Thị F', N'nguoidung1@gmail.com', N'user123', N'0963333333', '2000-01-15', N'Nữ', N'Người dùng'),
-(N'Đinh Công G', N'nguoidung2@gmail.com', N'password456', N'0911222222', '1998-06-22', N'Nam', N'Người dùng'),
-(N'Vũ Thu H', N'vuthuh@example.com', N'secure789', N'0909888888', '2003-12-01', N'Nữ', N'Người dùng');
+(N'Nguyễn Thị F', N'nguoidung1@gmail.com', N'user123', N'0963333333', '2000-01-15', N'Nữ',null),
+(N'Đinh Công G', N'nguoidung2@gmail.com', N'password456', N'0911222222', '1998-06-22', N'Nam', null),
+(N'Vũ Thu H', N'vuthuh@example.com', N'secure789', N'0909888888', '2003-12-01', N'Nữ',null);
 -- Thêm dữ liệu mẫu vào bảng BenhNhan
 INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALUES
 (N'Trần Minh Hoàng', '1990-07-15', N'Nam', N'0978123456', N'234567890123', N'Đà Nẵng'),

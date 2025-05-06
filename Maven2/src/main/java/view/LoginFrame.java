@@ -404,13 +404,32 @@ public class LoginFrame extends JFrame {
             if (!isValid) {
                 return; 
             }
+            
             NguoiDung loggedInUser = NguoiDungController.checkLoginAndGetUser(email, password);
             if (loggedInUser != null) {
                 showNotification("Đăng nhập thành công!", NotificationType.SUCCESS);
-                try {
-                    new GiaoDienChinh(loggedInUser).setVisible(true);
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
+                
+                // Kiểm tra vai trò người dùng
+                String vaiTro = loggedInUser.getVaiTro();
+                
+                // Nếu vai trò là null hoặc "khach_hang", mở GiaoDienKhachHang
+                if (vaiTro == null || vaiTro.equals("khach_hang")) {
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            new GiaoDienKhachHang(loggedInUser).setVisible(true);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            showNotification("Lỗi khởi tạo giao diện: " + ex.getMessage(), NotificationType.ERROR);
+                        }
+                    });
+                } else {
+                    // Vai trò khác (nhân viên, quản trị viên) mở GiaoDienChinh
+                    try {
+                        new GiaoDienChinh(loggedInUser).setVisible(true);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        showNotification("Lỗi khởi tạo giao diện: " + ex.getMessage(), NotificationType.ERROR);
+                    }
                 }
                 dispose();
             } else {
@@ -589,19 +608,19 @@ public class LoginFrame extends JFrame {
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
-//    
-//    public static void main(String[] args) {
-//        try {
-//            UIManager.put("TextField.arc", RADIUS);
-//            UIManager.put("Button.arc", RADIUS);
-//            UIManager.put("Component.arc", RADIUS);
-//            UIManager.put("TextComponent.arc", RADIUS);
-//            
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        SwingUtilities.invokeLater(() -> {
-//            new LoginFrame();
-//        });
-//    }
+    
+    public static void main(String[] args) {
+        try {
+            UIManager.put("TextField.arc", RADIUS);
+            UIManager.put("Button.arc", RADIUS);
+            UIManager.put("Component.arc", RADIUS);
+            UIManager.put("TextComponent.arc", RADIUS);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        SwingUtilities.invokeLater(() -> {
+            new LoginFrame();
+        });
+    }
 }
