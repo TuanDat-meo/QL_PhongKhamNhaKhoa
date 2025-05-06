@@ -25,6 +25,37 @@
 			<artifactId>jcalendar</artifactId>
 			<version>1.4</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.2.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.3</version>
+		</dependency>
+
+		<!-- For PDF support -->
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itextpdf</artifactId>
+			<version>5.5.13.3</version>
+		</dependency>
+
+		<!-- Optional: Commons Logging (used by Apache POI) -->
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.2</version>
+		</dependency>
+
+		<!-- Optional: XML APIs (may be required for certain POI features) -->
+		<dependency>
+			<groupId>xml-apis</groupId>
+			<artifactId>xml-apis</artifactId>
+			<version>1.4.01</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -53,7 +84,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>view.GiaoDienChinh</mainClass>
+							<mainClass>view.LoginFrame</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

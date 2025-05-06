@@ -28,7 +28,7 @@ public class GiaoDienKhachHang extends JFrame {
 
     // Menu items for customers
     private String[] menuItems = {
-            "Đặt Lịch Hẹn", "Dịch Vụ", "Lịch Sử Hoạt Động", "Lịch Sử Khám"
+            "Đặt Lịch Hẹn", "Dịch Vụ", "Lịch Sử Lịch Hẹn",
     };
 
     private JPanel mainPanel;
@@ -416,20 +416,15 @@ public class GiaoDienKhachHang extends JFrame {
     
     private void initializeContentPanels() {
         try {
-            // Khởi tạo các panel dành riêng cho khách hàng
             LichHenKhachHangPanel lichHenPanel = new LichHenKhachHangPanel(loggedInUser);
             contentPanel.add(lichHenPanel, "Đặt Lịch Hẹn");
             
-//            DichVuKhachHangPanel dichVuPanel = new DichVuKhachHangPanel();
-//            contentPanel.add(dichVuPanel, "Dịch Vụ");
-//            
-//            LichSuHoatDongKhachHangPanel lichSuHoatDongPanel = new LichSuHoatDongKhachHangPanel(loggedInUser);
-//            contentPanel.add(lichSuHoatDongPanel, "Lịch Sử Hoạt Động");
-//            
-//            LichSuKhamKhachHangPanel lichSuKhamPanel = new LichSuKhamKhachHangPanel(loggedInUser);
-//            contentPanel.add(lichSuKhamPanel, "Lịch Sử Khám");
-//            
-            // Hiển thị panel mặc định
+            DichVuKhachHangPanel dichVuPanel = new DichVuKhachHangPanel();
+            contentPanel.add(dichVuPanel, "Dịch Vụ");
+            
+            LichSuLichHenPanel lichSuHoatDongPanel = new LichSuLichHenPanel(loggedInUser);
+            contentPanel.add(lichSuHoatDongPanel, "Lịch Sử Lịch Hẹn");
+            
             CardLayout cl = (CardLayout) contentPanel.getLayout();
             cl.show(contentPanel, "Đặt Lịch Hẹn");
             
@@ -474,26 +469,26 @@ public class GiaoDienKhachHang extends JFrame {
             });
         }
     }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                // For testing only - in production, this would come from login
-                NguoiDung testUser = new NguoiDung();
-                testUser.setIdNguoiDung(1);
-                testUser.setHoTen("Khách Hàng Test");
-                testUser.setVaiTro("khach_hang");
-                
-                new GiaoDienKhachHang(testUser).setVisible(true);
-            } catch (Exception e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(
-                    null,
-                    "Lỗi khởi tạo: " + e.getMessage(),
-                    "Lỗi",
-                    JOptionPane.ERROR_MESSAGE
-                );
-            }
-        });
-    }
+//
+//    public static void main(String[] args) {
+//        SwingUtilities.invokeLater(() -> {
+//            try {
+//                // For testing only - in production, this would come from login
+//                NguoiDung testUser = new NguoiDung();
+//                testUser.setIdNguoiDung(1);
+//                testUser.setHoTen("Khách Hàng Test");
+//                testUser.setVaiTro("khach_hang");
+//                
+//                new GiaoDienKhachHang(testUser).setVisible(true);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                JOptionPane.showMessageDialog(
+//                    null,
+//                    "Lỗi khởi tạo: " + e.getMessage(),
+//                    "Lỗi",
+//                    JOptionPane.ERROR_MESSAGE
+//                );
+//            }
+//        });
+//    }
 }

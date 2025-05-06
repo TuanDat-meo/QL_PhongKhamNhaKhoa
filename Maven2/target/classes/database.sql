@@ -188,6 +188,7 @@ CREATE TABLE YeuCauLichHen (
     ngayYeuCau DATE,
     FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan)
 );
+
 -- Thêm dữ liệu mẫu vào bảng NguoiDung
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
 (N'Nguyễn Văn A', N'admin@gmail.com', N'admin123', N'0987654321', '1990-05-20', N'Nam', N'Admin'),
@@ -200,7 +201,7 @@ INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, v
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
 (N'Nguyễn Thị F', N'nguoidung1@gmail.com', N'user123', N'0963333333', '2000-01-15', N'Nữ',null),
 (N'Đinh Công G', N'nguoidung2@gmail.com', N'password456', N'0911222222', '1998-06-22', N'Nam', null),
-(N'Vũ Thu H', N'vuthuh@example.com', N'secure789', N'0909888888', '2003-12-01', N'Nữ',null);
+(N'Vũ Thu H', N'vuthuh@example.com', N'secure789', N'0909888888', '2003-12-01', N'Nữ', null);
 -- Thêm dữ liệu mẫu vào bảng BenhNhan
 INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALUES
 (N'Trần Minh Hoàng', '1990-07-15', N'Nam', N'0978123456', N'234567890123', N'Đà Nẵng'),

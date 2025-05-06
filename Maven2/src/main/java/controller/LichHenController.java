@@ -52,7 +52,46 @@ public class LichHenController {
     }
 
 
+    public List<LichHen> getLichHenByUserId(int userId) {
+        List<LichHen> dsLichHen = new ArrayList<>();
+        String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
+                     "lh.gioHen, lh.trangThai, lh.moTa " +
+                     "FROM LichHen lh " +
+                     "JOIN BacSi bs ON lh.idBacSi = bs.idBacSi " +
+                     "JOIN BenhNhan bn ON lh.idBenhNhan = bn.idBenhNhan " +
+                     "JOIN PhongKham pk ON lh.idPhongKham = pk.idPhongKham " +
+                     "WHERE bn.idNguoiDung = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                dsLichHen.add(mapResultSetToLichHen(rs));
+            }
+        } catch (SQLException e) {
+//            System.err.println("Lỗi khi lấy lịch hẹn theo người dùng: " + e.getMessage());
+        }
+        return dsLichHen;
+    }
 
+    public LichHen getLichHenById(int lichHenId) {
+        String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
+                     "lh.gioHen, lh.trangThai, lh.moTa " +
+                     "FROM LichHen lh " +
+                     "JOIN BacSi bs ON lh.idBacSi = bs.idBacSi " +
+                     "JOIN BenhNhan bn ON lh.idBenhNhan = bn.idBenhNhan " +
+                     "JOIN PhongKham pk ON lh.idPhongKham = pk.idPhongKham " +
+                     "WHERE lh.idLichHen = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, lichHenId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return mapResultSetToLichHen(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi lấy lịch hẹn theo ID: " + e.getMessage());
+        }
+        return null;
+    }
     public List<LichHen> getLichHenByDate(java.util.Date date) {
         List<LichHen> dsLichHen = new ArrayList<>();
         String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
@@ -288,11 +327,34 @@ public int getPhongKhamIdFromName(String tenPhong) {
                 dsLichHen.add(mapResultSetToLichHen(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy tất cả lịch hẹn: " + e.getMessage());
+//            System.err.println("Lỗi khi lấy tất cả lịch hẹn: " + e.getMessage());
         }
         return dsLichHen;
     }
-    
+    public LichHen getLichHenByDateAndTime(java.util.Date date, String timeSlot, String patientName) {
+        String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
+                     "lh.gioHen, lh.trangThai, lh.moTa " +
+                     "FROM LichHen lh " +
+                     "JOIN BacSi bs ON lh.idBacSi = bs.idBacSi " +
+                     "JOIN BenhNhan bn ON lh.idBenhNhan = bn.idBenhNhan " +
+                     "JOIN PhongKham pk ON lh.idPhongKham = pk.idPhongKham " +
+                     "WHERE lh.ngayHen = ? AND TIME_FORMAT(lh.gioHen, '%H:%i') = ? AND bn.hoTen LIKE ?";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, new java.sql.Date(date.getTime()));
+            stmt.setString(2, timeSlot);
+            stmt.setString(3, "%" + patientName + "%");
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return mapResultSetToLichHen(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi tìm lịch hẹn theo ngày và giờ: " + e.getMessage());
+        }
+        return null;
+    }
+
 
 
 }

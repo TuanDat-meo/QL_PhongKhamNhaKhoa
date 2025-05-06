@@ -3,7 +3,6 @@ package view;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
-import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -14,11 +13,10 @@ import java.util.*;
 import java.util.List;
 import java.sql.Date;
 import java.sql.SQLException;
-
 import com.toedter.calendar.JDateChooser;
-
 import controller.LichHenController;
 import controller.NguoiDungController;
+import controller.BenhNhanController;
 import model.LichHen;
 import model.NguoiDung;
 import util.RoundedButtonUI;
@@ -26,6 +24,8 @@ import util.ShadowBorder;
 
 public class LichHenKhachHangPanel extends JPanel {
     private LichHenController controller;
+    private BenhNhanController benhNhanController;
+    private NguoiDungController nguoiDungController;
     private JTable lichHenTable;
     private DefaultTableModel tableModel;
     private JLabel weekRangeLabel;
@@ -44,7 +44,6 @@ public class LichHenKhachHangPanel extends JPanel {
     private int selectedColumn = -1;
     private int currentUserId = -1; 
     private NguoiDung currentUser = null; 
-    // Để lưu trữ thông tin lịch hẹn đã chọn
     private LichHen selectedAppointment = null;
     
     private final String[] daysOfWeek = {"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"};
@@ -52,29 +51,29 @@ public class LichHenKhachHangPanel extends JPanel {
         "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
         "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"
     };
-    private final Color BG_PRIMARY = new Color(245, 247, 250);      // Light gray-blue background
-    private final Color BG_SECONDARY = new Color(255, 255, 255);    // White
-    private final Color BG_ACCENT = new Color(232, 240, 254);       // Very light blue
-    private final Color PRIMARY_COLOR = new Color(25, 118, 210);    // Medium blue
-    private final Color PRIMARY_DARK = new Color(21, 101, 192);     // Darker blue
-    private final Color PRIMARY_LIGHT = new Color(66, 165, 245);    // Lighter blue
-    private final Color SECONDARY_COLOR = new Color(66, 66, 66);    // Dark gray
-    private final Color ACCENT_COLOR = new Color(211, 47, 47);      // Red
-    private final Color SUCCESS_COLOR = new Color(46, 125, 50);     // Green
-    private final Color WARNING_COLOR = new Color(237, 108, 2);     // Orange
-    private final Color TEXT_PRIMARY = new Color(33, 33, 33);       // Nearly black
-    private final Color TEXT_SECONDARY = new Color(97, 97, 97);     // Medium gray
-    private final Color TEXT_LIGHT = new Color(158, 158, 158);      // Light gray
-    private final Color BORDER_COLOR = new Color(224, 224, 224);    // Light gray
-    private final Color DIVIDER_COLOR = new Color(238, 238, 238);   // Very light gray
-    private final Color COLOR_MORNING = new Color(232, 245, 253);   // Light blue for morning
-    private final Color COLOR_AFTERNOON = new Color(255, 243, 224); // Light orange for afternoon
-    private final Color COLOR_SELECTED = new Color(187, 222, 251);  // Highlighted blue when selected
-    private final Color COLOR_BOOKED = new Color(224, 242, 241);    // Mint green for booked
-    private final Color COLOR_OWN_BOOKED = new Color(200, 230, 201); // Different green for own appointments
-    private final Color TABLE_HEADER_BG = new Color(25, 118, 210);  // Header background
-    private final Color TABLE_HEADER_FG = Color.WHITE;              // Header text
-    private final Color TABLE_ROW_ALT = new Color(250, 250, 250);   // Alternate row color
+    private final Color BG_PRIMARY = new Color(245, 247, 250);
+    private final Color BG_SECONDARY = new Color(255, 255, 255);
+    private final Color BG_ACCENT = new Color(232, 240, 254);
+    private final Color PRIMARY_COLOR = new Color(25, 118, 210);
+    private final Color PRIMARY_DARK = new Color(21, 101, 192);
+    private final Color PRIMARY_LIGHT = new Color(66, 165, 245);
+    private final Color SECONDARY_COLOR = new Color(66, 66, 66);
+    private final Color ACCENT_COLOR = new Color(211, 47, 47);
+    private final Color SUCCESS_COLOR = new Color(46, 125, 50);
+    private final Color WARNING_COLOR = new Color(237, 108, 2);
+    private final Color TEXT_PRIMARY = new Color(33, 33, 33);
+    private final Color TEXT_SECONDARY = new Color(97, 97, 97);
+    private final Color TEXT_LIGHT = new Color(158, 158, 158);
+    private final Color BORDER_COLOR = new Color(224, 224, 224);
+    private final Color DIVIDER_COLOR = new Color(238, 238, 238);
+    private final Color COLOR_MORNING = new Color(232, 245, 253);
+    private final Color COLOR_AFTERNOON = new Color(255, 243, 224);
+    private final Color COLOR_SELECTED = new Color(187, 222, 251);
+    private final Color COLOR_BOOKED = new Color(224, 242, 241);
+    private final Color COLOR_OWN_BOOKED = new Color(200, 230, 201);
+    private final Color TABLE_HEADER_BG = new Color(25, 118, 210);
+    private final Color TABLE_HEADER_FG = Color.WHITE;
+    private final Color TABLE_ROW_ALT = new Color(250, 250, 250);
     private final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 20);
     private final Font FONT_SUBTITLE = new Font("Segoe UI", Font.BOLD, 14);
     private final Font FONT_HEADING = new Font("Segoe UI", Font.BOLD, 15);
@@ -83,12 +82,13 @@ public class LichHenKhachHangPanel extends JPanel {
     private final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
     private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 14);
 
-    // Map để lưu trữ thông tin lịch hẹn theo vị trí ô trên bảng
     private Map<String, LichHen> appointmentMap = new HashMap<>();
 
     public LichHenKhachHangPanel(NguoiDung user) {
         this.currentUser = user;
         controller = new LichHenController();
+        benhNhanController = new BenhNhanController();
+        nguoiDungController = new NguoiDungController();
         currentCalendar = Calendar.getInstance();
         setupUI();
         updateUIBasedOnUserRole();
@@ -100,14 +100,10 @@ public class LichHenKhachHangPanel extends JPanel {
         this.currentUserId = userId;
         
         try {
-            // Tải thông tin người dùng từ database
             NguoiDungController userController = new NguoiDungController();
             this.currentUser = userController.getNguoiDungById(userId);
             
-            // Cập nhật giao diện dựa trên vai trò người dùng
             updateUIBasedOnUserRole();
-            
-            // Load dữ liệu lịch hẹn
             loadData();
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, 
@@ -120,23 +116,15 @@ public class LichHenKhachHangPanel extends JPanel {
     private void updateUIBasedOnUserRole() {
         if (currentUser == null) return;
         
-        // Kiểm tra vai trò người dùng
         String role = currentUser.getVaiTro();
         boolean isAdmin = "ADMIN".equalsIgnoreCase(role);
         boolean isStaff = "STAFF".equalsIgnoreCase(role) || "NHÂN VIÊN".equalsIgnoreCase(role);
         
-        // Nếu là người dùng thông thường, hạn chế quyền
         if (!isAdmin && !isStaff) {
-            // Nút Xóa vẫn hiển thị nhưng sẽ kiểm tra quyền khi thực hiện xóa
             btnXoa.setVisible(true);
-            
-            // Nút Thêm chỉ thêm cho chính mình
             btnThem.setText("Đặt lịch hẹn mới");
-            
-            // Nút Cập nhật chỉ cập nhật lịch của mình
             btnCapNhat.setText("Cập nhật lịch hẹn");
         } else {
-            // Admin hoặc nhân viên có đầy đủ quyền
             btnXoa.setVisible(true);
             btnThem.setText("Thêm lịch hẹn");
             btnCapNhat.setText("Cập nhật");
@@ -178,7 +166,6 @@ public class LichHenKhachHangPanel extends JPanel {
         titleArea.add(calendarIcon);
         titleArea.add(titleLabel);
         
-        // Navigation controls in the center
         JPanel navigationArea = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         navigationArea.setBackground(BG_PRIMARY);
         
@@ -199,7 +186,6 @@ public class LichHenKhachHangPanel extends JPanel {
         navigationArea.add(weekRangeLabel);
         navigationArea.add(btnNextWeek);
         
-        // Today button on the right
         JPanel todayArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         todayArea.setBackground(BG_PRIMARY);
         
@@ -221,7 +207,6 @@ public class LichHenKhachHangPanel extends JPanel {
         topBar.add(navigationArea, BorderLayout.CENTER);
         topBar.add(todayArea, BorderLayout.EAST);
         
-        // Filter panel with improved layout
         JPanel filterPanel = createFilterPanel();
         
         headerPanel.add(topBar, BorderLayout.NORTH);
@@ -238,20 +223,17 @@ public class LichHenKhachHangPanel extends JPanel {
             new EmptyBorder(15, 15, 15, 15)
         ));
         
-        // Use a GridBagLayout for more precise control over filter components
         JPanel filtersContainer = new JPanel(new GridBagLayout());
         filtersContainer.setBackground(BG_SECONDARY);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(0, 0, 0, 15); // Space between components
+        gbc.insets = new Insets(0, 0, 0, 15);
         
-        // Date filter - using proper JDateChooser from toedter calendar
         JPanel datePanel = new JPanel(new BorderLayout(5, 5));
         datePanel.setBackground(BG_SECONDARY);
         JLabel dateLabel = new JLabel("Ngày:");
         dateLabel.setFont(FONT_BOLD);
         
-        // Create a JDateChooser from the com.toedter.calendar package
         dateChooser = new JDateChooser();
         dateChooser.setDate(new java.util.Date());
         dateChooser.setFont(FONT_REGULAR);
@@ -261,7 +243,6 @@ public class LichHenKhachHangPanel extends JPanel {
         datePanel.add(dateLabel, BorderLayout.NORTH);
         datePanel.add(dateChooser, BorderLayout.CENTER);
         
-        // Doctor filter
         JPanel doctorPanel = new JPanel(new BorderLayout(5, 5));
         doctorPanel.setBackground(BG_SECONDARY);
         JLabel doctorLabel = new JLabel("Bác sĩ:");
@@ -274,7 +255,6 @@ public class LichHenKhachHangPanel extends JPanel {
         doctorPanel.add(doctorLabel, BorderLayout.NORTH);
         doctorPanel.add(cbBacSi, BorderLayout.CENTER);
         
-        // Room filter
         JPanel roomPanel = new JPanel(new BorderLayout(5, 5));
         roomPanel.setBackground(BG_SECONDARY);
         JLabel roomLabel = new JLabel("Phòng khám:");
@@ -287,7 +267,6 @@ public class LichHenKhachHangPanel extends JPanel {
         roomPanel.add(roomLabel, BorderLayout.NORTH);
         roomPanel.add(cbPhongKham, BorderLayout.CENTER);
         
-        // Search panel with larger space
         JPanel searchPanel = new JPanel(new BorderLayout(5, 5));
         searchPanel.setBackground(BG_SECONDARY);
         
@@ -295,7 +274,7 @@ public class LichHenKhachHangPanel extends JPanel {
         searchLabel.setFont(FONT_BOLD);
         searchPanel.add(searchLabel, BorderLayout.NORTH);
         
-        JPanel searchInputPanel = new JPanel(new BorderLayout(8, 0)); // Added spacing between components
+        JPanel searchInputPanel = new JPanel(new BorderLayout(8, 0));
         searchInputPanel.setBackground(BG_SECONDARY);
         
         txtTimKiem = new JTextField();
@@ -305,8 +284,7 @@ public class LichHenKhachHangPanel extends JPanel {
             BorderFactory.createEmptyBorder(7, 10, 7, 10)
         ));
         
-        // Button panel with both search and reset
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 0)); // Added spacing between buttons
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 0));
         buttonPanel.setBackground(BG_SECONDARY);
         
         btnTimKiem = new JButton("Tìm");
@@ -327,7 +305,6 @@ public class LichHenKhachHangPanel extends JPanel {
         btnReset.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnReset.setPreferredSize(new Dimension(80, 34));
         
-        // Add hover effects
         btnTimKiem.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -359,23 +336,22 @@ public class LichHenKhachHangPanel extends JPanel {
         searchInputPanel.add(buttonPanel, BorderLayout.EAST);
         searchPanel.add(searchInputPanel, BorderLayout.CENTER);
         
-        // Add components to grid with adjusted weights
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.weightx = 0.12; // Reduce date chooser width
+        gbc.weightx = 0.12;
         filtersContainer.add(datePanel, gbc);
         
         gbc.gridx = 1;
-        gbc.weightx = 0.20; // Reduce doctor dropdown width
+        gbc.weightx = 0.20;
         filtersContainer.add(doctorPanel, gbc);
         
         gbc.gridx = 2;
-        gbc.weightx = 0.20; // Reduce room dropdown width
+        gbc.weightx = 0.20;
         filtersContainer.add(roomPanel, gbc);
         
         gbc.gridx = 3;
-        gbc.weightx = 0.48; // Increase search field width
-        gbc.insets = new Insets(0, 0, 0, 0); // Remove right margin for last component
+        gbc.weightx = 0.48;
+        gbc.insets = new Insets(0, 0, 0, 0);
         filtersContainer.add(searchPanel, gbc);
         
         filterPanel.add(filtersContainer, BorderLayout.CENTER);
@@ -385,11 +361,11 @@ public class LichHenKhachHangPanel extends JPanel {
         
         return filterPanel;
     }
+
     private JPanel createSearchButtonPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 0));
         panel.setBackground(BG_SECONDARY);
         
-        // Main search button
         btnTimKiem = new JButton("Tìm kiếm");
         btnTimKiem.setFont(FONT_BUTTON);
         btnTimKiem.setFocusPainted(false);
@@ -399,8 +375,7 @@ public class LichHenKhachHangPanel extends JPanel {
         btnTimKiem.setPreferredSize(new Dimension(120, 32));
         btnTimKiem.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Create a custom icon for the dropdown button
-        JButton dropdownButton = new JButton("\u21B3");  // Unicode arrow
+        JButton dropdownButton = new JButton("\u21B3");
         dropdownButton.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         dropdownButton.setFocusPainted(false);
         dropdownButton.setBorderPainted(false);
@@ -409,7 +384,6 @@ public class LichHenKhachHangPanel extends JPanel {
         dropdownButton.setPreferredSize(new Dimension(32, 32));
         dropdownButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Hover effect for search button
         btnTimKiem.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -422,7 +396,6 @@ public class LichHenKhachHangPanel extends JPanel {
             }
         });
         
-        // Hover effect for dropdown button
         dropdownButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -435,10 +408,8 @@ public class LichHenKhachHangPanel extends JPanel {
             }
         });
         
-        // Action listener for the main search button
         btnTimKiem.addActionListener(e -> applySearch());
         
-        // Action listener for the dropdown button to show the popup menu
         dropdownButton.addActionListener(e -> {
             JPopupMenu menu = new JPopupMenu();
             menu.setBackground(BG_SECONDARY);
@@ -453,7 +424,6 @@ public class LichHenKhachHangPanel extends JPanel {
             menu.show(dropdownButton, 0, dropdownButton.getHeight());
         });
         
-        // Add rounded corners using a border layout
         JPanel roundedPanel = new JPanel(new BorderLayout(0, 0)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -472,22 +442,19 @@ public class LichHenKhachHangPanel extends JPanel {
         
         return panel;
     }
- // Modified search button functionality
+
     private void applySearch() {
         try {
-            // Get values from filters
             String searchText = txtTimKiem.getText().trim();
             java.util.Date selectedDate = dateChooser.getDate();
             String selectedDoctor = cbBacSi.getSelectedIndex() > 0 ? cbBacSi.getSelectedItem().toString() : null;
             String selectedRoom = cbPhongKham.getSelectedIndex() > 0 ? cbPhongKham.getSelectedItem().toString() : null;
             
-            // If all filters are empty/default, just reset
             if (searchText.isEmpty() && selectedDoctor == null && selectedRoom == null) {
-                resetFilters(false); // Reset without showing notification
+                resetFilters(false);
                 return;
             }
             
-            // Update the calendar if a date is selected
             if (selectedDate != null) {
                 Calendar selectedCalendar = Calendar.getInstance();
                 selectedCalendar.setTime(selectedDate);
@@ -495,10 +462,8 @@ public class LichHenKhachHangPanel extends JPanel {
                 updateWeekLabel();
             }
             
-            // Apply filter and load data
             filterAndLoadData(selectedDoctor, selectedRoom);
             
-            // Show a concise notification about what was filtered
             StringBuilder message = new StringBuilder("Đã lọc theo: ");
             boolean hasFilter = false;
             
@@ -519,7 +484,6 @@ public class LichHenKhachHangPanel extends JPanel {
                 hasFilter = true;
             }
             
-            // Only show notification for actual filters
             if (hasFilter) {
                 JOptionPane.showMessageDialog(
                     this, 
@@ -537,8 +501,8 @@ public class LichHenKhachHangPanel extends JPanel {
             );
         }
     }
+
     private void filterAndLoadData(String doctor, String room) {
-        // Clear existing data
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 1; j < tableModel.getColumnCount(); j++) {
                 tableModel.setValueAt(null, i, j);
@@ -549,21 +513,17 @@ public class LichHenKhachHangPanel extends JPanel {
         List<LichHen> dsLichHen = controller.getAllLichHen();
         List<LichHen> filteredList = new ArrayList<>();
         
-        // Apply filters
         for (LichHen lichHen : dsLichHen) {
             boolean includeRecord = true;
             
-            // Filter by doctor if specified
             if (doctor != null && !doctor.isEmpty() && !lichHen.getHoTenBacSi().equals(doctor)) {
                 includeRecord = false;
             }
             
-            // Filter by room if specified
             if (room != null && !room.isEmpty() && !lichHen.getTenPhong().equals(room)) {
                 includeRecord = false;
             }
             
-            // Filter by search text if specified
             if (!searchText.isEmpty()) {
                 boolean matchesSearch = 
                     lichHen.getHoTenBenhNhan().toLowerCase().contains(searchText) ||
@@ -580,7 +540,6 @@ public class LichHenKhachHangPanel extends JPanel {
             }
         }
         
-        // Get the start and end of the displayed week
         Calendar startOfWeek = (Calendar) currentCalendar.clone();
         startOfWeek.set(Calendar.DAY_OF_WEEK, startOfWeek.getFirstDayOfWeek());
         startOfWeek.set(Calendar.HOUR_OF_DAY, 0);
@@ -593,7 +552,6 @@ public class LichHenKhachHangPanel extends JPanel {
         endOfWeek.set(Calendar.MINUTE, 59);
         endOfWeek.set(Calendar.SECOND, 59);
         
-        // Populate the table with filtered appointments
         for (LichHen lichHen : filteredList) {
             Calendar lichHenCal = Calendar.getInstance();
             lichHenCal.setTime(lichHen.getNgayHen());
@@ -622,7 +580,6 @@ public class LichHenKhachHangPanel extends JPanel {
                 if (row >= 0 && column > 0) {
                     String cellInfo = lichHen.getHoTenBenhNhan() + "\n" + lichHen.getTenPhong();
                     
-                    // Show doctor name if filtering by room
                     if (room != null && !room.isEmpty()) {
                         cellInfo = lichHen.getHoTenBenhNhan() + "\nBS: " + lichHen.getHoTenBacSi();
                     }
@@ -634,6 +591,7 @@ public class LichHenKhachHangPanel extends JPanel {
         
         lichHenTable.repaint();
     }
+
     private void styleComboBox(JComboBox<?> comboBox) {
         comboBox.setBackground(BG_SECONDARY);
         comboBox.setBorder(BorderFactory.createCompoundBorder(
@@ -672,11 +630,11 @@ public class LichHenKhachHangPanel extends JPanel {
         ));
         scrollPane.getViewport().setBackground(BG_SECONDARY);
         
-        // Make the scroll pane the focal point of the UI
         contentPanel.add(scrollPane, BorderLayout.CENTER);
         
         return contentPanel;
     }
+
     private JPanel createFooterPanel() {
         JPanel footerPanel = new JPanel(new BorderLayout(15, 0));
         footerPanel.setBackground(BG_PRIMARY);
@@ -935,56 +893,114 @@ public class LichHenKhachHangPanel extends JPanel {
         loadData();
     }    
     private void loadData() {
+        // Xóa dữ liệu hiện tại trong bảng
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 1; j < tableModel.getColumnCount(); j++) {
                 tableModel.setValueAt(null, i, j);
             }
         }
-        
-        List<LichHen> dsLichHen = controller.getAllLichHen();
-        
+        List<LichHen> dsLichHen = new ArrayList<>();
+        try {
+           
+            try {
+                dsLichHen = controller.getAllLichHen();
+            } catch (IllegalArgumentException e) {
+               
+                if (currentUser != null) {
+                    try {
+                        if ("PATIENT".equalsIgnoreCase(currentUser.getVaiTro()) || 
+                            "BỆNH NHÂN".equalsIgnoreCase(currentUser.getVaiTro())) {
+                            dsLichHen = controller.getLichHenByUserId(currentUser.getIdNguoiDung());
+                        } else if ("DOCTOR".equalsIgnoreCase(currentUser.getVaiTro()) || 
+                                  "BÁC SĨ".equalsIgnoreCase(currentUser.getVaiTro())) {
+                            dsLichHen = controller.layLichHenTheoBacSi(currentUser.getIdNguoiDung());
+                        } else {
+//                            dsLichHen = controller.getLichHenActiveOnly(); // Lấy lịch hẹn còn hoạt động
+                        }
+                    } catch (Exception ex) {
+                        
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            
+            e.printStackTrace();
+            }
+
         Calendar startOfWeek = (Calendar) currentCalendar.clone();
         startOfWeek.set(Calendar.DAY_OF_WEEK, startOfWeek.getFirstDayOfWeek());
         startOfWeek.set(Calendar.HOUR_OF_DAY, 0);
         startOfWeek.set(Calendar.MINUTE, 0);
         startOfWeek.set(Calendar.SECOND, 0);
-        
+
         Calendar endOfWeek = (Calendar) startOfWeek.clone();
         endOfWeek.add(Calendar.DATE, 6);
         endOfWeek.set(Calendar.HOUR_OF_DAY, 23);
         endOfWeek.set(Calendar.MINUTE, 59);
-        endOfWeek.set(Calendar.SECOND, 59);        
+        endOfWeek.set(Calendar.SECOND, 59);
+
         for (LichHen lichHen : dsLichHen) {
-            Calendar lichHenCal = Calendar.getInstance();
-            lichHenCal.setTime(lichHen.getNgayHen());
-            
-            if (lichHenCal.getTimeInMillis() >= startOfWeek.getTimeInMillis() && 
-                lichHenCal.getTimeInMillis() <= endOfWeek.getTimeInMillis()) {
-                
-                int dayOfWeek = lichHenCal.get(Calendar.DAY_OF_WEEK);
-                int column;                
-                if (dayOfWeek == Calendar.SUNDAY) {
-                    column = 7;
-                } else {
-                    column = dayOfWeek - 1;
-                }                
-                String gioHen = new SimpleDateFormat("HH:mm").format(lichHen.getGioHen());
-                int row = -1;
-                for (int i = 0; i < timeSlots.length; i++) {
-                    if (timeSlots[i].equals(gioHen)) {
-                        row = i;
-                        break;
-                    }
-                }                
-                if (row >= 0 && column > 0) {
-                    String cellInfo = lichHen.getHoTenBenhNhan() + "\n" + lichHen.getTenPhong();
-                    
-                    tableModel.setValueAt(cellInfo, row, column);
+            try {
+                // Kiểm tra null trước khi sử dụng ngàyHẹn
+                if (lichHen.getNgayHen() == null) {
+                    System.err.println("Lịch hẹn có ID " + lichHen.getIdLichHen() + " có ngày hẹn null");
+                    continue;
                 }
+                
+                Calendar lichHenCal = Calendar.getInstance();
+                lichHenCal.setTime(lichHen.getNgayHen());
+
+                if (lichHenCal.getTimeInMillis() >= startOfWeek.getTimeInMillis() &&
+                    lichHenCal.getTimeInMillis() <= endOfWeek.getTimeInMillis()) {
+
+                    int dayOfWeek = lichHenCal.get(Calendar.DAY_OF_WEEK);
+                    int column;
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        column = 7;
+                    } else {
+                        column = dayOfWeek - 1;
+                    }
+
+                    // Kiểm tra null trước khi sử dụng gioHen
+                    if (lichHen.getGioHen() == null) {
+                        System.err.println("Lịch hẹn có ID " + lichHen.getIdLichHen() + " có giờ hẹn null");
+                        continue;
+                    }
+                    
+                    String gioHen = new SimpleDateFormat("HH:mm").format(lichHen.getGioHen());
+                    int row = -1;
+                    for (int i = 0; i < timeSlots.length; i++) {
+                        if (timeSlots[i].equals(gioHen)) {
+                            row = i;
+                            break;
+                        }
+                    }
+
+                    if (row >= 0 && column > 0) {
+                        // Kiểm tra null trước khi sử dụng các trường khác
+                        String hoTenBenhNhan = lichHen.getHoTenBenhNhan() != null ? lichHen.getHoTenBenhNhan() : "Không có tên";
+                        String tenPhong = lichHen.getTenPhong() != null ? lichHen.getTenPhong() : "Không có phòng";
+                        
+                        String cellInfo = hoTenBenhNhan + "\n" + tenPhong;
+                        tableModel.setValueAt(cellInfo, row, column);
+                        
+                        // Lưu lịch hẹn vào bản đồ để sau này có thể truy xuất
+                        String cellKey = row + "-" + column;
+                        appointmentMap.put(cellKey, lichHen);
+                    }
+                }
+            } catch (Exception e) {
+                // Bắt bất kỳ lỗi nào xảy ra khi xử lý một lịch hẹn cụ thể
+                System.err.println("Lỗi khi xử lý lịch hẹn ID " + lichHen.getIdLichHen() + ": " + e.getMessage());
+                e.printStackTrace();
+                // Tiếp tục với lịch hẹn tiếp theo
+                continue;
             }
-        }        
+        }
+
         lichHenTable.repaint();
-    }    
+    }
     private void setupEventListeners() {
         btnThem.addActionListener(e -> themLichHen());
         btnCapNhat.addActionListener(e -> capNhatLichHen());
@@ -1024,6 +1040,10 @@ public class LichHenKhachHangPanel extends JPanel {
             }
         });
     }
+    private void themLichHen() {
+        JOptionPane.showMessageDialog(this, "Chức năng thêm lịch hẹn đang được phát triển!", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    }    
     private void timKiemLichHen() {
         JOptionPane.showMessageDialog(this, "Chức năng tìm kiếm đang được phát triển!", 
                 "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -1050,10 +1070,7 @@ public class LichHenKhachHangPanel extends JPanel {
             );
         }
     }
-    private void themLichHen() {
-        JOptionPane.showMessageDialog(this, "Chức năng thêm lịch hẹn đang được phát triển!", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-    }    
+    
     private void capNhatLichHen() {
         int row = lichHenTable.getSelectedRow();
         int col = lichHenTable.getSelectedColumn();
