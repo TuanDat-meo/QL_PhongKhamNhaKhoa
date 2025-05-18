@@ -633,23 +633,14 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         }
     }
 
-    private void xemChiTietHoSoBenhAn() {
-        int selectedRow = hoSoBenhAnTable.getSelectedRow();
-        if (selectedRow == -1) {
-            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
-            return;
-        }
-
+    public boolean xemChiTietHoSoBenhAn(int idHoSo) {
         try {
-            // Lấy ID hồ sơ từ hàng đã chọn
-            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
-            
             // Tìm kiếm hồ sơ bệnh án theo ID
             HoSoBenhAn hoSoBenhAn = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
             
             if (hoSoBenhAn == null) {
                 showErrorMessage("Lỗi dữ liệu", "Không tìm thấy hồ sơ bệnh án.");
-                return;
+                return false;
             }
             
             // Tìm thông tin bệnh nhân
@@ -675,14 +666,29 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             );
             
             chiTietDialog.setVisible(true);
+            return true;
         } catch (NullPointerException e) {
             showErrorMessage("Lỗi dữ liệu", "Dữ liệu hồ sơ bệnh án không đầy đủ: " + e.getMessage());
+            return false;
         } catch (ClassCastException e) {
             showErrorMessage("Lỗi dữ liệu", "Lỗi chuyển đổi kiểu dữ liệu: " + e.getMessage());
+            return false;
         } catch (Exception e) {
             showErrorMessage("Lỗi", "Không thể mở chi tiết hồ sơ bệnh án: " + e.getMessage());
             e.printStackTrace(); // Ghi log lỗi để thuận tiện cho việc debug
+            return false;
         }
+    }
+    private void xemChiTietHoSoBenhAn() {
+        int selectedRow = hoSoBenhAnTable.getSelectedRow();
+        if (selectedRow == -1) {
+            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
+            return;
+        }
+
+        // Lấy ID hồ sơ từ hàng đã chọn
+        int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
+        xemChiTietHoSoBenhAn(idHoSo);
     }
  // Helper method to format Date objects to String
     private String formatDate(Date date) {

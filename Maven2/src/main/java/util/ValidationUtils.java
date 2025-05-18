@@ -13,6 +13,17 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.CompoundBorder;
 import java.awt.Color;
 import javax.swing.JLabel;
+import javax.swing.ImageIcon;
+import java.awt.event.FocusListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.DocumentEvent;
+import java.awt.FlowLayout;
+import javax.swing.JPanel;
+import java.awt.Dimension;
+import java.awt.Font;
 
 public class ValidationUtils {
     private static final String HO_TEN_PATTERN = "^[\\p{L} .'-]+$";
@@ -24,6 +35,7 @@ public class ValidationUtils {
     private static final int MIN_PASSWORD_LENGTH = 6;
     
     private static final Color ERROR_COLOR = new Color(220, 53, 69);
+    private static final Color SUCCESS_COLOR = new Color(40, 167, 69);
     private static final Color BORDER_COLOR = new Color(226, 230, 234);
     
     private static final String FIELD_EMPTY_ERROR = "%s không được để trống";
@@ -42,22 +54,171 @@ public class ValidationUtils {
     private static final String PHONE_ERROR = "Số điện thoại không hợp lệ";
     private static final String PHONE_EMPTY_ERROR = "Số điện thoại không được để trống";
     
+    // Icons for validation state - These should be added to your project resources
+    private static ImageIcon successIcon;
+    private static ImageIcon errorIcon;
+    
+    static {
+        try {
+            // Initialize icons - replace with actual paths to your icons
+            // These could be replaced with actual paths to icons in your project
+            successIcon = new ImageIcon(ValidationUtils.class.getResource("/resources/icons/check.png"));
+            errorIcon = new ImageIcon(ValidationUtils.class.getResource("/resources/icons/error.png"));
+            
+            // If icons can't be loaded, they will be null and won't be displayed
+        } catch (Exception e) {
+            // Handle icon loading errors silently
+            successIcon = null;
+            errorIcon = null;
+        }
+    }
+    
+    // New method to create validation feedback components
+    public static JPanel createValidationPanel(JComponent inputComponent, String fieldName, boolean required) {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        panel.setBackground(Color.WHITE);
+        
+        // Create label for field name
+        JLabel nameLabel = new JLabel(fieldName + (required ? " *" : ""));
+        nameLabel.setForeground(new Color(33, 37, 41)); // Dark text color
+        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        
+        // Create label for validation state
+        JLabel validationLabel = new JLabel();
+        validationLabel.setPreferredSize(new Dimension(20, 20));
+        
+        // Add document listener to input component
+        if (inputComponent instanceof JTextField) {
+            JTextField textField = (JTextField) inputComponent;
+            textField.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    updateValidationState();
+                }
+                
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    updateValidationState();
+                }
+                
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    updateValidationState();  
+                }
+                
+                private void updateValidationState() {
+                    // This will be implemented based on specific field validation
+                    validationLabel.setIcon(null); // Reset icon during typing
+                }
+            });
+        }
+        
+        panel.add(nameLabel);
+        panel.add(inputComponent);
+        panel.add(validationLabel);
+        
+        return panel;
+    }
+    
+    private static void setValidationState(JComponent component, JLabel validationLabel, boolean isValid, String errorMessage) {
+        Border normalBorder = new CompoundBorder(
+            new LineBorder(BORDER_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        );
+        
+        Border errorBorder = new CompoundBorder(
+            new LineBorder(ERROR_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        );
+        
+        Border successBorder = new CompoundBorder(
+            new LineBorder(SUCCESS_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        );
+        
+        if (isValid) {
+            component.setBorder(successBorder);
+            component.setToolTipText(null);
+            if (validationLabel != null) {
+                validationLabel.setIcon(successIcon);
+                validationLabel.setToolTipText("Hợp lệ");
+            }
+        } else {
+            component.setBorder(errorBorder);
+            component.setToolTipText(errorMessage);
+            if (validationLabel != null) {
+                validationLabel.setIcon(errorIcon);
+                validationLabel.setToolTipText(errorMessage);
+            }
+        }
+    }
+    
+    // Method to attach real-time validation listeners
+    public static void attachValidationListeners(JTextField textField, JLabel validationLabel, 
+                                               ValidationFunction validationFunction, String fieldName) {
+        
+        // Add focus listener for validation on focus lost
+        textField.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                // Optional: Clear error styling on focus gain
+            }
+            
+            @Override
+            public void focusLost(FocusEvent e) {
+                boolean isValid = validationFunction.validate(textField.getText().trim());
+                String errorMessage = isValid ? null : getErrorMessage(textField);
+                setValidationState(textField, validationLabel, isValid, errorMessage);
+            }
+        });
+        
+        // Add document listener for real-time validation feedback
+        textField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validateOnChange();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validateOnChange();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validateOnChange();
+            }
+            
+            private void validateOnChange() {
+                boolean isValid = validationFunction.validate(textField.getText().trim());
+                String errorMessage = isValid ? null : getErrorMessage(textField);
+                setValidationState(textField, validationLabel, isValid, errorMessage);
+            }
+        });
+    }
+    
+    // Functional interface for validation functions
+    @FunctionalInterface
+    public interface ValidationFunction {
+        boolean validate(String input);
+    }
+    
     private static boolean validateField(String value, JComponent component, 
                                         String pattern, String emptyErrorMessage, 
                                         String invalidErrorMessage, String fieldName) {
         if (value == null || value.isEmpty()) {
             String message = emptyErrorMessage != null ? 
                     emptyErrorMessage : String.format(FIELD_EMPTY_ERROR, fieldName);
-            component.setBorder(BorderFactory.createLineBorder(Color.RED));
+            component.setBorder(BorderFactory.createLineBorder(ERROR_COLOR));
             component.setToolTipText(message);
             return false;
         }
         if (pattern != null && !value.matches(pattern)) {
-            component.setBorder(BorderFactory.createLineBorder(Color.RED));
+            component.setBorder(BorderFactory.createLineBorder(ERROR_COLOR));
             component.setToolTipText(invalidErrorMessage);
             return false;
         }
-        component.setBorder(UIManager.getLookAndFeel().getDefaults().getBorder("TextField.border"));
+        component.setBorder(BorderFactory.createLineBorder(SUCCESS_COLOR));
         component.setToolTipText(null);
         return true;
     }
@@ -73,6 +234,8 @@ public class ValidationUtils {
             ));
             if (errorLabel instanceof JTextField) {
                 ((JTextField) errorLabel).setText(emptyErrorMessage);
+            } else if (errorLabel instanceof JLabel) {
+                ((JLabel) errorLabel).setText(emptyErrorMessage);
             }
             return false;
         }
@@ -83,15 +246,19 @@ public class ValidationUtils {
             ));
             if (errorLabel instanceof JTextField) {
                 ((JTextField) errorLabel).setText(invalidErrorMessage);
+            } else if (errorLabel instanceof JLabel) {
+                ((JLabel) errorLabel).setText(invalidErrorMessage);
             }
             return false;
         }
         component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
+            new LineBorder(SUCCESS_COLOR, 1, true),
             new EmptyBorder(10, 15, 10, 15)
         ));
         if (errorLabel instanceof JTextField) {
             ((JTextField) errorLabel).setText("");
+        } else if (errorLabel instanceof JLabel) {
+            ((JLabel) errorLabel).setText("");
         }
         return true;
     }
@@ -118,17 +285,17 @@ public class ValidationUtils {
     
     public static boolean validateNgaySinh(Date ngaySinh, JComponent component) {
         if (ngaySinh == null) {
-            component.setBorder(BorderFactory.createLineBorder(Color.RED));
+            component.setBorder(BorderFactory.createLineBorder(ERROR_COLOR));
             component.setToolTipText(NGAY_SINH_EMPTY_ERROR);
             return false;
         }
         
         if (ngaySinh.after(new Date())) {
-            component.setBorder(BorderFactory.createLineBorder(Color.RED));
+            component.setBorder(BorderFactory.createLineBorder(ERROR_COLOR));
             component.setToolTipText(NGAY_SINH_ERROR);
             return false;
         }
-        component.setBorder(UIManager.getLookAndFeel().getDefaults().getBorder("TextField.border"));
+        component.setBorder(BorderFactory.createLineBorder(SUCCESS_COLOR));
         component.setToolTipText(null);
         return true;
     }
@@ -174,7 +341,7 @@ public class ValidationUtils {
             return false;
         }
         component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
+            new LineBorder(SUCCESS_COLOR, 1, true),
             new EmptyBorder(10, 15, 10, 15)
         ));
         if (errorLabel instanceof JTextField) {
@@ -211,7 +378,7 @@ public class ValidationUtils {
             return false;
         }
         component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
+            new LineBorder(SUCCESS_COLOR, 1, true),
             new EmptyBorder(10, 15, 10, 15)
         ));
         if (errorLabel instanceof JTextField) {
@@ -248,7 +415,7 @@ public class ValidationUtils {
             return false;
         }
         component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
+            new LineBorder(SUCCESS_COLOR, 1, true),
             new EmptyBorder(10, 15, 10, 15)
         ));
         if (errorLabel instanceof JTextField) {
@@ -310,5 +477,20 @@ public class ValidationUtils {
         for (JComponent component : components) {
             clearValidationError(component);
         }
+    }
+    
+    // New methods for creating styled validation labels
+    public static JLabel createValidationStatusLabel() {
+        JLabel label = new JLabel();
+        label.setPreferredSize(new Dimension(24, 24));
+        return label;
+    }
+    
+    // New methods for creating error message labels
+    public static JLabel createErrorMessageLabel() {
+        JLabel label = new JLabel();
+        label.setForeground(ERROR_COLOR);
+        label.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        return label;
     }
 }

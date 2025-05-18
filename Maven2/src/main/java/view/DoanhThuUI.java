@@ -5,8 +5,6 @@ import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
 import util.RoundedPanel;
-import view.BenhNhanUI.CustomBorder;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
