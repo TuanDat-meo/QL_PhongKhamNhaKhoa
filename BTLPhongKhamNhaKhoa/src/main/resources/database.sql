@@ -1,250 +1,136 @@
--- Xóa database nếu tồn tại
-DROP DATABASE IF EXISTS phongkhamnhakhoa;
+-- Kiểm tra và tạo cơ sở dữ liệu nếu chưa tồn tại
+CREATE DATABASE IF NOT EXISTS PhongKhamNhaKhoa;
+USE PhongKhamNhaKhoa;
 
--- Tạo database
-CREATE DATABASE phongkhamnhakhoa;
-USE phongkhamnhakhoa;
+-- Bảng người dùng
+CREATE TABLE nguoi_dung (
+    ma_nguoi_dung INT PRIMARY KEY AUTO_INCREMENT,
+    so_cccd VARCHAR(12) UNIQUE NOT NULL,
+    ten_dang_nhap VARCHAR(50) UNIQUE NOT NULL,
+    mat_khau VARCHAR(255) NOT NULL,
+    vai_tro ENUM('Admin', 'Nha sĩ', 'Lễ tân') NOT NULL,
+    trang_thai ENUM('Hoạt động', 'Bị khóa') DEFAULT 'Hoạt động'
+) ENGINE=InnoDB;
 
--- Tạo các bảng
-CREATE TABLE NguoiDung (
-    idNguoiDung INT AUTO_INCREMENT PRIMARY KEY,
-    hoTen VARCHAR(100),
+-- Bảng lịch sử đăng nhập
+CREATE TABLE lich_su_dang_nhap (
+    ma_dang_nhap INT PRIMARY KEY AUTO_INCREMENT,
+    ma_nguoi_dung INT NOT NULL,
+    thoi_gian_dang_nhap DATETIME DEFAULT CURRENT_TIMESTAMP,
+    dia_chi_ip VARCHAR(45),
+    FOREIGN KEY (ma_nguoi_dung) REFERENCES nguoi_dung(ma_nguoi_dung) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- Bảng bệnh nhân
+CREATE TABLE benh_nhan (
+    ma_benh_nhan INT PRIMARY KEY AUTO_INCREMENT,
+    so_cccd VARCHAR(12) UNIQUE NOT NULL,
+    ho_ten NVARCHAR(100) NOT NULL,
+    ngay_sinh DATE NOT NULL,
+    gioi_tinh ENUM('Nam', 'Nữ', 'Khác') NOT NULL,
+    so_dien_thoai VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
-    matKhau VARCHAR(255),
-    soDienThoai VARCHAR(15),
-    ngaySinh DATE,
-    gioiTinh ENUM('Nam', 'Nữ', 'Khác'),
-    vaiTro ENUM('Admin', 'Bác sĩ', 'Lễ tân', 'Kế toán', 'Quan kho')
-);
+    dia_chi NVARCHAR(255)
+) ENGINE=InnoDB;
 
-CREATE TABLE OTP (
-    idOTP INT AUTO_INCREMENT PRIMARY KEY,
-    idNguoiDung INT,
-    maOTP VARCHAR(10),
-    thoiGianHetHan DATETIME,
-    daSuDung BOOLEAN,
-    loai ENUM('DangKy', 'QuenMatKhau', 'XacThuc'),
-    FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung)
-);
+-- Bảng lịch hẹn
+CREATE TABLE lich_hen (
+    ma_lich_hen INT PRIMARY KEY AUTO_INCREMENT,
+    ma_benh_nhan INT NOT NULL,
+    ma_nha_si INT NULL,
+    ngay_gio_hen DATETIME NOT NULL,
+    trang_thai ENUM('Đã đặt', 'Đã hoàn thành', 'Đã hủy') DEFAULT 'Đã đặt',
+    ghi_chu NVARCHAR(255),
+    FOREIGN KEY (ma_benh_nhan) REFERENCES benh_nhan(ma_benh_nhan) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_nha_si) REFERENCES nguoi_dung(ma_nguoi_dung) ON DELETE SET NULL
+) ENGINE=InnoDB;
 
-CREATE TABLE ResetPassword (
-    idReset INT AUTO_INCREMENT PRIMARY KEY,
-    idNguoiDung INT,
-    idOTP INT,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    thoiGianHetHan DATETIME NOT NULL,
-    daSuDung BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung),
-    FOREIGN KEY (idOTP) REFERENCES OTP(idOTP)
-);
+-- Bảng dịch vụ điều trị
+CREATE TABLE dich_vu_dieu_tri (
+    ma_dich_vu INT PRIMARY KEY AUTO_INCREMENT,
+    ten_dich_vu NVARCHAR(100) NOT NULL,
+    mo_ta NVARCHAR(255),
+    gia DECIMAL(10,2) NOT NULL
+) ENGINE=InnoDB;
 
-CREATE TABLE BenhNhan (
-    idBenhNhan INT AUTO_INCREMENT PRIMARY KEY,
-    hoTen VARCHAR(100),
-    ngaySinh DATE,
-    gioiTinh ENUM('Nam', 'Nữ', 'Khác'),
-    soDienThoai VARCHAR(15),
-    cccd VARCHAR(12) UNIQUE NOT NULL,
-    diaChi TEXT
-);
+-- Bảng vật tư
+CREATE TABLE vat_tu (
+    ma_vat_tu INT PRIMARY KEY AUTO_INCREMENT,
+    ten_vat_tu NVARCHAR(100) NOT NULL,
+    so_luong INT NOT NULL,
+    don_vi NVARCHAR(50) NOT NULL
+) ENGINE=InnoDB;
 
-CREATE TABLE PhongKham (
-    idPhongKham INT AUTO_INCREMENT PRIMARY KEY,
-    tenPhong VARCHAR(100),
-    diaChi TEXT
-);
+-- Bảng hóa đơn
+CREATE TABLE hoa_don (
+    ma_hoa_don INT PRIMARY KEY AUTO_INCREMENT,
+    ma_benh_nhan INT NOT NULL,
+    ma_lich_hen INT NULL,
+    tong_tien DECIMAL(10,2) NOT NULL,
+    trang_thai_thanh_toan ENUM('Chưa thanh toán', 'Đã thanh toán') DEFAULT 'Chưa thanh toán',
+    ngay_tao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ma_benh_nhan) REFERENCES benh_nhan(ma_benh_nhan) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_lich_hen) REFERENCES lich_hen(ma_lich_hen) ON DELETE SET NULL
+) ENGINE=InnoDB;
 
-CREATE TABLE BacSi (
-    idBacSi INT AUTO_INCREMENT PRIMARY KEY,
-    idNguoiDung INT UNIQUE,
-    idPhongKham INT,
-    chuyenKhoa VARCHAR(100),
-    bangCap TEXT,
-    kinhNghiem INT,
-    FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung),
-    FOREIGN KEY (idPhongKham) REFERENCES PhongKham(idPhongKham)
-);
+-- Bảng dịch vụ - vật tư
+CREATE TABLE dich_vu_vat_tu (
+    ma_dich_vu INT NOT NULL,
+    ma_vat_tu INT NOT NULL,
+    so_luong INT NOT NULL,
+    PRIMARY KEY (ma_dich_vu, ma_vat_tu),
+    FOREIGN KEY (ma_dich_vu) REFERENCES dich_vu_dieu_tri(ma_dich_vu) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_vat_tu) REFERENCES vat_tu(ma_vat_tu) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
-CREATE TABLE LichHen (
-    idLichHen INT AUTO_INCREMENT PRIMARY KEY,
-    idBacSi INT,
-    idBenhNhan INT,
-    ngayHen DATE,
-    idPhongKham INT,
-    gioHen TIME,
-    trangThai ENUM('Chờ xác nhận', 'Đã xác nhận', 'Đã hủy') DEFAULT 'Chờ xác nhận',
-    moTa TEXT,
-    FOREIGN KEY (idBacSi) REFERENCES BacSi(idBacSi),
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan),
-    FOREIGN KEY (idPhongKham) REFERENCES PhongKham(idPhongKham)
-);
+-- Bảng hóa đơn - dịch vụ
+CREATE TABLE hoa_don_dich_vu (
+    ma_hoa_don INT NOT NULL,
+    ma_dich_vu INT NOT NULL,
+    so_luong INT DEFAULT 1,
+    don_gia DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (ma_hoa_don, ma_dich_vu),
+    FOREIGN KEY (ma_hoa_don) REFERENCES hoa_don(ma_hoa_don) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_dich_vu) REFERENCES dich_vu_dieu_tri(ma_dich_vu) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
-CREATE TABLE HoSoBenhAn (
-    idHoSo INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    chuanDoan TEXT,
-    ghiChu TEXT,
-    ngayTao DATE,
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan)
-);
+-- Bảng hóa đơn - vật tư
+CREATE TABLE hoa_don_vat_tu (
+    ma_hoa_don INT NOT NULL,
+    ma_vat_tu INT NOT NULL,
+    so_luong INT NOT NULL,
+    don_gia DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (ma_hoa_don, ma_vat_tu),
+    FOREIGN KEY (ma_hoa_don) REFERENCES hoa_don(ma_hoa_don) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_vat_tu) REFERENCES vat_tu(ma_vat_tu) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
+-- Bảng quản lý lương
+CREATE TABLE luong (
+    ma_luong INT PRIMARY KEY AUTO_INCREMENT,
+    ma_nha_si INT NOT NULL,
+    thang INT NOT NULL,
+    nam INT NOT NULL,
+    luong_co_ban DECIMAL(10,2) NOT NULL,
+    thuong DECIMAL(10,2) DEFAULT 0,
+    FOREIGN KEY (ma_nha_si) REFERENCES nguoi_dung(ma_nguoi_dung) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
-CREATE TABLE LuongNhanVien (
-    idLuong INT AUTO_INCREMENT PRIMARY KEY,
-    idNguoiDung INT,
-    thangNam DATE,
-    luongCoBan DECIMAL(10,2),
-    thuong DECIMAL(10,2),
-    khauTru DECIMAL(10,2),
-    tongLuong DECIMAL(10,2),
-    FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung)
-);
+-- Bảng thống kê
+CREATE TABLE thong_ke (
+    ma_thong_ke INT PRIMARY KEY AUTO_INCREMENT,
+    ngay DATE NOT NULL,
+    tong_benh_nhan INT NOT NULL,
+    tong_dich_vu INT NOT NULL,
+    doanh_thu DECIMAL(15,2) NOT NULL
+) ENGINE=InnoDB;
 
-CREATE TABLE NhaCungCap (
-    idNCC INT AUTO_INCREMENT PRIMARY KEY,
-    tenNCC VARCHAR(100),
-    diaChi TEXT,
-    soDienThoai VARCHAR(15)
-);
-
-CREATE TABLE KhoVatTu (
-    idVatTu INT AUTO_INCREMENT PRIMARY KEY,
-    tenVatTu VARCHAR(100),
-    soLuong INT,
-    donViTinh VARCHAR(50),
-    idNCC INT,
-    FOREIGN KEY (idNCC) REFERENCES NhaCungCap(idNCC)
-);
-
-CREATE TABLE DichVu (
-    idDichVu INT AUTO_INCREMENT PRIMARY KEY,
-    tenDichVu VARCHAR(100),
-    gia DECIMAL(10,2)
-);
-
-CREATE TABLE HoaDon (
-    idHoaDon INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    ngayTao DATE,
-    tongTien DECIMAL(10,2) NOT NULL CHECK (tongTien >= 0),
-    trangThai ENUM('ChuaThanhToan', 'DaThanhToan') NOT NULL DEFAULT 'ChuaThanhToan',
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan) ON DELETE CASCADE
-);
-
-CREATE TABLE ChiTietHoaDon (
-    idChiTiet INT AUTO_INCREMENT PRIMARY KEY,
-    idHoaDon INT,
-    idDichVu INT,
-    soLuong INT,
-    donGia DECIMAL(10,2),
-    FOREIGN KEY (idHoaDon) REFERENCES HoaDon(idHoaDon),
-    FOREIGN KEY (idDichVu) REFERENCES DichVu(idDichVu)
-);
-
-CREATE TABLE DieuTri (
-    idDieuTri INT AUTO_INCREMENT PRIMARY KEY,
-    idHoSo INT,
-    idBacSi INT,
-    moTa TEXT,
-    ngayDieuTri DATE,
-    FOREIGN KEY (idHoSo) REFERENCES HoSoBenhAn(idHoSo),
-    FOREIGN KEY (idBacSi) REFERENCES BacSi(idBacSi)
-);
-
-CREATE TABLE BaoHiemYTe (
-    idBHYT INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    mucHoTro DECIMAL(5,2),
-    ngayHetHan DATE,
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan)
-);
-
-CREATE TABLE Thuoc (
-    idThuoc INT AUTO_INCREMENT PRIMARY KEY,
-    tenThuoc VARCHAR(100),
-    donViTinh VARCHAR(50),
-    gia DECIMAL(10,2)
-);
-
-CREATE TABLE DoanhThu (
-    idDoanhThu INT AUTO_INCREMENT PRIMARY KEY,
-    thangNam DATE,
-    tongDoanhThu DECIMAL(15,2),
-    idHoaDon INT,
-    FOREIGN KEY (idHoaDon) REFERENCES HoaDon(idHoaDon)
-);
-
-CREATE TABLE DonThuoc (
-    idDonThuoc INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    idBacSi INT,
-    ngayKeDon DATE,
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan),
-    FOREIGN KEY (idBacSi) REFERENCES BacSi(idBacSi)
-);
-ALTER TABLE DonThuoc ADD COLUMN chiTiet TEXT;
-
-CREATE TABLE ChiTietDonThuoc (
-    idChiTietDon INT AUTO_INCREMENT PRIMARY KEY,
-    idDonThuoc INT,
-    idThuoc INT,
-    soLuong INT,
-    huongDanSuDung TEXT,
-    FOREIGN KEY (idDonThuoc) REFERENCES DonThuoc(idDonThuoc),
-    FOREIGN KEY (idThuoc) REFERENCES Thuoc(idThuoc)
-);
-
-CREATE TABLE YeuCauLichHen (
-    idYeuCau INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    ngayYeuCau DATE,
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan)
-);
-
-CREATE TABLE ThanhToanBenhNhan (
-    idThanhToan INT AUTO_INCREMENT PRIMARY KEY,
-    idHoaDon INT,
-    soTien DECIMAL(10,2),
-    hinhThucThanhToan VARCHAR(50),
-    maQR TEXT,
-    FOREIGN KEY (idHoaDon) REFERENCES HoaDon(idHoaDon)
-);
-
--- Thêm dữ liệu vào bảng NguoiDung
-INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) 
-VALUES ('Nguyen Van A', 'nguyenvana@example.com', 'password123', '0123456789', '1990-01-01', 'Nam', 'Bác sĩ');
-
--- Thêm dữ liệu vào bảng BenhNhan
-INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) 
-VALUES ('Tran Thi B', '1995-05-10', 'Nữ', '0987654321', '123456789012', 'Hà Nội');
-
--- Thêm dữ liệu vào bảng PhongKham
-INSERT INTO PhongKham (tenPhong, diaChi) VALUES ('Phòng 1', 'Hà Nội');
-
--- Thêm dữ liệu vào bảng BacSi
-INSERT INTO BacSi (idNguoiDung, idPhongKham, chuyenKhoa, bangCap, kinhNghiem) 
-VALUES (1, 1, 'Nha khoa', 'Thạc sĩ', 5);
-
--- Thêm dữ liệu vào bảng LichHen
-INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) 
-VALUES (1, 1, '2025-03-15', 1, '10:00:00', 'Đã xác nhận', 'Khám răng');
-
--- Thêm dữ liệu vào bảng HoaDon
-INSERT INTO HoaDon (idBenhNhan, ngayTao, tongTien, trangThai) 
-VALUES (1, '2025-03-01', 5000000, 'DaThanhToan');
-
--- Thêm dữ liệu vào bảng DoanhThu
-INSERT INTO DoanhThu (thangNam, tongDoanhThu, idHoaDon)
-VALUES ('2025-03-01', 5000000, 1);
-
--- Thêm dữ liệu vào bảng LuongNhanVien
-INSERT INTO LuongNhanVien (idNguoiDung, thangNam, luongCoBan, thuong, khauTru, tongLuong) 
-VALUES (1, '2025-03-01', 8000000, 2000000, 500000, 9500000);
-
--- Thêm dữ liệu vào bảng DonThuoc
-INSERT INTO DonThuoc (idBenhNhan, idBacSi, ngayKeDon) 
-VALUES (1, 1, '2025-03-15');
-
--- Thêm dữ liệu mẫu vào bảng ThanhToanBenhNhan
-INSERT INTO ThanhToanBenhNhan (idHoaDon, soTien, hinhThucThanhToan, maQR)
-VALUES (1, 5000000.00, 'ChuyenKhoan', 'QR12345');
+-- Bảng lịch hẹn - dịch vụ
+CREATE TABLE lich_hen_dich_vu (
+    ma_lich_hen INT NOT NULL,
+    ma_dich_vu INT NOT NULL,
+    so_luong INT DEFAULT 1,
+    PRIMARY KEY (ma_lich_hen, ma_dich_vu),
+    FOREIGN KEY (ma_lich_hen) REFERENCES lich_hen(ma_lich_hen) ON DELETE RESTRICT,
+    FOREIGN KEY (ma_dich_vu) REFERENCES dich_vu_dieu_tri(ma_dich_vu) ON DELETE RESTRICT
+) ENGINE=InnoDB;
