@@ -11,7 +11,11 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 import com.toedter.calendar.JDateChooser;
 import controller.BenhNhanController;
+import controller.DonThuocController;
+import controller.HoSoBenhAnController;
 import model.BenhNhan;
+import model.DonThuoc;
+import model.HoSoBenhAn;
 import util.CustomBorder;
 import util.ExportManager;
 import util.RoundedPanel;
@@ -47,11 +51,14 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private JTextField txtTimKiem;
     private JButton btnXuatFile;
     private ExportManager exportManager;
-    
-    // Error message labels for validation
+    private HoSoBenhAnUI hoSoBenhAnUI;
+    private JTable hoSoBenhAnTable;
+    private DefaultTableModel hoSoBenhAnTableModel;
+    private HoSoBenhAnController hoSoBenhAnController;
+    private BenhNhanController benhNhanController;
+    private DonThuocController donThuocController;
     private Map<JComponent, JLabel> errorLabels = new HashMap<>();
     
-    // Modern Theme Colors
     private Color primaryColor = new Color(79, 129, 189); // Professional blue
     private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
     private Color accentColor = new Color(192, 80, 77); // Refined red for delete
@@ -67,7 +74,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
     private Color errorBackgroundColor = new Color(248, 215, 218); // Light red for error backgrounds
     
-    // Font settings
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
@@ -143,7 +149,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             @Override
             public void keyReleased(KeyEvent e) {}
         });
-        btnTimKiem = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
+        btnTimKiem = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10,false);
         btnTimKiem.setPreferredSize(new Dimension(120, 38));
         btnTimKiem.addActionListener(e -> timKiemBenhNhan());
 
@@ -153,7 +159,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         headerPanel.add(searchPanel, BorderLayout.EAST);
         return headerPanel;
     }
-
     private JPanel createTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -239,10 +244,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
-        btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
+        btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
-        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
+        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10,false);
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> showInputDialog(true));
         buttonPanel.add(btnXuatFile);
@@ -266,19 +271,16 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 xemChiTietBenhNhan();
             }
         });
-
         menuItemSuaBenhNhan.addActionListener(e -> {
             if (tableBenhNhan.getSelectedRow() != -1) {
                 showInputDialog(false); 
             }
-        });
-        
+        });        
         menuItemXoaBenhNhan.addActionListener(e -> {
             if (tableBenhNhan.getSelectedRow() != -1) {
                 xoaBenhNhan();
             }
-        });
-        
+        });        
         tableBenhNhan.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -364,6 +366,26 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         
         return menuItem;
     }
+    private void xemChiTietBenhNhan() {
+        int selectedRow = tableBenhNhan.getSelectedRow();
+        if (selectedRow == -1) {
+            showNotification("Vui lòng chọn bệnh nhân để xem chi tiết.", NotificationType.WARNING);
+            return;
+        }
+        int modelRow = tableBenhNhan.convertRowIndexToModel(selectedRow);
+        int id = (int) tableModel.getValueAt(modelRow, 0);
+        String hoTen = (String) tableModel.getValueAt(modelRow, 1);
+        String ngaySinh = (String) tableModel.getValueAt(modelRow, 2);
+        String gioiTinh = (String) tableModel.getValueAt(modelRow, 3);
+        String soDienThoai = (String) tableModel.getValueAt(modelRow, 4);
+        String cccd = (String) tableModel.getValueAt(modelRow, 5);
+        String diaChi = (String) tableModel.getValueAt(modelRow, 6);
+        
+        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+        JFrame parent = parentWindow instanceof JFrame ? (JFrame) parentWindow : null;
+        
+        showChiTietBenhNhanDialog(parent, id, hoTen, gioiTinh, ngaySinh, soDienThoai, diaChi);
+    }
     private void showChiTietBenhNhanDialog(JFrame parent, int idBenhNhan, 
             String hoTen, String gioiTinh, String ngaySinh, String soDienThoai, String diaChi) {
         JDialog dialog = new JDialog(parent, "Chi Tiết Bệnh Nhân", true);
@@ -371,7 +393,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         dialog.setLayout(new BorderLayout());
         dialog.setResizable(false);
         
-        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -391,13 +412,11 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         
         headerPanel.add(titlePanelWrapper, BorderLayout.CENTER);
         
-        // Details panel
         JPanel detailsPanel = new JPanel();
         detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
         detailsPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         detailsPanel.setBackground(Color.WHITE);
         
-//        addDetailField(detailsPanel, "ID Bệnh Nhân:", String.valueOf(idBenhNhan));
         addDetailField(detailsPanel, "Họ Tên:", hoTen);
         addDetailField(detailsPanel, "Giới Tính:", gioiTinh);
         addDetailField(detailsPanel, "Ngày Sinh:", ngaySinh);
@@ -406,29 +425,28 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         
         detailsPanel.add(Box.createVerticalGlue());
         
-        // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
-        JButton btnXemHoSo = createRoundedButton("Xem hồ sơ BN", primaryColor, Color.WHITE, 10);
-        btnXemHoSo.addActionListener(e -> {
-            dialog.dispose();
-//            xemChiTietHoSoBenhAn();
-        });
-        JButton editButton = createRoundedButton("Chỉnh Sửa", warningColor, buttonTextColor, 10);
+        Dimension buttonSize = new Dimension(90, 36);
+        JButton editButton = createRoundedButton("Chỉnh Sửa", warningColor, buttonTextColor, 10,true );
+        editButton.setPreferredSize(buttonSize);
+        editButton.setMinimumSize(buttonSize);
+        editButton.setMaximumSize(buttonSize);
         editButton.addActionListener(e -> {
             dialog.dispose();
             showInputDialog(false); 
         });
-        
-        JButton closeButton = createRoundedButton("Đóng", Color.WHITE, textColor, 10);
+        JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10, false );
+        closeButton.setPreferredSize(buttonSize);
+        closeButton.setMinimumSize(buttonSize);
+        closeButton.setMaximumSize(buttonSize);
         closeButton.setBorder(new LineBorder(borderColor, 1));
         closeButton.addActionListener(e -> dialog.dispose());
         
         buttonPanel.add(editButton);
         buttonPanel.add(closeButton);
         
-        // Add components to dialog
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(new JScrollPane(detailsPanel), BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
@@ -464,29 +482,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         panel.add(fieldPanel);
         panel.add(separator);
     }
-    private void xemChiTietBenhNhan() {
-        int selectedRow = tableBenhNhan.getSelectedRow();
-        if (selectedRow == -1) {
-            showNotification("Vui lòng chọn bệnh nhân để xem chi tiết.", NotificationType.WARNING);
-            return;
-        }
-        int modelRow = tableBenhNhan.convertRowIndexToModel(selectedRow);
-        int id = (int) tableModel.getValueAt(modelRow, 0);
-        String hoTen = (String) tableModel.getValueAt(modelRow, 1);
-        String ngaySinh = (String) tableModel.getValueAt(modelRow, 2);
-        String gioiTinh = (String) tableModel.getValueAt(modelRow, 3);
-        String soDienThoai = (String) tableModel.getValueAt(modelRow, 4);
-        String cccd = (String) tableModel.getValueAt(modelRow, 5);
-        String diaChi = (String) tableModel.getValueAt(modelRow, 6);
-
-        // Get parent window for modal dialog
-        Window parentWindow = SwingUtilities.getWindowAncestor(this);
-        JFrame parent = parentWindow instanceof JFrame ? (JFrame) parentWindow : null;
-        
-        // Use the more fully-featured showChiTietBenhNhanDialog method
-        showChiTietBenhNhanDialog(parent, id, hoTen, gioiTinh, ngaySinh, soDienThoai, diaChi);
-    }
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
         JButton button = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -497,12 +493,13 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 g2.dispose();
                 super.paintComponent(g);
             }
-            
+
             @Override
             public boolean isOpaque() {
                 return false;
             }
-        };        
+        };
+
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -510,18 +507,26 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        // Sử dụng padding khác nhau tùy theo button
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); // Padding nhỏ hơn cho "Chỉnh Sửa"
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường cho "Đóng"
+        }
 
+        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 button.setBackground(darkenColor(bgColor));
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 button.setBackground(bgColor);
             }
         });
+
         return button;
     }
     private Color darkenColor(Color color) {
@@ -803,7 +808,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
         Dimension buttonSize = new Dimension(90, 36);
-        JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
+        JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10,false);
         btnLuu.setPreferredSize(buttonSize);
         btnLuu.setMinimumSize(buttonSize);
         btnLuu.setMaximumSize(buttonSize);
@@ -811,7 +816,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         btnLuu.setBorderPainted(false);
         btnLuu.addActionListener(e -> luuBenhNhan());
 
-        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10);
+        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
         btnHuy.setBorder(new LineBorder(borderColor, 1));
         btnHuy.setPreferredSize(buttonSize);
         btnHuy.setMinimumSize(buttonSize);
@@ -1089,10 +1094,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Color.WHITE);
         
-        JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8);
+        JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
         cancelButton.addActionListener(e -> confirmDialog.dispose());
         
-        JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, 8);
+        JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, 8, false);
         deleteButton.addActionListener(e -> {
             try {
                 qlBenhNhan.xoaBenhNhan(idBenhNhan);                

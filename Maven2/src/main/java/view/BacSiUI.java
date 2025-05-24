@@ -2,6 +2,7 @@ package view;
 
 import controller.BacSiController;
 import model.BacSi;
+import util.CustomBorder;
 import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
@@ -18,7 +19,9 @@ import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BacSiUI extends JPanel implements MessageCallback, DataChangeListener {
     // Color scheme based on BenhNhanUI
@@ -54,7 +57,9 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     private String currentUserRole;
     private JFrame parentFrame;
     private ExportManager exportManager;
-    
+    private JDialog inputDialog;
+    private JTextField txtHoTen, txtChuyenKhoa, txtBangCap, txtKinhNghiem, txtTenPhong, txtEmail, txtSoDienThoai;
+    private Map<JComponent, JLabel> errorLabels = new HashMap<>();
     public BacSiUI() {
         bacSiController = new BacSiController();
         exportManager = new ExportManager(this, tableModel, null);
@@ -99,7 +104,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
                 new CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
              
-        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
+        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10,false);
         searchButton.setPreferredSize(new Dimension(120, 38));
         searchButton.setFocusPainted(false);
         searchButton.addActionListener(e -> searchBacSi());
@@ -227,20 +232,12 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
         
-        exportButton = new JButton("Xuất file");
-        exportButton.setFont(buttonFont);
-        exportButton.setForeground(buttonTextColor);
-        exportButton.setBackground(warningColor);
-        exportButton.setBorder(new EmptyBorder(10, 20, 10, 20));
-        exportButton.setFocusPainted(false);
+        exportButton = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
+        exportButton.setPreferredSize(new Dimension(100, 45));
         exportButton.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
         
-        addButton = new JButton("Thêm mới");
-        addButton.setFont(buttonFont);
-        addButton.setForeground(buttonTextColor);
-        addButton.setBackground(successColor);
-        addButton.setBorder(new EmptyBorder(10, 20, 10, 20));
-        addButton.setFocusPainted(false);
+        addButton = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10,false);
+        addButton.setPreferredSize(new Dimension(100, 45));
         addButton.addActionListener(e -> showAddBacSiDialog());
         
         buttonPanel.add(exportButton);
@@ -250,69 +247,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         add(headerPanel, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
-    }
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
-        JButton button = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-            
-            @Override
-            public boolean isOpaque() {
-                return false;
-            }
-        };
-        
-        button.setFont(buttonFont);
-        button.setBackground(bgColor);
-        button.setForeground(fgColor);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(false);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(darkenColor(bgColor));
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(bgColor);
-            }
-        });
-
-        return button;
-    }
-    private Color darkenColor(Color color) {
-        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
-        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
-    }
-    class CustomBorder extends LineBorder {
-        private int radius;
-        
-        public CustomBorder(int radius, Color color) {
-            super(color);
-            this.radius = radius;
-        }
-        
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setColor(lineColor);
-            g2d.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
-            g2d.dispose();
-        }
-    }
+    }   
     private void showRowPopupMenu(int x, int y) {
         JPopupMenu popupMenu = new JPopupMenu();
         popupMenu.setBorder(new LineBorder(borderColor, 1));
@@ -323,11 +258,11 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             JMenuItem viewDetailsItem = createMenuItem("Xem Chi Tiết");
             viewDetailsItem.addActionListener(e -> showBacSiDetails(selectedBacSi));
             popupMenu.add(viewDetailsItem);
-            
+            popupMenu.addSeparator();
             JMenuItem editItem = createMenuItem("Chỉnh Sửa");
             editItem.addActionListener(e -> showEditBacSiDialog());
             popupMenu.add(editItem);
-            
+            popupMenu.addSeparator();
             JMenuItem deleteItem = createMenuItem("Xóa");
             deleteItem.setForeground(accentColor);
             deleteItem.addActionListener(e -> deleteBacSi());
@@ -338,7 +273,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             JMenuItem appointmentsItem = createMenuItem("Xem Lịch Hẹn");
             appointmentsItem.addActionListener(e -> showAppointments());
             popupMenu.add(appointmentsItem);
-            
+            popupMenu.addSeparator();
             JMenuItem treatmentsItem = createMenuItem("Xem Điều Trị");
             treatmentsItem.addActionListener(e -> showTreatments());
             popupMenu.add(treatmentsItem);
@@ -348,20 +283,27 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     }
     
     private JMenuItem createMenuItem(String text) {
-        JMenuItem menuItem = new JMenuItem(text);
+    	JMenuItem menuItem = new JMenuItem(text);
         menuItem.setFont(regularFont);
-        menuItem.setForeground(textColor);
-        menuItem.setBorder(new EmptyBorder(8, 15, 8, 15));
-        
+        menuItem.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        menuItem.setBackground(Color.WHITE);        
+        menuItem.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                menuItem.setBackground(new Color(240, 240, 240));
+            }            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                menuItem.setBackground(Color.WHITE);
+            }
+        });        
         return menuItem;
-    }
-    
+    }    
     private void showBacSiDetails(BacSi bacSi) {
         JDialog detailsDialog = new JDialog(parentFrame, "Chi Tiết Bác Sĩ", true);
-        detailsDialog.setSize(500, 450);
+        detailsDialog.setSize(500, 470);
         detailsDialog.setLocationRelativeTo(parentFrame);
-        detailsDialog.setLayout(new BorderLayout());
-        
+        detailsDialog.setLayout(new BorderLayout());        
         // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
@@ -380,16 +322,14 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         namePanelWrapper.add(nameLabel, BorderLayout.NORTH);
         namePanelWrapper.add(subtitleLabel, BorderLayout.CENTER);
         
-        headerPanel.add(namePanelWrapper, BorderLayout.CENTER);
-        
+        headerPanel.add(namePanelWrapper, BorderLayout.CENTER);        
         // Details panel
         JPanel detailsPanel = new JPanel();
         detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
-        detailsPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        detailsPanel.setBorder(new EmptyBorder(0, 20, 20, 0));
         detailsPanel.setBackground(Color.WHITE);
         
         addDetailField(detailsPanel, "ID:", String.valueOf(bacSi.getIdBacSi()));
-        addDetailField(detailsPanel, "Chuyên Khoa:", bacSi.getChuyenKhoa());
         addDetailField(detailsPanel, "Bằng Cấp:", bacSi.getBangCap());
         addDetailField(detailsPanel, "Kinh Nghiệm:", bacSi.getKinhNghiem() + " năm");
         addDetailField(detailsPanel, "Phòng Khám:", bacSi.getTenPhong());
@@ -402,21 +342,19 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
-        
-        JButton editButton = new JButton("Chỉnh Sửa");
-        editButton.setFont(buttonFont);
-        editButton.setForeground(buttonTextColor);
-        editButton.setBackground(warningColor);
-        editButton.setBorder(new EmptyBorder(8, 15, 8, 15));
+        Dimension buttonSize = new Dimension(90, 36);
+        JButton editButton = createRoundedButton("Chỉnh Sửa", warningColor, buttonTextColor, 10,true );
+        editButton.setPreferredSize(buttonSize);
+        editButton.setMinimumSize(buttonSize);
+        editButton.setMaximumSize(buttonSize);
         editButton.addActionListener(e -> {
             detailsDialog.dispose();
             showEditBacSiDialog();
         });
-        
-        JButton closeButton = new JButton("Đóng");
-        closeButton.setFont(buttonFont);
-        closeButton.setForeground(textColor);
-        closeButton.setBackground(Color.WHITE);
+        JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10, false );
+        closeButton.setPreferredSize(buttonSize);
+        closeButton.setMinimumSize(buttonSize);
+        closeButton.setMaximumSize(buttonSize);
         closeButton.setBorder(new LineBorder(borderColor, 1));
         closeButton.setFocusPainted(false);
         closeButton.addActionListener(e -> detailsDialog.dispose());
@@ -431,7 +369,57 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         
         detailsDialog.setVisible(true);
     }
-    
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Sử dụng padding khác nhau tùy theo button
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); // Padding nhỏ hơn cho "Chỉnh Sửa"
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường cho "Đóng"
+        }
+
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
+    }
     private void addDetailField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(15, 0));
         fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);

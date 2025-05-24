@@ -4,24 +4,31 @@ import controller.HoSoBenhAnController;
 import controller.BenhNhanController;
 import controller.DonThuocController;
 import model.HoSoBenhAn;
+import util.CustomBorder;
 import util.ExportManager;
+import util.RoundedPanel;
 import view.DoanhThuUI.NotificationType;
 import model.BenhNhan;
 import model.DonThuoc;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
+
+import com.toedter.calendar.JDateChooser;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,12 +43,21 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private JButton btnThem;
     private JButton btnTimKiem;
     private JButton btnXuatFile;
-    private ThemHoSoBenhAnDialog themHoSoDialog;
     private Map<String, Integer> tenBenhNhanToId;
     private ExportManager exportManager;
     private JPopupMenu popupMenu;
     private JMenuItem menuItemSua;
     private JMenuItem menuItemXoa;
+    
+    // Dialog components
+    private JDialog inputDialog;
+    private JComboBox<String> cbBenhNhan;
+    private JTextField txtChuanDoan;
+    private JTextArea txtGhiChu;
+    private JDateChooser dateChooserNgayTao;
+    private JComboBox<String> cbTrangThai;
+    private Map<JComponent, JLabel> errorLabels = new HashMap<>();
+    
     // Modern Theme Colors
     private Color primaryColor = new Color(79, 129, 189); // Professional blue
     private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
@@ -55,11 +71,14 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private Color tableHeaderColor = new Color(79, 129, 189); // Match primary color
     private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private Color borderColor = new Color(222, 226, 230); // Light gray borders
+    private Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
+    private Color errorBackgroundColor = new Color(248, 215, 218); // Light red for error backgrounds
 
     // Font settings
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
+    private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
@@ -71,73 +90,33 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         initialize();
         exportManager = new ExportManager(this, hoSoBenhAnTableModel, null);
     }
-
     private void initialize() {
         setLayout(new BorderLayout(0, 0));
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         setBackground(backgroundColor);
-
-        // Header Panel with Title and Search
         JPanel headerPanel = createHeaderPanel();
         add(headerPanel, BorderLayout.NORTH);
 
-        // Main content panel
         JPanel contentPanel = new JPanel(new BorderLayout(0, 15));
         contentPanel.setBackground(backgroundColor);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
 
-        // Table Panel
         JPanel tablePanel = createTablePanel();
         contentPanel.add(tablePanel, BorderLayout.CENTER);
         
         add(contentPanel, BorderLayout.CENTER);
         setupEventListeners();
-        // Button Panel
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // Load data
-        loadDanhSachBenhNhan();
-        
-        // Create dialog 
-        try {
-            themHoSoDialog = new ThemHoSoBenhAnDialog(
-                (JFrame) SwingUtilities.getWindowAncestor(this),
-                "Thêm Hồ sơ Bệnh án",
-                true,
-                hoSoBenhAnController,
-                benhNhanController,
-                tenBenhNhanToId,
-                this
-            );
-        } catch (Exception e) {
-            // Handle the exception when windowAncestor is null (happens during initial loading)
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    themHoSoDialog = new ThemHoSoBenhAnDialog(
-                        (JFrame) SwingUtilities.getWindowAncestor(this),
-                        "Thêm Hồ sơ Bệnh án",
-                        true,
-                        hoSoBenhAnController,
-                        benhNhanController,
-                        tenBenhNhanToId,
-                        this
-                    );
-                } catch (Exception ex) {
-                    showErrorDialog("Lỗi khởi tạo", "Không thể tạo dialog thêm hồ sơ bệnh án: " + ex.getMessage());
-                }
-            });
-        }
-        
-        // Load initial data
+        loadDanhSachBenhNhan();      
+        createInputDialog();
         lamMoiDanhSach();
     }
-
     private JPanel createHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
-        headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
-        
+        headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));        
         // Title panel on the left
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
@@ -148,8 +127,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         titlePanel.add(titleLabel);
         
         headerPanel.add(titlePanel, BorderLayout.WEST);
-
-        // Search panel on the right - MODIFY THIS SECTION
+        // Search panel on the right
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
 
@@ -157,29 +135,24 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         searchLabel.setFont(regularFont);
         searchLabel.setForeground(textColor);
         
-        // Update to match DoanhThuUI styling
         txtTimKiem = new JTextField(18);
         txtTimKiem.setFont(regularFont);
         txtTimKiem.setPreferredSize(new Dimension(220, 38));
         txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
                 new CustomBorder(5, borderColor), 
-                BorderFactory.createEmptyBorder(5, 10, 5, 5)));
-                
+                BorderFactory.createEmptyBorder(5, 10, 5, 5)));                
         txtTimKiem.addKeyListener(new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {}
-
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     timKiemHoSoBenhAn();
                 }
             }
-
             @Override
             public void keyReleased(KeyEvent e) {}
         });
-
         btnTimKiem = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
         btnTimKiem.setPreferredSize(new Dimension(120, 38));
         btnTimKiem.addActionListener(e -> timKiemHoSoBenhAn());
@@ -191,7 +164,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         return headerPanel;
     }
-
     private JPanel createTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -209,7 +181,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 return false; // Make table non-editable
             }
         };
-
         hoSoBenhAnTableModel.addColumn("ID HS");
         hoSoBenhAnTableModel.addColumn("Tên BN");
         hoSoBenhAnTableModel.addColumn("Chuẩn đoán");
@@ -261,12 +232,10 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         header.setForeground(Color.WHITE);
         header.setPreferredSize(new Dimension(header.getWidth(), 45));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
-        header.setReorderingAllowed(false);
-        
+        header.setReorderingAllowed(false);        
         // Center the header text
         DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) header.getDefaultRenderer();
         headerRenderer.setHorizontalAlignment(JLabel.CENTER);
-
         // Set column widths
         TableColumnModel columnModel = hoSoBenhAnTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(50); // ID HS
@@ -276,8 +245,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         columnModel.getColumn(4).setPreferredWidth(100); // Ngày tạo
         columnModel.getColumn(5).setPreferredWidth(100); // Trạng thái
         setupPopupMenu();
-
-
         JScrollPane scrollPane = new JScrollPane(hoSoBenhAnTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -288,7 +255,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         return wrapperPanel;
     }
-
     private JPanel createButtonPanel() {
         JPanel buttonPanel = new JPanel();
         buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 0));
@@ -299,15 +265,555 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
         
-        
         btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThem.setPreferredSize(new Dimension(100, 45));
-        btnThem.addActionListener(e -> openThemHoSoDialog());
+        btnThem.addActionListener(e -> showInputDialog(true));
         
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThem);
 
         return buttonPanel;
+    }
+    private void createInputDialog() {
+        Color requiredFieldColor = new Color(255, 0, 0);        
+        inputDialog = new JDialog();
+        inputDialog.setTitle("Thông tin hồ sơ bệnh án");
+        inputDialog.setModal(true);
+        inputDialog.setSize(520, 610); // Tăng chiều cao để có thêm không gian
+        inputDialog.setLocationRelativeTo(null);
+        inputDialog.setResizable(false);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBackground(primaryColor);
+        headerPanel.setLayout(new BorderLayout());
+        headerPanel.setPreferredSize(new Dimension(0, 50));
+        
+        JLabel titleLabel = new JLabel("THÊM MỚI HỒ SƠ BỆNH ÁN");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(JLabel.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.weightx = 1.0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.LINE_START;
+        
+        // Bệnh nhân field
+        JLabel lblBenhNhan = new JLabel("Bệnh nhân: ");
+        lblBenhNhan.setFont(regularFont);
+        JPanel benhNhanLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        benhNhanLabelPanel.setBackground(Color.WHITE);
+        benhNhanLabelPanel.add(lblBenhNhan);
+        JLabel starBenhNhan = new JLabel("*");
+        starBenhNhan.setForeground(requiredFieldColor);
+        starBenhNhan.setFont(regularFont);
+        benhNhanLabelPanel.add(starBenhNhan);
+        formPanel.add(benhNhanLabelPanel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        cbBenhNhan = createStyledComboBox();
+        cbBenhNhan.setPreferredSize(new Dimension(270, 32));
+        formPanel.add(cbBenhNhan, gbc);
+        
+        // Error label for Bệnh nhân
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 4, 4);
+        JLabel lblBenhNhanError = createErrorLabel();
+        formPanel.add(lblBenhNhanError, gbc);
+        errorLabels.put(cbBenhNhan, lblBenhNhanError);
+        
+        // Chuẩn đoán field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblChuanDoan = new JLabel("Chuẩn đoán: ");
+        lblChuanDoan.setFont(regularFont);
+        JPanel chuanDoanLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        chuanDoanLabelPanel.setBackground(Color.WHITE);
+        chuanDoanLabelPanel.add(lblChuanDoan);
+        JLabel starChuanDoan = new JLabel("*");
+        starChuanDoan.setForeground(requiredFieldColor);
+        starChuanDoan.setFont(regularFont);
+        chuanDoanLabelPanel.add(starChuanDoan);
+        formPanel.add(chuanDoanLabelPanel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        txtChuanDoan = createStyledTextField();
+        txtChuanDoan.setPreferredSize(new Dimension(270, 32));
+        formPanel.add(txtChuanDoan, gbc);
+        
+        // Error label for Chuẩn đoán
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 4, 4);
+        JLabel lblChuanDoanError = createErrorLabel();
+        formPanel.add(lblChuanDoanError, gbc);
+        errorLabels.put(txtChuanDoan, lblChuanDoanError);
+        
+        // Ghi chú field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblGhiChu = new JLabel("Ghi chú: ");
+        lblGhiChu.setFont(regularFont);
+        formPanel.add(lblGhiChu, gbc);
+        
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        txtGhiChu = createStyledTextArea();
+        JScrollPane scrollGhiChu = new JScrollPane(txtGhiChu);
+        scrollGhiChu.setPreferredSize(new Dimension(270, 80));
+        scrollGhiChu.setBorder(new CustomBorder(8, borderColor));
+        formPanel.add(scrollGhiChu, gbc);
+        
+        // Error label for Ghi chú
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 4, 4);
+        JLabel lblGhiChuError = createErrorLabel();
+        formPanel.add(lblGhiChuError, gbc);
+        errorLabels.put(txtGhiChu, lblGhiChuError);
+        
+        // Ngày tạo field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblNgayTao = new JLabel("Ngày tạo: ");
+        lblNgayTao.setFont(regularFont);
+        JPanel ngayTaoLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        ngayTaoLabelPanel.setBackground(Color.WHITE);
+        ngayTaoLabelPanel.add(lblNgayTao);
+        JLabel starNgayTao = new JLabel("*");
+        starNgayTao.setForeground(requiredFieldColor);
+        starNgayTao.setFont(regularFont);
+        ngayTaoLabelPanel.add(starNgayTao);
+        formPanel.add(ngayTaoLabelPanel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        dateChooserNgayTao = createStyledDateChooser();
+        dateChooserNgayTao.setPreferredSize(new Dimension(270, 32));
+        dateChooserNgayTao.setDate(new Date()); // Set to current date by default
+        formPanel.add(dateChooserNgayTao, gbc);        
+        
+        // Error label for Ngày tạo
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 4, 4);
+        JLabel lblNgayTaoError = createErrorLabel();
+        formPanel.add(lblNgayTaoError, gbc);
+        errorLabels.put(dateChooserNgayTao, lblNgayTaoError);        
+        
+        // Trạng thái field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblTrangThai = new JLabel("Trạng thái: ");
+        lblTrangThai.setFont(regularFont);
+        formPanel.add(lblTrangThai, gbc);        
+        
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        String[] trangThais = {"Đang điều trị", "Đã xuất viện", "Chuyển viện"};
+        cbTrangThai = new JComboBox<>(trangThais);
+        cbTrangThai.setFont(regularFont);
+        cbTrangThai.setPreferredSize(new Dimension(270, 32));
+        formPanel.add(cbTrangThai, gbc);        
+        
+        // No error label needed for trạng thái combobox
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 4, 4);
+        formPanel.add(Box.createVerticalStrut(10), gbc);
+        
+        // Button panel (dialog footer)
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
+        Dimension buttonSize = new Dimension(90, 36);
+        
+        JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
+        btnLuu.setPreferredSize(buttonSize);
+        btnLuu.setMinimumSize(buttonSize);
+        btnLuu.setMaximumSize(buttonSize);
+        btnLuu.setFocusPainted(false);
+        btnLuu.setBorderPainted(false);
+        btnLuu.addActionListener(e -> luuHoSoBenhAn());
+
+        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10);
+        btnHuy.setBorder(new LineBorder(borderColor, 1));
+        btnHuy.setPreferredSize(buttonSize);
+        btnHuy.setMinimumSize(buttonSize);
+        btnHuy.setMaximumSize(buttonSize);
+        btnHuy.setFocusPainted(false);
+        btnHuy.setBorderPainted(false);
+        btnHuy.addActionListener(e -> {
+            resetAllValidationErrors();
+            inputDialog.setVisible(false);
+        });
+        
+        buttonPanel.add(btnLuu);
+        buttonPanel.add(btnHuy);
+
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        inputDialog.setContentPane(mainPanel);        
+        inputDialog.getRootPane().setDefaultButton(btnLuu);
+        
+        // Set up Enter key navigation
+        setupEnterKeyNavigation();
+    }
+    private void setupEnterKeyNavigation() {
+        JComponent[] components = new JComponent[] {
+            cbBenhNhan,
+            txtChuanDoan,
+            txtGhiChu,
+            dateChooserNgayTao.getDateEditor().getUiComponent(),
+            cbTrangThai
+        };
+        
+        for (int i = 0; i < components.length - 1; i++) {
+            final int nextIndex = i + 1;
+            if (components[i] instanceof JTextField) {
+                ((JTextField) components[i]).addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyPressed(KeyEvent e) {
+                        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                            components[nextIndex].requestFocus();
+                        }
+                    }
+                });
+            } else if (components[i] instanceof JComboBox) {
+                ((JComboBox<?>) components[i]).addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyPressed(KeyEvent e) {
+                        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                            components[nextIndex].requestFocus();
+                        }
+                    }
+                });
+            } else if (components[i] instanceof JTextArea) {
+                ((JTextArea) components[i]).addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyPressed(KeyEvent e) {
+                        if (e.getKeyCode() == KeyEvent.VK_ENTER && !e.isShiftDown()) {
+                            components[nextIndex].requestFocus();
+                        }
+                    }
+                });
+            }
+        }
+        
+        // For the last component
+        if (components[components.length - 1] instanceof JComboBox) {
+            ((JComboBox<?>) components[components.length - 1]).addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        luuHoSoBenhAn();
+                    }
+                }
+            });
+        }
+        
+        // Special handling for date chooser
+        ((JTextField) dateChooserNgayTao.getDateEditor().getUiComponent()).addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    cbTrangThai.requestFocus();
+                }
+            }
+        });
+    }
+    private void luuHoSoBenhAn() {
+        // Clear all previous validation errors
+        clearValidationError(cbBenhNhan);
+        clearValidationError(txtChuanDoan);
+        clearValidationError(txtGhiChu);
+        clearValidationError(dateChooserNgayTao);
+        
+        boolean isValid = true;
+        
+        // Validate Bệnh nhân
+        if (cbBenhNhan.getSelectedIndex() <= 0) {
+            showValidationError(cbBenhNhan, "Vui lòng chọn bệnh nhân");
+            if (isValid) {
+                cbBenhNhan.requestFocus();
+                isValid = false;
+            }
+        }
+        
+        // Validate Chuẩn đoán
+        String chuanDoan = txtChuanDoan.getText().trim();
+        if (chuanDoan.isEmpty()) {
+            showValidationError(txtChuanDoan, "Vui lòng nhập chuẩn đoán");
+            if (isValid) {
+                txtChuanDoan.requestFocus();
+                isValid = false;
+            }
+        } else if (chuanDoan.length() > 500) {
+            showValidationError(txtChuanDoan, "Chuẩn đoán không được vượt quá 500 ký tự");
+            if (isValid) {
+                txtChuanDoan.requestFocus();
+                isValid = false;
+            }
+        }
+        
+        // Validate Ngày tạo
+        Date ngayTao = dateChooserNgayTao.getDate();
+        if (ngayTao == null) {
+            showValidationError(dateChooserNgayTao, "Vui lòng chọn ngày tạo");
+            if (isValid) {
+                dateChooserNgayTao.requestFocus();
+                isValid = false;
+            }
+        } else if (ngayTao.after(new Date())) {
+            showValidationError(dateChooserNgayTao, "Ngày tạo không được sau ngày hiện tại");
+            if (isValid) {
+                dateChooserNgayTao.requestFocus();
+                isValid = false;
+            }
+        }
+        
+        // Validate Ghi chú (optional but check length if provided)
+        String ghiChu = txtGhiChu.getText().trim();
+        if (ghiChu.length() > 1000) {
+            showValidationError(txtGhiChu, "Ghi chú không được vượt quá 1000 ký tự");
+            if (isValid) {
+                txtGhiChu.requestFocus();
+                isValid = false;
+            }
+        }
+        
+        if (!isValid) {
+            return;
+        }
+        
+        try {
+            String selectedBenhNhan = (String) cbBenhNhan.getSelectedItem();
+            Integer idBenhNhan = tenBenhNhanToId.get(selectedBenhNhan);
+            
+            if (idBenhNhan == null) {
+                showValidationError(cbBenhNhan, "Bệnh nhân không hợp lệ");
+                cbBenhNhan.requestFocus();
+                return;
+            }
+            String trangThai = (String) cbTrangThai.getSelectedItem();
+            
+            java.sql.Date sqlDate = new java.sql.Date(ngayTao.getTime());
+            
+            // Check if this is edit or add
+            boolean isEdit = inputDialog.getTitle().contains("CHỈNH SỬA");
+            
+            if (isEdit) {
+                // Get the selected row to get the ID
+                int selectedRow = hoSoBenhAnTable.getSelectedRow();
+                if (selectedRow == -1) {
+                    showErrorMessage("Lỗi", "Không tìm thấy hồ sơ để cập nhật");
+                    return;
+                }
+                
+                int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
+                
+                // Create HoSoBenhAn object with correct constructor
+                HoSoBenhAn hoSoBenhAn = new HoSoBenhAn();
+                hoSoBenhAn.setIdHoSo(idHoSo);
+                hoSoBenhAn.setIdBenhNhan(idBenhNhan);
+                hoSoBenhAn.setChuanDoan(chuanDoan);
+                hoSoBenhAn.setGhiChu(ghiChu);
+                hoSoBenhAn.setNgayTao(sqlDate);
+                hoSoBenhAn.setTrangThai(trangThai);
+                
+                // Update - sử dụng phương thức đúng
+                hoSoBenhAnController.suaHoSoBenhAn(hoSoBenhAn);
+                showNotification("Hồ sơ bệnh án đã được cập nhật thành công!", NotificationType.SUCCESS);
+            } else {
+                // Create new HoSoBenhAn object
+                HoSoBenhAn hoSoBenhAn = new HoSoBenhAn();
+                hoSoBenhAn.setIdBenhNhan(idBenhNhan);
+                hoSoBenhAn.setChuanDoan(chuanDoan);
+                hoSoBenhAn.setGhiChu(ghiChu);
+                hoSoBenhAn.setNgayTao(sqlDate);
+                hoSoBenhAn.setTrangThai(trangThai);
+                
+                // Add new
+                hoSoBenhAnController.themHoSoBenhAn(hoSoBenhAn);
+                showNotification("Hồ sơ bệnh án mới đã được thêm thành công!", NotificationType.SUCCESS);
+            }
+            
+            // Refresh the table and close dialog
+            lamMoiDanhSach();
+            inputDialog.setVisible(false);
+            
+        } catch (Exception e) {
+            showErrorMessage("Lỗi", "Không thể lưu hồ sơ bệnh án: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    private void showInputDialog(boolean isThem) {
+        resetAllValidationErrors();
+        Container contentPane = inputDialog.getContentPane();
+        JPanel mainPanel = (JPanel) contentPane;
+        JPanel headerPanel = (JPanel) mainPanel.getComponent(0);
+        JLabel headerTitle = (JLabel) headerPanel.getComponent(0);
+        
+        if (!isThem) {
+            int selectedRow = hoSoBenhAnTable.getSelectedRow();
+            if (selectedRow == -1) {
+                showWarningMessage("Vui lòng chọn hồ sơ bệnh án để sửa.");
+                return;
+            }
+            inputDialog.setTitle("Chỉnh sửa hồ sơ bệnh án");
+            headerTitle.setText("CHỈNH SỬA HỒ SƠ BỆNH ÁN");
+
+            // Lấy dữ liệu từ hàng được chọn
+            String tenBenhNhan = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 1);
+            String chuanDoan = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 2);
+            String ghiChu = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 3);
+            String ngayTaoStr = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 4);
+            String trangThai = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 5);
+
+            // Load danh sách bệnh nhân trước khi set giá trị
+            loadBenhNhanToComboBox();
+            
+            // Đặt giá trị cho các field
+            cbBenhNhan.setSelectedItem(tenBenhNhan);
+            txtChuanDoan.setText(chuanDoan);
+            txtGhiChu.setText(ghiChu);
+            cbTrangThai.setSelectedItem(trangThai);
+            
+            // Đặt ngày tạo
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                Date ngayTao = sdf.parse(ngayTaoStr);
+                dateChooserNgayTao.setDate(ngayTao);
+            } catch (Exception e) {
+                showErrorMessage("Lỗi định dạng ngày", "Không thể đọc định dạng ngày tháng");
+            }
+        } else {
+            inputDialog.setTitle("Thêm hồ sơ bệnh án mới");
+            headerTitle.setText("THÊM MỚI HỒ SƠ BỆNH ÁN");
+            clearInputFields();
+            loadBenhNhanToComboBox();
+        }
+        inputDialog.setLocationRelativeTo(this);
+        inputDialog.setVisible(true);
+    }
+    private void clearInputFields() {
+        cbBenhNhan.setSelectedIndex(-1);
+        txtChuanDoan.setText("");
+        txtGhiChu.setText("");
+        dateChooserNgayTao.setDate(new Date());
+        cbTrangThai.setSelectedIndex(0);
+    }
+    private void loadBenhNhanToComboBox() {
+        cbBenhNhan.removeAllItems();
+        cbBenhNhan.addItem("-- Chọn bệnh nhân --");
+        
+        try {
+            List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
+            for (BenhNhan bn : danhSachBenhNhan) {
+                cbBenhNhan.addItem(bn.getHoTen());
+            }
+        } catch (SQLException e) {
+            showErrorMessage("Lỗi dữ liệu", "Không thể tải danh sách bệnh nhân: " + e.getMessage());
+        }
+    }
+    private JTextField createStyledTextField() {
+        JTextField textField = new JTextField();
+        textField.setFont(regularFont);
+        Dimension fieldSize = new Dimension(270, 32); // Đồng bộ kích thước
+        textField.setPreferredSize(fieldSize);
+        textField.setMinimumSize(fieldSize);
+        textField.setMaximumSize(fieldSize);
+        textField.setBorder(new CompoundBorder(
+                new CustomBorder(8, borderColor),
+                new EmptyBorder(5, 12, 5, 12)));
+        textField.setBackground(Color.WHITE);
+        return textField;
+    }
+
+    private JTextArea createStyledTextArea() {
+        JTextArea textArea = new JTextArea(3, 20);
+        textArea.setFont(regularFont);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setBorder(new EmptyBorder(5, 12, 5, 12));
+        textArea.setBackground(Color.WHITE);
+        return textArea;
+    }
+    private JComboBox<String> createStyledComboBox() {
+        JComboBox<String> comboBox = new JComboBox<>();
+        comboBox.setFont(regularFont);
+        comboBox.setBackground(Color.WHITE);
+        comboBox.setPreferredSize(new Dimension(270, 32)); // Đồng bộ kích thước
+        return comboBox;
+    }
+    private JDateChooser createStyledDateChooser() {
+        JDateChooser dateChooser = new JDateChooser();
+        dateChooser.setFont(regularFont);
+        dateChooser.setPreferredSize(new Dimension(270, 32)); // Đồng bộ kích thước
+        dateChooser.setBorder(new CustomBorder(8, borderColor));
+        dateChooser.setDateFormatString("yyyy-MM-dd");        
+        JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
+        dateTextField.setFont(regularFont);
+        dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));        
+        return dateChooser;
+    }
+    private JLabel createErrorLabel() {
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(errorFont);
+        errorLabel.setForeground(errorColor);
+        errorLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+        errorLabel.setVisible(true);
+        errorLabel.setPreferredSize(new Dimension(270, 16)); // Đồng bộ kích thước
+        errorLabel.setMinimumSize(new Dimension(270, 16));
+        return errorLabel;
+    }
+    private void showValidationError(JComponent component, String message) {
+        if (component instanceof JTextField) {
+            component.setBorder(new CompoundBorder(
+                    new LineBorder(errorColor, 1, true),
+                    new EmptyBorder(5, 12, 5, 12)));
+        } else if (component instanceof JDateChooser) {
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new CompoundBorder(
+                    new LineBorder(errorColor, 1, true),
+                    new EmptyBorder(5, 12, 5, 12)));
+        } else if (component instanceof JComboBox) {
+            component.setBorder(new LineBorder(errorColor, 1, true));
+        } else if (component instanceof JTextArea) {
+            JScrollPane parent = (JScrollPane) component.getParent().getParent();
+            parent.setBorder(new LineBorder(errorColor, 1, true));
+        }
+        
+        JLabel errorLabel = errorLabels.get(component);
+        if (errorLabel != null) {
+            errorLabel.setText("<html><div style='width: 245px;'>" + message + "</div></html>");
+            errorLabel.setVisible(true);
+        }
     }
     private void setupEventListeners() {
         btnTimKiem.addActionListener(e -> {
@@ -498,59 +1004,66 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             showErrorMessage("Lỗi tìm kiếm", "Không thể thực hiện tìm kiếm: " + e.getMessage());
         }
     }
-
-    private void openThemHoSoDialog() {
-        if (themHoSoDialog != null) {
-            themHoSoDialog.setVisible(true);
-        } else {
-            try {
-                themHoSoDialog = new ThemHoSoBenhAnDialog(
-                    (JFrame) SwingUtilities.getWindowAncestor(this),
-                    "Thêm Hồ sơ Bệnh án",
-                    true,
-                    hoSoBenhAnController,
-                    benhNhanController,
-                    tenBenhNhanToId,
-                    this
-                );
-                themHoSoDialog.setVisible(true);
-            } catch (Exception e) {
-                showErrorMessage("Lỗi", "Không thể mở form thêm hồ sơ: " + e.getMessage());
-            }
+    private void resetAllValidationErrors() {
+        clearValidationError(cbBenhNhan);
+        clearValidationError(txtChuanDoan);
+        clearValidationError(txtGhiChu);
+        clearValidationError(dateChooserNgayTao);
+        
+        for (JLabel errorLabel : errorLabels.values()) {
+            errorLabel.setText(" ");
+            errorLabel.setVisible(true);
         }
     }
-
-    private void hienThiDialogSuaHoSoBenhAn() {
+    private void clearValidationError(JComponent component) {
+        if (component instanceof JTextField) {
+            component.setBorder(new CompoundBorder(
+                    new CustomBorder(8, borderColor),
+                    new EmptyBorder(5, 12, 5, 12)));
+        } else if (component instanceof JDateChooser) {
+            component.setBorder(new CustomBorder(8, borderColor));
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
+        } else if (component instanceof JComboBox) {
+            component.setBorder(null);
+        } else if (component instanceof JTextArea) {
+            JScrollPane parent = (JScrollPane) component.getParent().getParent();
+            parent.setBorder(new CustomBorder(8, borderColor));
+        }
+        
+        JLabel errorLabel = errorLabels.get(component);
+        if (errorLabel != null) {
+            errorLabel.setText(" ");
+            errorLabel.setVisible(true);
+        }
+    }
+    public void hienThiDialogSuaHoSoBenhAn() {
         int selectedRow = hoSoBenhAnTable.getSelectedRow();
         if (selectedRow == -1) {
             showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để sửa.");
             return;
         }
+        
+        // Gọi showInputDialog với tham số false (không phải thêm mới)
+        showInputDialog(false);
+    }
 
+    public void hienThiDialogSuaHoSoBenhAnTheoId(int idHoSo) {
         try {
-            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
             HoSoBenhAn hoSoBenhAnCanSua = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
 
             if (hoSoBenhAnCanSua != null) {
-                BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hoSoBenhAnCanSua.getIdBenhNhan());
-                String tenBenhNhanHienTai = (benhNhan != null) ? benhNhan.getHoTen() : "";
-
-                SuaHoSoBenhAnDialog suaDialog = new SuaHoSoBenhAnDialog(
-                    (JFrame) SwingUtilities.getWindowAncestor(this),
-                    "Sửa Hồ sơ Bệnh án",
-                    true,
-                    hoSoBenhAnController,
-                    benhNhanController,
-                    tenBenhNhanToId,
-                    this,
-                    idHoSo,
-                    tenBenhNhanHienTai,
-                    hoSoBenhAnCanSua.getChuanDoan(),
-                    hoSoBenhAnCanSua.getGhiChu(),
-                    hoSoBenhAnCanSua.getNgayTao(),
-                    hoSoBenhAnCanSua.getTrangThai()
-                );
-                suaDialog.setVisible(true);
+                // Tìm và chọn hàng tương ứng trong bảng
+                for (int i = 0; i < hoSoBenhAnTableModel.getRowCount(); i++) {
+                    int idInTable = (int) hoSoBenhAnTableModel.getValueAt(i, 0);
+                    if (idInTable == idHoSo) {
+                        hoSoBenhAnTable.setRowSelectionInterval(i, i);
+                        break;
+                    }
+                }
+                
+                // Gọi showInputDialog với tham số false (không phải thêm mới)
+                showInputDialog(false);
             } else {
                 showErrorMessage("Lỗi dữ liệu", "Không tìm thấy hồ sơ bệnh án để sửa.");
             }
@@ -558,7 +1071,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             showErrorMessage("Lỗi", "Không thể mở form sửa hồ sơ: " + e.getMessage());
         }
     }
-
     private void xoaHoSoBenhAn() {
         int selectedRow = hoSoBenhAnTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -633,14 +1145,23 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         }
     }
 
-    public boolean xemChiTietHoSoBenhAn(int idHoSo) {
+    private void xemChiTietHoSoBenhAn() {
+        int selectedRow = hoSoBenhAnTable.getSelectedRow();
+        if (selectedRow == -1) {
+            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
+            return;
+        }
+
         try {
+            // Lấy ID hồ sơ từ hàng đã chọn
+            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
+            
             // Tìm kiếm hồ sơ bệnh án theo ID
             HoSoBenhAn hoSoBenhAn = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
             
             if (hoSoBenhAn == null) {
                 showErrorMessage("Lỗi dữ liệu", "Không tìm thấy hồ sơ bệnh án.");
-                return false;
+                return;
             }
             
             // Tìm thông tin bệnh nhân
@@ -650,7 +1171,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             // Lấy danh sách đơn thuốc
             List<DonThuoc> danhSachDonThuoc = donThuocController.layDanhSachDonThuocTheoHoSoBenhAnId(idHoSo);
             
-            // Tạo và hiển thị dialog chi tiết
+            // Tạo và hiển thị dialog chi tiết với tham chiếu parentUI
             JFrame owner = (JFrame) SwingUtilities.getWindowAncestor(this);
             ChiTietHoSoBenhAnDialog chiTietDialog = new ChiTietHoSoBenhAnDialog(
                 owner,
@@ -662,35 +1183,20 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 hoSoBenhAn.getGhiChu(),
                 formatDate(hoSoBenhAn.getNgayTao()),
                 hoSoBenhAn.getTrangThai(),
-                danhSachDonThuoc
+                danhSachDonThuoc,
+                this // Truyền tham chiếu parentUI
             );
             
             chiTietDialog.setVisible(true);
-            return true;
         } catch (NullPointerException e) {
             showErrorMessage("Lỗi dữ liệu", "Dữ liệu hồ sơ bệnh án không đầy đủ: " + e.getMessage());
-            return false;
         } catch (ClassCastException e) {
             showErrorMessage("Lỗi dữ liệu", "Lỗi chuyển đổi kiểu dữ liệu: " + e.getMessage());
-            return false;
         } catch (Exception e) {
             showErrorMessage("Lỗi", "Không thể mở chi tiết hồ sơ bệnh án: " + e.getMessage());
             e.printStackTrace(); // Ghi log lỗi để thuận tiện cho việc debug
-            return false;
         }
     }
-    private void xemChiTietHoSoBenhAn() {
-        int selectedRow = hoSoBenhAnTable.getSelectedRow();
-        if (selectedRow == -1) {
-            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
-            return;
-        }
-
-        // Lấy ID hồ sơ từ hàng đã chọn
-        int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
-        xemChiTietHoSoBenhAn(idHoSo);
-    }
- // Helper method to format Date objects to String
     private String formatDate(Date date) {
         if (date == null) return "N/A";
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -744,97 +1250,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
-    // Custom rounded border implementation
-    private class CustomBorder extends AbstractBorder {
-        private int radius;
-        private Color borderColor;
-        
-        public CustomBorder(int radius, Color borderColor) {
-            this.radius = radius;
-            this.borderColor = borderColor;
-        }
-        
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(borderColor);
-            g2.drawRoundRect(x, y, width - 1, height - 1, radius * 2, radius * 2);
-            g2.dispose();
-        }
-        
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return new Insets(radius, radius, radius, radius);
-        }
-        
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = insets.right = insets.top = insets.bottom = radius;
-            return insets;
-        }
-    }
-
-    // Custom panel with rounded corners and optional shadow
-    class RoundedPanel extends JPanel {
-        private int cornerRadius;
-        private boolean hasShadow;
-        private int shadowSize = 6;
-        private int shadowOpacity = 15;
-        
-        public RoundedPanel(int radius, boolean shadow) {
-            super();
-            this.cornerRadius = radius;
-            this.hasShadow = shadow;
-            setOpaque(false);
-            // Add some padding to account for the shadow
-            if (shadow) {
-                setBorder(BorderFactory.createEmptyBorder(shadowSize, shadowSize, shadowSize, shadowSize));
-            }
-        }
-        
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Dimension arcs = new Dimension(cornerRadius, cornerRadius);
-            int width = getWidth() - (shadowSize * 2);
-            int height = getHeight() - (shadowSize * 2);
-            Graphics2D graphics = (Graphics2D) g;
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
-            // Draw shadow if enabled
-            if (hasShadow) {
-                // Create a softer, more realistic shadow using multiple layers
-                for (int i = 0; i < shadowSize; i++) {
-                    int opacity = shadowOpacity - (i * 2);
-                    if (opacity < 0) opacity = 0;
-                    
-                    graphics.setColor(new Color(0, 0, 0, opacity));
-                    graphics.fillRoundRect(
-                        shadowSize - i, // X position gets closer as shadow fades
-                        shadowSize - i, // Y position gets closer as shadow fades
-                        width + (i * 2), // Width increases as shadow spreads
-                        height + (i * 2), // Height increases as shadow spreads
-                        arcs.width + i, 
-                        arcs.height + i
-                    );
-                }
-            }
-            
-            // Draw panel background
-            graphics.setColor(getBackground());
-            graphics.fillRoundRect(shadowSize, shadowSize, width, height, arcs.width, arcs.height);
-            
-            // Remove this border drawing code to eliminate the black outline
-            // Only draw border if explicitly specified and not null
-            if (getBorder() != null && !(getBorder() instanceof EmptyBorder)) {
-                graphics.setColor(getForeground());
-                graphics.drawRoundRect(shadowSize, shadowSize, width, height, arcs.width, arcs.height);
-            }
-        }
-    }
-
-    // Methods for showing different message dialogs
+    
     private void showSuccessMessage(String message) {
         JOptionPane optionPane = new JOptionPane(
             message,
@@ -844,7 +1260,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         dialog.setAlwaysOnTop(true);
         dialog.setVisible(true);
     }
-
     private void showNotification(String message, NotificationType type) {
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
@@ -875,17 +1290,12 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         toastDialog.add(toastPanel);
         toastDialog.pack();
-
-        // Position at bottom right
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         toastDialog.setLocation(
             screenSize.width - toastDialog.getWidth() - 20,
             screenSize.height - toastDialog.getHeight() - 60
         );
-
         toastDialog.setVisible(true);
-
-        // Auto-hide after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
@@ -898,8 +1308,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     public enum NotificationType {
         SUCCESS(new Color(86, 156, 104), "Thành công"),
         WARNING(new Color(237, 187, 85), "Cảnh báo"),
-        ERROR(new Color(192, 80, 77), "Lỗi");
-        
+        ERROR(new Color(192, 80, 77), "Lỗi");        
         private final Color color;
         private final String title;
         
@@ -917,7 +1326,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         dialog.setAlwaysOnTop(true);
         dialog.setVisible(true);
     }
-
     @Override
     public void showErrorMessage(String title, String message) {
         JOptionPane optionPane = new JOptionPane(
@@ -928,17 +1336,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         dialog.setAlwaysOnTop(true);
         dialog.setVisible(true);
     }
-
-    private void showErrorDialog(String title, String message) {
-        JOptionPane.showMessageDialog(
-            SwingUtilities.getWindowAncestor(this),
-            message,
-            title,
-            JOptionPane.ERROR_MESSAGE
-        );
-    }
-
-    // Implementation of ExportManager.MessageCallback interface
     @Override
     public void showMessage(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(
@@ -948,11 +1345,8 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             messageType
         );
     }
-
 	@Override
-	public void showSuccessToast(String message) {
-		// TODO Auto-generated method stub
-		
+	public void showSuccessToast(String message) {		
 	}
 }
                 		    

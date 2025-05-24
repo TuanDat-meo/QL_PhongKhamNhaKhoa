@@ -714,11 +714,6 @@ public class BacSiController {
         
         try {
             conn = connectMySQL.getConnection();
-            
-            // First, log the doctor ID and get the specialty
-//            System.out.println("Finding replacements for doctor ID: " + doctorId);
-            
-            // Get the specialty of the doctor to be deleted
             String specialtySql = "SELECT chuyenKhoa FROM BacSi WHERE idBacSi = ?";
             String specialty = null;
             
@@ -727,10 +722,8 @@ public class BacSiController {
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         specialty = rs.getString("chuyenKhoa");
-//                        System.out.println("Doctor specialty: " + specialty);
                     } else {
-//                        System.out.println("No doctor found with ID: " + doctorId);
-                        return replacementDoctors;
+                    	return replacementDoctors;
                     }
                 }
             }
@@ -768,12 +761,10 @@ public class BacSiController {
                             
                             replacementDoctors.add(bacSi);
                         }
-                        System.out.println("Found " + count + " potential replacement doctors");
                     }
                 }
             }
-        } catch (SQLException e) {
-            System.out.println("SQL Error: " + e.getMessage());
+        } catch (SQLException e) {         
             e.printStackTrace();
         } finally {
             try {
@@ -787,8 +778,6 @@ public class BacSiController {
         
         return replacementDoctors;
     }
-    
-    // Cancel future appointments for a doctor - Fixed to handle Vietnamese text
     private boolean cancelFutureAppointments(Connection conn, int bacSiId) throws SQLException {
         // Get current date
         java.util.Date today = new java.util.Date();
@@ -903,15 +892,12 @@ public class BacSiController {
         List<NguoiDung> nguoiDungList = new ArrayList<>();
         String sql = "SELECT * FROM NguoiDung WHERE vaiTro = ? ORDER BY hoTen";
         
-        System.out.println("Đang tìm kiếm người dùng với vai trò 'Bác sĩ'");
-        
         try (Connection conn = connectMySQL.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, "Bác sĩ");
             
             try (ResultSet rs = stmt.executeQuery()) {
-                System.out.println("Đã thực hiện truy vấn SQL");
                 int count = 0;
                 
                 while (rs.next()) {
@@ -927,13 +913,9 @@ public class BacSiController {
                     nguoiDung.setVaiTro(rs.getString("vaiTro"));
                     
                     nguoiDungList.add(nguoiDung);
-                    System.out.println("Đã thêm người dùng: " + nguoiDung.getHoTen());
                 }
-                
-                System.out.println("Tổng số người dùng bác sĩ tìm thấy: " + count);
             }
         } catch (SQLException e) {
-            System.out.println("Lỗi truy vấn SQL: " + e.getMessage());
             e.printStackTrace();
         }
         
