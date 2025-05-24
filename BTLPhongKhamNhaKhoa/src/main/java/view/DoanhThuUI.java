@@ -5,8 +5,6 @@ import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
 import util.RoundedPanel;
-import view.BenhNhanUI.CustomBorder;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -747,32 +745,11 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             suaDoanhThuAction();
         });
         
-        JButton deleteButton = createRoundedButton("Xóa", accentColor, buttonTextColor, 10);
-        deleteButton.addActionListener(e -> {
-            dialog.dispose();
-            int choice = JOptionPane.showConfirmDialog(
-                SwingUtilities.getWindowAncestor(this),
-                "Bạn có chắc chắn muốn xóa doanh thu này?",
-                "Xác nhận xóa",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-            );
-            
-            if (choice == JOptionPane.YES_OPTION) {
-                doanhThuController.xoaDoanhThu(idDoanhThu);
-                doanhThuController.loadDoanhThuData();
-                showNotification("Đã xóa doanh thu thành công!", NotificationType.SUCCESS);
-            } else {
-                showNotification("Hủy xóa thành công.", NotificationType.SUCCESS);
-            }
-        });
-        
         JButton closeButton = createRoundedButton("Đóng", Color.WHITE, textColor, 10);
         closeButton.setBorder(new LineBorder(borderColor, 1));
         closeButton.addActionListener(e -> dialog.dispose());
         
         buttonPanel.add(editButton);
-        buttonPanel.add(deleteButton);
         buttonPanel.add(closeButton);
         
         // Add components to dialog

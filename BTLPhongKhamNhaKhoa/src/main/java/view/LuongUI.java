@@ -784,36 +784,32 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
                 // View mode
                 displayLuongDetails(luong);
                 
-                JButton btnEdit = createRoundedButton("Chỉnh Sửa", warningColor, buttonTextColor, 10);
+                JButton btnEdit = new JButton("Chỉnh sửa");
+                btnEdit.setBackground(new Color(70, 130, 180));
+                btnEdit.setForeground(Color.WHITE);
                 btnEdit.addActionListener(e -> {
-                	dialog.dispose();
+                    dialog.dispose();
                     showLuongDialog(luong, DialogMode.EDIT);
                 });
                 
-                JButton btnDelete = createRoundedButton("Xóa", accentColor, buttonTextColor, 10);
+                JButton btnDelete = new JButton("Xóa");
+                btnDelete.setBackground(new Color(220, 80, 80));
+                btnDelete.setForeground(Color.WHITE);
                 btnDelete.addActionListener(e -> {
-                    dialog.dispose();
                     int confirm = JOptionPane.showConfirmDialog(
-                            dialog,
-                            "Bạn có chắc chắn muốn xóa bản ghi lương này?",
-                            "Xác nhận xóa",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.WARNING_MESSAGE
+                        dialog,
+                        "Bạn có chắc chắn muốn xóa bản ghi lương này?",
+                        "Xác nhận xóa",
+                        JOptionPane.YES_NO_OPTION
                     );
                     
                     if (confirm == JOptionPane.YES_OPTION) {
                         dialog.dispose();
                         xoaLuong(Integer.parseInt(txtIdLuong.getText()));
-                        showNotification("Đã xóa doanh thu thành công!", NotificationType.SUCCESS);
-                    }else {
-                        showNotification("Hủy xóa thành công.", NotificationType.SUCCESS);
                     }
                 });
-               
                 
-                
-                JButton btnClose = createRoundedButton("Đóng", Color.WHITE, textColor, 10);
-                btnClose.setBorder(new LineBorder(borderColor, 1));
+                JButton btnClose = new JButton("Đóng");
                 btnClose.addActionListener(e -> dialog.dispose());
                 
                 panelButtons.add(btnEdit);
