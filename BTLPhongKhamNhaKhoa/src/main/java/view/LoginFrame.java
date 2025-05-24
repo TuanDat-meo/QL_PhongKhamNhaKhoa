@@ -213,11 +213,12 @@ public class LoginFrame extends JFrame {
                     return; 
                 }                
                 if (passwordField.getEchoChar() == '●') {
-                    
                     passwordField.setEchoChar((char) 0);
                     ((JButton)e.getSource()).putClientProperty("eyeOpen", true);
-                    if (togglePasswordButton instanceof JButton button) {
+                    // Traditional instanceof check without pattern variable
+                    if (togglePasswordButton instanceof JButton) {
                         try {
+                            JButton button = (JButton) togglePasswordButton;
                             if (button.getClass().getMethod("setEyeOpen", boolean.class) != null) {
                                 button.getClass().getMethod("setEyeOpen", boolean.class).invoke(button, true);
                             }
@@ -228,8 +229,10 @@ public class LoginFrame extends JFrame {
                 } else {
                     passwordField.setEchoChar('●');
                     ((JButton)e.getSource()).putClientProperty("eyeOpen", false);
-                    if (togglePasswordButton instanceof JButton button) {
+                    // Traditional instanceof check without pattern variable
+                    if (togglePasswordButton instanceof JButton) {
                         try {
+                            JButton button = (JButton) togglePasswordButton;
                             if (button.getClass().getMethod("setEyeOpen", boolean.class) != null) {
                                 button.getClass().getMethod("setEyeOpen", boolean.class).invoke(button, false);
                             }
@@ -240,7 +243,8 @@ public class LoginFrame extends JFrame {
                 }
                 togglePasswordButton.repaint();
             }
-        });        
+        });
+
         mainPanel.add(togglePasswordButton);        
         setContentPane(mainPanel);
     }    
@@ -400,13 +404,32 @@ public class LoginFrame extends JFrame {
             if (!isValid) {
                 return; 
             }
+            
             NguoiDung loggedInUser = NguoiDungController.checkLoginAndGetUser(email, password);
             if (loggedInUser != null) {
                 showNotification("Đăng nhập thành công!", NotificationType.SUCCESS);
-                try {
-                    new GiaoDienChinh(loggedInUser).setVisible(true);
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
+                
+                // Kiểm tra vai trò người dùng
+                String vaiTro = loggedInUser.getVaiTro();
+                
+                // Nếu vai trò là null hoặc "khach_hang", mở GiaoDienKhachHang
+                if (vaiTro == null || vaiTro.equals("khach_hang")) {
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            new GiaoDienKhachHang(loggedInUser).setVisible(true);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            showNotification("Lỗi khởi tạo giao diện: " + ex.getMessage(), NotificationType.ERROR);
+                        }
+                    });
+                } else {
+                    // Vai trò khác (nhân viên, quản trị viên) mở GiaoDienChinh
+                    try {
+                        new GiaoDienChinh(loggedInUser).setVisible(true);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        showNotification("Lỗi khởi tạo giao diện: " + ex.getMessage(), NotificationType.ERROR);
+                    }
                 }
                 dispose();
             } else {

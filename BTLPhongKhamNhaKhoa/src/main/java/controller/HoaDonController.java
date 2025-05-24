@@ -22,7 +22,7 @@ public class HoaDonController {
     private List<HoaDon> danhSachHoaDon;
     private Connection conn;
     private DoanhThuController doanhThuController;
-    private DoanhThuUI doanhThuUI;//nguyen doan
+    private DoanhThuUI doanhThuUI;
 
     /**
      * Constructor initializes the connection to database and loads invoices
