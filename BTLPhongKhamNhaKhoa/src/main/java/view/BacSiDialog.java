@@ -58,19 +58,17 @@ public class BacSiDialog extends JDialog {
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
     
     public BacSiDialog(JFrame parent, BacSi bacSi) {
-        super(parent, true);
+        super(parent, "Thêm Mới Bác Sĩ", true);
         this.currentBacSi = bacSi;
         this.bacSiController = new BacSiController();
-        
         setSize(500, 650); // Increased height to accommodate scroll
         setLocationRelativeTo(parent);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setResizable(false);
-        
         initializeComponents();
-        
         // Load data if editing
         if (bacSi != null) {
+            setTitle("Chỉnh Sửa Thông Tin Bác Sĩ");
             loadDoctorData();
         }
     }
@@ -86,14 +84,14 @@ public class BacSiDialog extends JDialog {
         JPanel headerPanel = new JPanel();
         headerPanel.setBackground(primaryColor);
         headerPanel.setLayout(new BorderLayout());
-        headerPanel.setPreferredSize(new Dimension(0, 70));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
+        headerPanel.setPreferredSize(new Dimension(0, 80));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(22, 25, 22, 25));
         
         JLabel titleLabel = new JLabel(currentBacSi == null ? "THÊM MỚI BÁC SĨ" : "CHỈNH SỬA THÔNG TIN BÁC SĨ");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
         // Create scrollable form panel
