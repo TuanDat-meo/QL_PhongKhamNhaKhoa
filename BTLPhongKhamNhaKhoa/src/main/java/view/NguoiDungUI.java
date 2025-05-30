@@ -855,14 +855,15 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         contentPane.setBackground(panelColor);
         
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(successColor);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
-        
-        JLabel titleLabel = new JLabel("Thêm người dùng mới");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        headerPanel.setBackground(primaryColor); 
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        JLabel titleLabel = new JLabel("THÊM NGƯỜI DÙNG MỚI");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+
+        headerPanel.add(titleLabel, BorderLayout.WEST);
         
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
@@ -893,16 +894,13 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(panelColor);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
-        
-        JButton saveButton = new JButton("Lưu");
-        JButton cancelButton = new JButton("Hủy");
-        
-        styleButton(saveButton, successColor);
-        styleButton(cancelButton, primaryColor);
-        
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-        
+
+        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10);
+        cancelButton.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
+        saveButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         saveButton.addActionListener(e -> {
             if (hoTenField.getText().trim().isEmpty() ||                 
                 emailField.getText().trim().isEmpty() ||
@@ -938,8 +936,9 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 ex.printStackTrace();
             }
         });
-        
-        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
         
         contentPane.add(headerPanel, BorderLayout.NORTH);
         contentPane.add(formPanel, BorderLayout.CENTER);

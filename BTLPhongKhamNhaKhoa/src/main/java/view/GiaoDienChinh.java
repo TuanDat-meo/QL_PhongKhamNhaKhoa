@@ -515,20 +515,20 @@ public class GiaoDienChinh extends JFrame {
             });
         }
     }
-//
-//    public static void main(String[] args) {
-//        SwingUtilities.invokeLater(() -> {
-//            try {
-//                new LoginFrame().setVisible(true);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//                JOptionPane.showMessageDialog(
-//                    null,
-//                    "Lỗi khởi tạo: " + e.getMessage(),
-//                    "Lỗi",
-//                    JOptionPane.ERROR_MESSAGE
-//                );
-//            }
-//        });
-//    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                new LoginFrame().setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(
+                    null,
+                    "Lỗi khởi tạo: " + e.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        });
+    }
 }
