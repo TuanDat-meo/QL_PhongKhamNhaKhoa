@@ -87,33 +87,26 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
         headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
-        
         // Title panel on the left
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
-        
         JLabel titleLabel = new JLabel("QUẢN LÝ NGƯỜI DÙNG");
         titleLabel.setFont(titleFont);
         titleLabel.setForeground(primaryColor);
         titlePanel.add(titleLabel);
-        
         headerPanel.add(titlePanel, BorderLayout.WEST);
-        
         // Search panel on the right
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
-        
         JLabel searchLabel = new JLabel("Tìm kiếm:");
         searchLabel.setFont(regularFont);
         searchLabel.setForeground(textColor);
-        
         searchField = new JTextField(18);
         searchField.setFont(regularFont);
         searchField.setPreferredSize(new Dimension(220, 38));
         searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(borderColor, 1, true),
-                BorderFactory.createEmptyBorder(5, 10, 5, 5)));
-        
+                new CustomBorder(10, borderColor),
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)));
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -122,16 +115,12 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 }
             }
         });
-        
-        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10);
+        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10, false);
         searchButton.setPreferredSize(new Dimension(120, 38));
-        
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
-        
         headerPanel.add(searchPanel, BorderLayout.EAST);
-        
         return headerPanel;
     }
     
@@ -231,10 +220,10 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
         
-        exportButton = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
+        exportButton = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
         exportButton.setPreferredSize(new Dimension(100, 45));
         exportButton.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
-        addButton = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
+        addButton = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10, false);
         addButton.setPreferredSize(new Dimension(100, 45));
         
         buttonPanel.add(exportButton);
@@ -433,8 +422,8 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 buttonPanel.setBackground(panelColor);
                 buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
                 
-                JButton editButton = createRoundedButton("Chỉnh sửa", warningColor, buttonTextColor, 10);
-                JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10);
+                JButton editButton = createRoundedButton("Chỉnh sửa", warningColor, buttonTextColor, 10, false);
+                JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10, false);
                 
                 editButton.setPreferredSize(new Dimension(120, 40));
                 closeButton.setPreferredSize(new Dimension(120, 40));
@@ -556,8 +545,8 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 buttonPanel.setBackground(panelColor);
                 buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
                 
-                JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
-                JButton cancelButton = createRoundedButton("Hủy", primaryColor, buttonTextColor, 10);
+                JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10, false);
+                JButton cancelButton = createRoundedButton("Hủy", primaryColor, buttonTextColor, 10, false);
                 
                 saveButton.setPreferredSize(new Dimension(100, 40));
                 cancelButton.setPreferredSize(new Dimension(100, 40));
@@ -609,7 +598,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         }
     }
     
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean isFilled) {
         JButton button = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -855,14 +844,15 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         contentPane.setBackground(panelColor);
         
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(successColor);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
-        
-        JLabel titleLabel = new JLabel("Thêm người dùng mới");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        headerPanel.setBackground(primaryColor); 
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        JLabel titleLabel = new JLabel("THÊM NGƯỜI DÙNG MỚI");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+
+        headerPanel.add(titleLabel, BorderLayout.WEST);
         
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
@@ -893,16 +883,13 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(panelColor);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
-        
-        JButton saveButton = new JButton("Lưu");
-        JButton cancelButton = new JButton("Hủy");
-        
-        styleButton(saveButton, successColor);
-        styleButton(cancelButton, primaryColor);
-        
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-        
+
+        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
+        cancelButton.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10, true);
+        saveButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         saveButton.addActionListener(e -> {
             if (hoTenField.getText().trim().isEmpty() ||                 
                 emailField.getText().trim().isEmpty() ||
@@ -938,8 +925,9 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 ex.printStackTrace();
             }
         });
-        
-        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
         
         contentPane.add(headerPanel, BorderLayout.NORTH);
         contentPane.add(formPanel, BorderLayout.CENTER);
@@ -1152,4 +1140,21 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
 		// TODO Auto-generated method stub
 		
 	}
+
+    // Thêm class CustomBorder vào cuối file để bo góc cho ô input tìm kiếm
+    private class CustomBorder extends LineBorder {
+        private int radius;
+        public CustomBorder(int radius, Color color) {
+            super(color);
+            this.radius = radius;
+        }
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(lineColor);
+            g2d.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            g2d.dispose();
+        }
+    }
 }

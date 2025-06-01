@@ -108,43 +108,26 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
        
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
-        
         JLabel titleLabel = new JLabel("QUẢN LÝ BỆNH NHÂN");
         titleLabel.setFont(titleFont);
         titleLabel.setForeground(primaryColor);
         titlePanel.add(titleLabel);
-        
         headerPanel.add(titlePanel, BorderLayout.WEST);
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
-
         JLabel searchLabel = new JLabel("Tìm kiếm:");
         searchLabel.setFont(regularFont);
         searchLabel.setForeground(textColor);
-        
         txtTimKiem = new JTextField(18);
         txtTimKiem.setFont(regularFont);
         txtTimKiem.setPreferredSize(new Dimension(220, 38));
         txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
                 new CustomBorder(10, borderColor), 
-                BorderFactory.createEmptyBorder(5, 12, 5, 12)));                
-        txtTimKiem.addKeyListener(new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {}
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    timKiemBenhNhan();
-                }
-            }
-            @Override
-            public void keyReleased(KeyEvent e) {}
-        });
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)));
         btnTimKiem = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10,false);
         btnTimKiem.setPreferredSize(new Dimension(120, 38));
         btnTimKiem.addActionListener(e -> timKiemBenhNhan());
-
         searchPanel.add(searchLabel);
         searchPanel.add(txtTimKiem);
         searchPanel.add(btnTimKiem);
@@ -673,11 +656,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     }
     private void createInputDialog() {
         Color requiredFieldColor = new Color(255, 0, 0);
-        
         inputDialog = new JDialog();
         inputDialog.setTitle("Thông tin bệnh nhân");
         inputDialog.setModal(true);
-        inputDialog.setSize(480, 510); // Tăng chiều cao để có thêm không gian cho các field
+        inputDialog.setSize(480, 510);
         inputDialog.setLocationRelativeTo(null);
         inputDialog.setResizable(false);
 
@@ -687,13 +669,15 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         JPanel headerPanel = new JPanel();
         headerPanel.setBackground(primaryColor);
         headerPanel.setLayout(new BorderLayout());
-        headerPanel.setPreferredSize(new Dimension(0, 50));
-        
+        headerPanel.setPreferredSize(new Dimension(0, 70));
+        headerPanel.setBorder(new EmptyBorder(18, 25, 18, 25));
+
         JLabel titleLabel = new JLabel("THÊM MỚI BỆNH NHÂN");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
         
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new GridBagLayout());
@@ -893,7 +877,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         btnLuu.setBorderPainted(false);
         btnLuu.addActionListener(e -> luuBenhNhan());
 
-        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
+        JButton btnHuy = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
         btnHuy.setBorder(new LineBorder(borderColor, 1));
         btnHuy.setPreferredSize(buttonSize);
         btnHuy.setMinimumSize(buttonSize);
@@ -904,8 +888,8 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             resetAllValidationErrors();
             inputDialog.setVisible(false);
         });
-        buttonPanel.add(btnLuu);
         buttonPanel.add(btnHuy);
+        buttonPanel.add(btnLuu);
 
         // Add panels to main panel
         mainPanel.add(headerPanel, BorderLayout.NORTH);

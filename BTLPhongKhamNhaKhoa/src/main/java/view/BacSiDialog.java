@@ -58,19 +58,17 @@ public class BacSiDialog extends JDialog {
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
     
     public BacSiDialog(JFrame parent, BacSi bacSi) {
-        super(parent, true);
+        super(parent, "Thêm Mới Bác Sĩ", true);
         this.currentBacSi = bacSi;
         this.bacSiController = new BacSiController();
-        
         setSize(500, 650); // Increased height to accommodate scroll
         setLocationRelativeTo(parent);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setResizable(false);
-        
         initializeComponents();
-        
         // Load data if editing
         if (bacSi != null) {
+            setTitle("Chỉnh Sửa Thông Tin Bác Sĩ");
             loadDoctorData();
         }
     }
@@ -86,13 +84,15 @@ public class BacSiDialog extends JDialog {
         JPanel headerPanel = new JPanel();
         headerPanel.setBackground(primaryColor);
         headerPanel.setLayout(new BorderLayout());
-        headerPanel.setPreferredSize(new Dimension(0, 50));
+        headerPanel.setPreferredSize(new Dimension(0, 80));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(22, 25, 22, 25));
         
         JLabel titleLabel = new JLabel(currentBacSi == null ? "THÊM MỚI BÁC SĨ" : "CHỈNH SỬA THÔNG TIN BÁC SĨ");
-        titleLabel.setFont(titleFont);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
         
         // Create scrollable form panel
         JPanel formPanel = createScrollableFormPanel();
@@ -110,10 +110,11 @@ public class BacSiDialog extends JDialog {
         saveButton.setMaximumSize(buttonSize);
         saveButton.addActionListener(e -> saveDoctor());
         
-        JButton cancelButton = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
+        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
         cancelButton.setPreferredSize(buttonSize);
         cancelButton.setMinimumSize(buttonSize);
         cancelButton.setMaximumSize(buttonSize);
+        cancelButton.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
         cancelButton.addActionListener(e -> {
             resetAllValidationErrors();
             dispose();
