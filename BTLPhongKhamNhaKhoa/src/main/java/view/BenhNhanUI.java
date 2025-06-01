@@ -4,23 +4,17 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 import com.toedter.calendar.JDateChooser;
 import controller.BenhNhanController;
-import controller.DonThuocController;
-import controller.HoSoBenhAnController;
 import model.BenhNhan;
-import model.DonThuoc;
-import model.HoSoBenhAn;
 import util.CustomBorder;
 import util.ExportManager;
 import util.RoundedPanel;
 import util.ValidationUtils;
-import view.DoanhThuUI.NotificationType;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,6 +23,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -36,7 +32,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-
 public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback {
     private BenhNhanController qlBenhNhan;
     private JTable tableBenhNhan;
@@ -44,21 +39,19 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private JTextField txtHoTen, txtSoDienThoai, txtCccd, txtDiaChi;
     private JDateChooser dateChooserNgaySinh;
     private JComboBox<String> cbGioiTinh;
+    private JLabel lblSoBenhNhan;
     private JDialog inputDialog;
     private JPopupMenu popupMenu;
     private JMenuItem menuItemXemChiTiet, menuItemSuaBenhNhan, menuItemXoaBenhNhan;
-    private JButton btnThem, btnXoa, btnTimKiem;
+    private JButton btnThem, btnTimKiem;
     private JTextField txtTimKiem;
     private JButton btnXuatFile;
     private ExportManager exportManager;
-    private HoSoBenhAnUI hoSoBenhAnUI;
-    private JTable hoSoBenhAnTable;
-    private DefaultTableModel hoSoBenhAnTableModel;
-    private HoSoBenhAnController hoSoBenhAnController;
-    private BenhNhanController benhNhanController;
-    private DonThuocController donThuocController;
     private Map<JComponent, JLabel> errorLabels = new HashMap<>();
-    
+    private MouseWheelListener scrollListener;
+    private Timer highlightTimer;
+    private int highlightedRowId = -1;
+    private Color highlightColor = new Color(237, 187, 85);
     private Color primaryColor = new Color(79, 129, 189); // Professional blue
     private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
     private Color accentColor = new Color(192, 80, 77); // Refined red for delete
@@ -72,11 +65,9 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private Color borderColor = new Color(222, 226, 230); // Light gray borders
     private Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
-    private Color errorBackgroundColor = new Color(248, 215, 218); // Light red for error backgrounds
     
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
-    private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
-    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
+    private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);    
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
@@ -105,6 +96,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
         setupEventListeners();
+        setupScrollListener();
 
         createInputDialog();
         loadDanhSachBenhNhan();
@@ -161,7 +153,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     }
     private JPanel createTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
-        wrapperPanel.setBackground(backgroundColor);
+        wrapperPanel.setBackground(backgroundColor);        
         
         JPanel tablePanel = new RoundedPanel(15, true);
         tablePanel.setLayout(new BorderLayout());
@@ -180,26 +172,34 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         tableModel.addColumn("Giới tính");
         tableModel.addColumn("Số điện thoại");
         tableModel.addColumn("CCCD");
-        tableModel.addColumn("Địa chỉ");
+        tableModel.addColumn("Địa chỉ");        
+        
         tableBenhNhan = new JTable(tableModel) {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
-                Component comp = super.prepareRenderer(renderer, row, column);
-                
+                Component comp = super.prepareRenderer(renderer, row, column);                
                 if (comp instanceof JLabel) {
                     ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
-                }
+                }                
+                // Kiểm tra xem có phải hàng cần highlight không
+                int modelRow = convertRowIndexToModel(row);
+                int rowId = (Integer) tableModel.getValueAt(modelRow, 0);
+                
                 if (!comp.getBackground().equals(getSelectionBackground())) {
-                    comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    if (highlightedRowId > 0 && rowId == highlightedRowId) {
+                        comp.setBackground(highlightColor); // Màu highlight
+                    } else {
+                        comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    }
                 }
                 return comp;
             }
         };        
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                for (int i = 0; i < tableBenhNhan.getColumnCount(); i++) {
+        for (int i = 0; i < tableBenhNhan.getColumnCount(); i++) {
             tableBenhNhan.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
-        }        
+        }          
         tableBenhNhan.setFont(tableFont);
         tableBenhNhan.setRowHeight(40);
         tableBenhNhan.setShowGrid(false);
@@ -216,8 +216,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         header.setForeground(Color.WHITE);
         header.setPreferredSize(new Dimension(header.getWidth(), 45));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
-        header.setReorderingAllowed(false);
-        
+        header.setReorderingAllowed(false);        
         DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) header.getDefaultRenderer();
         headerRenderer.setHorizontalAlignment(JLabel.CENTER);
 
@@ -232,26 +231,106 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
 
         setupPopupMenu();
         JScrollPane scrollPane = new JScrollPane(tableBenhNhan);
+        scrollPane.setWheelScrollingEnabled(true);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);        
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);       
+        scrollPane.addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                // Nếu có highlight đang hoạt động, tắt nó ngay lập tức
+                if (highlightedRowId > 0) {
+                    resetHighlightState();
+                }                
+                // Xử lý cuộn bình thường
+                JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
+                int rotation = e.getWheelRotation();
+                int increment = verticalScrollBar.getUnitIncrement();
+                verticalScrollBar.setValue(verticalScrollBar.getValue() + rotation * increment);
+            }
+        });        
+        // Xử lý khi kéo thanh cuộn
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
+            if (highlightedRowId > 0 && e.getValueIsAdjusting()) {
+                // Nếu có highlight và người dùng đang kéo scrollbar
+                resetHighlightState();
+            }
+        });
+        // Thêm key listener cho table để xử lý cuộn bằng phím
+        tableBenhNhan.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (highlightedRowId > 0 && isNavigationKey(e.getKeyCode())) {
+                    // Nếu có highlight và người dùng sử dụng phím điều hướng
+                    resetHighlightState();
+                }
+            }            
+            private boolean isNavigationKey(int keyCode) {
+                return keyCode == KeyEvent.VK_UP || 
+                       keyCode == KeyEvent.VK_DOWN || 
+                       keyCode == KeyEvent.VK_PAGE_UP || 
+                       keyCode == KeyEvent.VK_PAGE_DOWN ||
+                       keyCode == KeyEvent.VK_HOME ||
+                       keyCode == KeyEvent.VK_END;
+            }
+        });        
+        // Thêm mouse listener để xử lý click trên table
+        tableBenhNhan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Nếu có highlight và user click vào table, tắt highlight
+                if (highlightedRowId > 0) {
+                    resetHighlightState();
+                }
+            }
+        });
+        
+        // Thêm scrollPane vào tablePanel
         tablePanel.add(scrollPane, BorderLayout.CENTER);
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
+        
         return wrapperPanel;
     }
+    private void resetHighlightState() {
+        if (highlightTimer != null && highlightTimer.isRunning()) {
+            highlightTimer.stop();
+        }
+        highlightedRowId = -1;
+        tableBenhNhan.repaint();        
+        loadDanhSachBenhNhan();
+    }
     private JPanel createButtonPanel() {
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        JPanel buttonPanel = new JPanel(new BorderLayout());
         buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        buttonPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
+        
+        // Panel bên trái cho hiển thị số bệnh nhân
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.setBackground(backgroundColor);
+        
+        lblSoBenhNhan = new JLabel("Tổng số bệnh nhân: 0");
+        lblSoBenhNhan.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblSoBenhNhan.setForeground(primaryColor);
+        leftPanel.add(lblSoBenhNhan);
+        
+        // Panel bên phải cho các nút
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightPanel.setBackground(backgroundColor);
+        
         btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
-        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10,false);
+        
+        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10, false);
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> showInputDialog(true));
-        buttonPanel.add(btnXuatFile);
-        buttonPanel.add(btnThem);
+        
+        rightPanel.add(btnXuatFile);
+        rightPanel.add(btnThem);
+        
+        buttonPanel.add(leftPanel, BorderLayout.WEST);
+        buttonPanel.add(rightPanel, BorderLayout.EAST);
+        
         return buttonPanel;
     }
     private void setupPopupMenu() {
@@ -380,7 +459,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         String soDienThoai = (String) tableModel.getValueAt(modelRow, 4);
         String cccd = (String) tableModel.getValueAt(modelRow, 5);
         String diaChi = (String) tableModel.getValueAt(modelRow, 6);
-        
         Window parentWindow = SwingUtilities.getWindowAncestor(this);
         JFrame parent = parentWindow instanceof JFrame ? (JFrame) parentWindow : null;
         
@@ -499,7 +577,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 return false;
             }
         };
-
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -862,41 +939,13 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         dateChooser.setFont(regularFont);
         dateChooser.setPreferredSize(new Dimension(300, 35)); // Đồng nhất với các thành phần khác
         dateChooser.setBorder(new CustomBorder(8, borderColor));
-        dateChooser.setDateFormatString("yyyy-MM-dd");
+        dateChooser.setDateFormatString("dd/MM/yyyy");
         
         JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateTextField.setFont(regularFont);
         dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));
         
         return dateChooser;
-    }
-
-    private void addFormField(JPanel panel, GridBagConstraints gbc, String labelText, JComponent component, boolean required) {
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-
-        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        labelPanel.setBackground(panelColor);
-        
-        JLabel label = new JLabel(labelText);
-        label.setFont(regularFont);
-        label.setForeground(textColor);
-        labelPanel.add(label);
-        
-        if (required) {
-            JLabel requiredLabel = new JLabel("*");
-            requiredLabel.setFont(regularFont);
-            requiredLabel.setForeground(errorColor);
-            labelPanel.add(requiredLabel);
-        }
-        
-        panel.add(labelPanel, gbc);
-
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.CENTER;
-        panel.add(component, gbc);
     }
     private void showInputDialog(boolean isThem) {
     	resetAllValidationErrors();
@@ -916,10 +965,9 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
 
             txtHoTen.setText((String) tableModel.getValueAt(selectedRow, 1));
             
-            // Thiết lập giá trị cho JDateChooser thay vì txtNgaySinh
             try {
                 String dateString = (String) tableModel.getValueAt(selectedRow, 2);
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
                 Date date = dateFormat.parse(dateString);
                 dateChooserNgaySinh.setDate(date);
             } catch (ParseException e) {
@@ -948,25 +996,68 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     }
     
     private void loadDanhSachBenhNhan() {
+        loadDanhSachBenhNhan(-1); // Gọi với ID = -1 (không highlight)
+    }
+    private void capNhatSoBenhNhan() {
+        int soBenhNhan = tableModel.getRowCount();
+        lblSoBenhNhan.setText("Tổng số bệnh nhân: " + soBenhNhan);
+    }
+    private void loadDanhSachBenhNhan(int highlightId) {
         try {
             List<BenhNhan> danhSach = qlBenhNhan.layDanhSachBenhNhan();
             tableModel.setRowCount(0);
+            
+            // Nếu có ID cần highlight, sắp xếp để bản ghi đó lên đầu
+            if (highlightId > 0) {
+                danhSach.sort((bn1, bn2) -> {
+                    if (bn1.getIdBenhNhan() == highlightId) return -1;
+                    if (bn2.getIdBenhNhan() == highlightId) return 1;
+                    return Integer.compare(bn2.getIdBenhNhan(), bn1.getIdBenhNhan()); // Sắp xếp theo ID giảm dần
+                });
+            }
+            
             for (BenhNhan benhNhan : danhSach) {
                 tableModel.addRow(new Object[]{
                         benhNhan.getIdBenhNhan(),
                         benhNhan.getHoTen(),
-                        new SimpleDateFormat("yyyy-MM-dd").format(benhNhan.getNgaySinh()),
+                        new SimpleDateFormat("dd/MM/yyyy").format(benhNhan.getNgaySinh()),
                         benhNhan.getGioiTinh(),
                         benhNhan.getSoDienThoai(),
                         benhNhan.getCccd(),
                         benhNhan.getDiaChi()
                 });
             }
+            
+            // Cập nhật số lượng bệnh nhân
+            capNhatSoBenhNhan();
+            
+            // Nếu có ID cần highlight
+            if (highlightId > 0) {
+                highlightedRowId = highlightId;
+                tableBenhNhan.setRowSelectionInterval(0, 0); // Chọn hàng đầu tiên
+                tableBenhNhan.scrollRectToVisible(tableBenhNhan.getCellRect(0, 0, true)); // Scroll về đầu
+                
+                // Dừng timer cũ nếu có
+                if (highlightTimer != null && highlightTimer.isRunning()) {
+                    highlightTimer.stop();
+                }
+                
+                // Tạo timer mới để tắt highlight sau 10 giây
+                highlightTimer = new Timer(10000, e -> {
+                    highlightedRowId = -1;
+                    tableBenhNhan.repaint();
+                    loadDanhSachBenhNhan(); // Reload lại để trở về trạng thái sắp xếp bình thường
+                });
+                highlightTimer.setRepeats(false);
+                highlightTimer.start();
+                
+                tableBenhNhan.repaint(); // Vẽ lại bảng để hiển thị highlight
+            }
+            
         } catch (SQLException e) {
             showErrorMessage("Lỗi khi tải dữ liệu bệnh nhân", e.getMessage());
         }
     }
-
     private void luuBenhNhan() {
         String hoTen = txtHoTen.getText().trim();
         String soDienThoai = txtSoDienThoai.getText().trim();
@@ -975,94 +1066,102 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         Date ngaySinh = dateChooserNgaySinh.getDate();
         String gioiTinh = cbGioiTinh.getSelectedItem().toString();
         
-        // Clear all previous validation errors
         clearValidationError(txtHoTen);
         clearValidationError(txtSoDienThoai);
         clearValidationError(txtCccd);
         clearValidationError(txtDiaChi);
         clearValidationError(dateChooserNgaySinh);
         
-        boolean isValid = true;
-        
+        boolean isValid = true;        
         if (!ValidationUtils.validateHoTen(hoTen, txtHoTen)) {
             showValidationError(txtHoTen, ValidationUtils.getErrorMessage(txtHoTen));
             txtHoTen.requestFocus();
             isValid = false;
-        }
-        
+        }        
         if (!ValidationUtils.validateSoDienThoai(soDienThoai, txtSoDienThoai)) {
             showValidationError(txtSoDienThoai, ValidationUtils.getErrorMessage(txtSoDienThoai));
             if (isValid) {
                 txtSoDienThoai.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         if (!ValidationUtils.validateCCCD(cccd, txtCccd)) {
             showValidationError(txtCccd, ValidationUtils.getErrorMessage(txtCccd));
             if (isValid) {
                 txtCccd.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         if (!ValidationUtils.validateDiaChi(diaChi, txtDiaChi)) {
             showValidationError(txtDiaChi, ValidationUtils.getErrorMessage(txtDiaChi));
             if (isValid) {
                 txtDiaChi.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         if (!ValidationUtils.validateNgaySinh(ngaySinh, dateChooserNgaySinh)) {
             showValidationError(dateChooserNgaySinh, ValidationUtils.getErrorMessage(dateChooserNgaySinh));
             if (isValid) {
                 dateChooserNgaySinh.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         if (!isValid) {
             return;
-        }
-        
+        }        
         hoTen = ValidationUtils.sanitizeInput(hoTen);
         soDienThoai = ValidationUtils.sanitizeInput(soDienThoai);
         cccd = ValidationUtils.sanitizeInput(cccd);
-        diaChi = ValidationUtils.sanitizeInput(diaChi);
-        
+        diaChi = ValidationUtils.sanitizeInput(diaChi);        
         try {
-            // Lấy ngày từ JDateChooser
-            java.sql.Date sqlDate = new java.sql.Date(ngaySinh.getTime());
-            
+            java.sql.Date sqlDate = new java.sql.Date(ngaySinh.getTime());            
             int selectedRow = tableBenhNhan.getSelectedRow();
             int idBenhNhan = (selectedRow != -1) ? (int) tableModel.getValueAt(selectedRow, 0) : 0;
             
-            BenhNhan benhNhan = new BenhNhan(
-                idBenhNhan,
-                hoTen,
-                sqlDate,
-                gioiTinh,
-                soDienThoai,
-                cccd,
-                diaChi
-            );
-            
+            BenhNhan benhNhan = new BenhNhan(idBenhNhan,hoTen,sqlDate,gioiTinh,soDienThoai,cccd,diaChi);            
             if (selectedRow != -1 && !inputDialog.getTitle().contains("Thêm")) {
+                // Cập nhật bệnh nhân
                 qlBenhNhan.capNhatBenhNhan(benhNhan);
                 showSuccessToast("Thông tin bệnh nhân đã được cập nhật thành công!");
+                loadDanhSachBenhNhan(); // Load bình thường
             } else {
-                qlBenhNhan.themBenhNhan(benhNhan);
+                // Thêm bệnh nhân mới
+                int newId = qlBenhNhan.themBenhNhan(benhNhan);
                 showSuccessToast("Bệnh nhân mới đã được thêm thành công!");
-            }
+                loadDanhSachBenhNhan(newId); // Load và highlight bản ghi mới
+            }            
             
-            loadDanhSachBenhNhan();
             inputDialog.setVisible(false);
             
         } catch (SQLException e) {
             showErrorMessage("Lỗi cơ sở dữ liệu", e.getMessage());
         }
     }
+    private void setupScrollListener() {
+        Timer scrollEndTimer = new Timer(300, (ActionListener) new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                highlightedRowId = -1;
+                tableBenhNhan.repaint();
+                loadDanhSachBenhNhan();
+            }
+        });
+        scrollEndTimer.setRepeats(false); // Chỉ chạy một lần sau khi user ngừng cuộn
+
+        scrollListener = new MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+//                if (highlightedRowId > 0) {
+//                    if (highlightTimer != null && highlightTimer.isRunning()) {
+//                        highlightTimer.stop();
+//                    }
+//                    // Reset lại timer đợi người dùng ngừng cuộn
+//                    scrollEndTimer.restart();
+//                }
+            }
+        };
+    }
+
     private void xoaBenhNhan() {
         int selectedRow = tableBenhNhan.getSelectedRow();
         if (selectedRow == -1) {
@@ -1076,24 +1175,18 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         confirmDialog.setTitle("Xác nhận xóa");
         confirmDialog.setModal(true);
         confirmDialog.setSize(400, 200);
-        confirmDialog.setLocationRelativeTo(this);
-        
+        confirmDialog.setLocationRelativeTo(this);        
         JPanel panel = new JPanel(new BorderLayout(10, 15));
         panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));        
         JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
-        messagePanel.setBackground(Color.WHITE);
-        
+        messagePanel.setBackground(Color.WHITE);        
         JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn xóa bệnh nhân <b>" + tenBenhNhan + "</b>?</html>");
         messageLabel.setFont(regularFont);
-        messagePanel.add(messageLabel, BorderLayout.CENTER);
-        
-        panel.add(messagePanel, BorderLayout.CENTER);
-        
+        messagePanel.add(messageLabel, BorderLayout.CENTER);        
+        panel.add(messagePanel, BorderLayout.CENTER);        
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        buttonPanel.setBackground(Color.WHITE);
-        
+        buttonPanel.setBackground(Color.WHITE);        
         JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
         cancelButton.addActionListener(e -> confirmDialog.dispose());
         
@@ -1109,8 +1202,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             } catch (SQLException ex) {
                 showErrorMessage("Lỗi khi xóa bệnh nhân", ex.getMessage());
             }
-        });
-        
+        });        
         buttonPanel.add(cancelButton);
         buttonPanel.add(deleteButton);
         panel.add(buttonPanel, BorderLayout.SOUTH);        
@@ -1131,11 +1223,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                         (benhNhan.getSoDienThoai() != null && benhNhan.getSoDienThoai().toLowerCase().contains(keyword)) ||
                         (benhNhan.getCccd() != null && benhNhan.getCccd().toLowerCase().contains(keyword)) ||
                         (benhNhan.getDiaChi() != null && benhNhan.getDiaChi().toLowerCase().contains(keyword))) {
-
                     tableModel.addRow(new Object[]{
                             benhNhan.getIdBenhNhan(),
                             benhNhan.getHoTen(),
-                            new SimpleDateFormat("yyyy-MM-dd").format(benhNhan.getNgaySinh()),
+                            new SimpleDateFormat("dd/MM/yyyy").format(benhNhan.getNgaySinh()),
                             benhNhan.getGioiTinh(),
                             benhNhan.getSoDienThoai(),
                             benhNhan.getCccd(),
@@ -1143,6 +1234,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                     });
                 }
             }
+            capNhatSoBenhNhan();
             if (tableModel.getRowCount() == 0) {
                 showNotification("Không tìm thấy kết quả nào cho: '" + keyword + "'", NotificationType.WARNING);
             }
@@ -1185,8 +1277,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         toastDialog.setLocation(
                 screenSize.width - toastDialog.getWidth() - 20,
                 screenSize.height - toastDialog.getHeight() - 60
-        );
-        
+        );        
         toastDialog.setVisible(true);
         new Thread(() -> {
             try {
@@ -1199,21 +1290,13 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     }
     @Override
     public void showErrorMessage(String title, String message) {
-        JOptionPane.showMessageDialog(
-                this,
-                message,
-                title,
-                JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
     }
     private void setupEnterKeyNavigation() {
         JComponent[] components = new JComponent[] {
             txtHoTen,
             dateChooserNgaySinh.getDateEditor().getUiComponent(), // Get the text field component
-            cbGioiTinh,
-            txtSoDienThoai,
-            txtCccd,
-            txtDiaChi
+            cbGioiTinh, txtSoDienThoai, txtCccd, txtDiaChi
         };
         for (int i = 0; i < components.length - 1; i++) {
             final int nextIndex = i + 1;
@@ -1258,11 +1341,9 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     public enum NotificationType {
         SUCCESS(new Color(86, 156, 104), "Thành công"),
         WARNING(new Color(237, 187, 85), "Cảnh báo"),
-        ERROR(new Color(192, 80, 77), "Lỗi");
-        
+        ERROR(new Color(192, 80, 77), "Lỗi");        
         private final Color color;
-        private final String title;
-        
+        private final String title;        
         NotificationType(Color color, String title) {
             this.color = color;
             this.title = title;
@@ -1272,7 +1353,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
         toastDialog.setAlwaysOnTop(true);
-
         JPanel toastPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1285,12 +1365,10 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         };
         toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
         toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
-
         JLabel titleLabel = new JLabel(type.title);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         titleLabel.setForeground(Color.WHITE);
-        toastPanel.add(titleLabel);
-        
+        toastPanel.add(titleLabel);        
         JLabel messageLabel = new JLabel(message);
         messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         messageLabel.setForeground(Color.WHITE);
@@ -1316,11 +1394,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
 	public void showMessage(String message, String title, int messageType) {
 	}
     private void showWarningMessage(String message) {
-        JOptionPane.showMessageDialog(
-            this,
-            message,
-            "Cảnh báo",
-            JOptionPane.WARNING_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
     }
 }

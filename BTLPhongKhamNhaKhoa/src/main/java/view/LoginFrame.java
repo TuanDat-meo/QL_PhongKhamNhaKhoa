@@ -57,8 +57,7 @@ public class LoginFrame extends JFrame {
     
     // Fonts
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 30);
-    private static final Font FIELD_FONT = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font FIELD_FONT = new Font("Segoe UI", Font.PLAIN, 14);    
     private static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 15);
     private static final Font SMALL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font ERROR_FONT = new Font("Segoe UI", Font.ITALIC, 12);
