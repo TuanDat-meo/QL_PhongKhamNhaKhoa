@@ -9,13 +9,17 @@ import java.awt.Font;
 import java.awt.event.MouseEvent;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.text.Normalizer;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.regex.Pattern;
 
 // Thêm imports cho Excel
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.DefaultIndexedColorMap;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 // Thêm imports cho PDF
@@ -383,38 +387,74 @@ public class ExportManager {
     private void exportToExcel(File file) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Data");
-            
+
             // Tạo font đậm cho tiêu đề
             org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
             headerFont.setBold(true);
-            
+
             // Tạo CellStyle cho tiêu đề
             CellStyle headerCellStyle = workbook.createCellStyle();
             headerCellStyle.setFont(headerFont);
-            headerCellStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            XSSFColor headerColor = new XSSFColor(new java.awt.Color(41, 128, 185), new DefaultIndexedColorMap());
+            headerCellStyle.setFillForegroundColor(headerColor);
             headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             headerCellStyle.setBorderBottom(BorderStyle.THIN);
             headerCellStyle.setBorderTop(BorderStyle.THIN);
             headerCellStyle.setBorderLeft(BorderStyle.THIN);
             headerCellStyle.setBorderRight(BorderStyle.THIN);
             headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
-            
-            // Tạo CellStyle cho số điện thoại và CCCD - định dạng văn bản
-            CellStyle textCellStyle = workbook.createCellStyle();
+
+            // Tạo CellStyle cho số điện thoại, CCCD, ID - định dạng văn bản, căn giữa
+            CellStyle textCenterCellStyle = workbook.createCellStyle();
             DataFormat format = workbook.createDataFormat();
-            textCellStyle.setDataFormat(format.getFormat("@"));
-            
-            // Tạo CellStyle cho ngày tháng
-            CellStyle dateCellStyle = workbook.createCellStyle();
-            dateCellStyle.setDataFormat(format.getFormat("dd/mm/yyyy"));
-            
-            // Tạo CellStyle cho dữ liệu thông thường
+            textCenterCellStyle.setDataFormat(format.getFormat("@"));
+            textCenterCellStyle.setBorderBottom(BorderStyle.THIN);
+            textCenterCellStyle.setBorderTop(BorderStyle.THIN);
+            textCenterCellStyle.setBorderLeft(BorderStyle.THIN);
+            textCenterCellStyle.setBorderRight(BorderStyle.THIN);
+            textCenterCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo CellStyle cho ngày hẹn, giờ hẹn, thời gian - căn giữa
+            CellStyle dateCenterCellStyle = workbook.createCellStyle();
+            dateCenterCellStyle.setDataFormat(format.getFormat("dd/mm/yyyy"));
+            dateCenterCellStyle.setBorderBottom(BorderStyle.THIN);
+            dateCenterCellStyle.setBorderTop(BorderStyle.THIN);
+            dateCenterCellStyle.setBorderLeft(BorderStyle.THIN);
+            dateCenterCellStyle.setBorderRight(BorderStyle.THIN);
+            dateCenterCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo CellStyle cho số lượng - căn giữa
+            CellStyle numberCenterCellStyle = workbook.createCellStyle();
+            numberCenterCellStyle.setBorderBottom(BorderStyle.THIN);
+            numberCenterCellStyle.setBorderTop(BorderStyle.THIN);
+            numberCenterCellStyle.setBorderLeft(BorderStyle.THIN);
+            numberCenterCellStyle.setBorderRight(BorderStyle.THIN);
+            numberCenterCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo CellStyle cho số, căn phải
+            CellStyle numberCellStyle = workbook.createCellStyle();
+            numberCellStyle.setBorderBottom(BorderStyle.THIN);
+            numberCellStyle.setBorderTop(BorderStyle.THIN);
+            numberCellStyle.setBorderLeft(BorderStyle.THIN);
+            numberCellStyle.setBorderRight(BorderStyle.THIN);
+            numberCellStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+            // Tạo CellStyle cho văn bản thông thường, căn trái
             CellStyle normalCellStyle = workbook.createCellStyle();
             normalCellStyle.setBorderBottom(BorderStyle.THIN);
             normalCellStyle.setBorderTop(BorderStyle.THIN);
             normalCellStyle.setBorderLeft(BorderStyle.THIN);
             normalCellStyle.setBorderRight(BorderStyle.THIN);
-            
+            normalCellStyle.setAlignment(HorizontalAlignment.LEFT);
+
+            // Tạo CellStyle cho đơn vị tính, phân loại - căn giữa
+            CellStyle centerCellStyle = workbook.createCellStyle();
+            centerCellStyle.setBorderBottom(BorderStyle.THIN);
+            centerCellStyle.setBorderTop(BorderStyle.THIN);
+            centerCellStyle.setBorderLeft(BorderStyle.THIN);
+            centerCellStyle.setBorderRight(BorderStyle.THIN);
+            centerCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
             // Ghi tiêu đề cột
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < tableModel.getColumnCount(); i++) {
@@ -422,45 +462,93 @@ public class ExportManager {
                 cell.setCellValue(tableModel.getColumnName(i));
                 cell.setCellStyle(headerCellStyle);
             }
-            
+
+            // Định dạng để kiểm tra chuỗi ngày tháng
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            sdf.setLenient(false);
+
             // Ghi dữ liệu
             for (int i = 0; i < tableModel.getRowCount(); i++) {
                 Row row = sheet.createRow(i + 1);
-                
                 for (int j = 0; j < tableModel.getColumnCount(); j++) {
                     Cell cell = row.createCell(j);
                     Object value = tableModel.getValueAt(i, j);
                     String colName = tableModel.getColumnName(j).toLowerCase();
-                    
+
+                    // Kiểm tra các cột đặc biệt
+                    boolean isIdColumn = colName.contains("id");
+                    boolean isQuantityColumn = colName.contains("số lượng");
+                    boolean isDateColumn = colName.contains("ngày hẹn");
+                    boolean isTimeColumn = colName.contains("giờ hẹn") || colName.contains("thời gian");
+                    boolean isUnitColumn = colName.contains("đơn vị tính");
+                    boolean isCategoryColumn = colName.contains("phân loại");
+                    boolean isStatusColumn = colName.contains("trạng thái");
+                    boolean isMonthYearColumn = colName.contains("tháng/năm");
+
                     if (value == null) {
                         cell.setCellValue("");
+                        cell.setCellStyle(normalCellStyle);
+                    } else if (isIdColumn || isTimeColumn || isQuantityColumn || isStatusColumn || isMonthYearColumn) {
+                        // Xử lý cột ID, giờ hẹn, thời gian, số lượng, trạng thái, tháng/năm: căn giữa
+                        if (value instanceof Number) {
+                            cell.setCellValue(String.format("%.0f", ((Number)value).doubleValue()));
+                            cell.setCellStyle(isQuantityColumn ? numberCenterCellStyle : textCenterCellStyle);
+                        } else {
+                            cell.setCellValue(value.toString());
+                            cell.setCellStyle(textCenterCellStyle);
+                        }
+                    } else if (isDateColumn) {
+                        // Xử lý cột ngày hẹn: căn giữa
+                        if (value instanceof Date) {
+                            cell.setCellValue((Date)value);
+                            cell.setCellStyle(dateCenterCellStyle);
+                        } else if (value instanceof String) {
+                            String strValue = (String) value;
+                            try {
+                                sdf.parse(strValue);
+                                cell.setCellValue(strValue);
+                                cell.setCellStyle(dateCenterCellStyle);
+                            } catch (ParseException e) {
+                                cell.setCellValue(strValue);
+                                cell.setCellStyle(normalCellStyle);
+                            }
+                        } else {
+                            cell.setCellValue(value.toString());
+                            cell.setCellStyle(normalCellStyle);
+                        }
+                    } else if (isUnitColumn || isCategoryColumn) {
+                        // Xử lý cột đơn vị tính, phân loại: căn giữa
+                        cell.setCellValue(value.toString());
+                        cell.setCellStyle(centerCellStyle);
                     } else if (value instanceof Number && 
                               (colName.contains("cccd") || 
                                colName.contains("phone") || 
                                colName.contains("điện thoại") || 
                                colName.contains("thoại"))) {
-                        // Định dạng số điện thoại và CCCD như văn bản
+                        // Số điện thoại, CCCD: căn giữa
                         cell.setCellValue(String.format("%.0f", ((Number)value).doubleValue()));
-                        cell.setCellStyle(textCellStyle);
+                        cell.setCellStyle(textCenterCellStyle);
                     } else if (value instanceof Date) {
-                        // Định dạng ngày tháng
+                        // Ngày tháng khác (không phải ngày hẹn): căn trái
                         cell.setCellValue((Date)value);
-                        cell.setCellStyle(dateCellStyle);
+                        cell.setCellStyle(normalCellStyle);
                     } else if (value instanceof Number) {
+                        // Số (không phải số điện thoại/CCCD): căn phải
                         cell.setCellValue(((Number)value).doubleValue());
+                        cell.setCellStyle(numberCellStyle);
                     } else {
+                        // Văn bản thông thường: căn trái
                         cell.setCellValue(value.toString());
+                        cell.setCellStyle(normalCellStyle);
                     }
-                    
-                    cell.setCellStyle(normalCellStyle);
                 }
             }
-            
+
             // Tự động điều chỉnh độ rộng cột
             for (int i = 0; i < tableModel.getColumnCount(); i++) {
                 sheet.autoSizeColumn(i);
             }
-            
+
             // Ghi workbook ra file
             try (FileOutputStream fileOut = new FileOutputStream(file)) {
                 workbook.write(fileOut);
@@ -480,8 +568,13 @@ public class ExportManager {
         
         document.open();
         
+        // Nhúng font hỗ trợ tiếng Việt (Times New Roman)
+        BaseFont bf = BaseFont.createFont("c:/windows/fonts/times.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+        com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(bf, 16, com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font headerFont = new com.itextpdf.text.Font(bf, 12, com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font contentFont = new com.itextpdf.text.Font(bf, 11, com.itextpdf.text.Font.NORMAL);
+        
         // Thêm tiêu đề
-        com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 16, com.itextpdf.text.Font.BOLD);
         Paragraph title = new Paragraph("BÁO CÁO DỮ LIỆU", titleFont);
         title.setAlignment(Element.ALIGN_CENTER);
         title.setSpacingAfter(20);
@@ -490,24 +583,64 @@ public class ExportManager {
         // Thêm ngày tháng
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         String dateString = "Ngày xuất: " + sdf.format(new Date());
-        Paragraph dateParagraph = new Paragraph(dateString);
+        Paragraph dateParagraph = new Paragraph(dateString, contentFont);
         dateParagraph.setAlignment(Element.ALIGN_RIGHT);
         dateParagraph.setSpacingAfter(20);
         document.add(dateParagraph);
         
-        // Tạo bảng
-        PdfPTable table = new PdfPTable(tableModel.getColumnCount());
+        // Tính độ rộng tối ưu cho mỗi cột
+        int columnCount = tableModel.getColumnCount();
+        float[] columnWidths = new float[columnCount];
+        float totalWidth = 0;
+        
+        // Định dạng số với dấu phân cách hàng nghìn
+        DecimalFormat numberFormat = new DecimalFormat("#,###");
+        
+        // Tính độ dài tối đa của nội dung trong mỗi cột
+        for (int j = 0; j < columnCount; j++) {
+            float maxWidth = bf.getWidthPoint(tableModel.getColumnName(j), 12); // Độ dài tiêu đề
+            String colName = tableModel.getColumnName(j).toLowerCase();
+            
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                Object value = tableModel.getValueAt(i, j);
+                String text;
+                if (value == null) {
+                    text = "";
+                } else if (value instanceof Date) {
+                    text = sdf.format((Date)value);
+                } else if (value instanceof Number && 
+                          (colName.contains("cccd") || 
+                           colName.contains("phone") || 
+                           colName.contains("điện thoại") || 
+                           colName.contains("thoại"))) {
+                    text = numberFormat.format(((Number)value).longValue());
+                } else if (value instanceof Number) {
+                    text = numberFormat.format(((Number)value).longValue());
+                } else {
+                    text = value.toString();
+                }
+                float textWidth = bf.getWidthPoint(text, 11); // Độ dài nội dung
+                maxWidth = Math.max(maxWidth, textWidth);
+            }
+            columnWidths[j] = maxWidth + 20; // Thêm padding
+            totalWidth += columnWidths[j];
+        }
+        
+        // Chuẩn hóa độ rộng để đảm bảo tổng độ rộng vừa với trang
+        float pageWidth = document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin();
+        for (int j = 0; j < columnCount; j++) {
+            columnWidths[j] = (columnWidths[j] / totalWidth) * pageWidth;
+        }
+        
+        // Tạo bảng với độ rộng cột đã tính
+        PdfPTable table = new PdfPTable(columnWidths);
         table.setWidthPercentage(100);
         
-        // Định nghĩa font
-        com.itextpdf.text.Font headerFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 12, com.itextpdf.text.Font.BOLD);
-        com.itextpdf.text.Font contentFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.TIMES_ROMAN, 11, com.itextpdf.text.Font.NORMAL);
-        
         // Thiết lập header cho bảng
-        for (int i = 0; i < tableModel.getColumnCount(); i++) {
+        for (int i = 0; i < columnCount; i++) {
             PdfPCell cell = new PdfPCell(new Phrase(tableModel.getColumnName(i), headerFont));
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            cell.setBackgroundColor(new BaseColor(41, 128, 185)); // Màu #2980b9
             cell.setPadding(5);
             table.addCell(cell);
         }
@@ -516,21 +649,21 @@ public class ExportManager {
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 0; j < tableModel.getColumnCount(); j++) {
                 Object value = tableModel.getValueAt(i, j);
-                String text;
                 String colName = tableModel.getColumnName(j).toLowerCase();
+                String text;
                 
                 if (value == null) {
                     text = "";
                 } else if (value instanceof Date) {
-                    // Định dạng ngày tháng
                     text = sdf.format((Date)value);
                 } else if (value instanceof Number && 
                           (colName.contains("cccd") || 
                            colName.contains("phone") || 
                            colName.contains("điện thoại") || 
                            colName.contains("thoại"))) {
-                    // Định dạng số điện thoại và CCCD
-                    text = String.format("%.0f", ((Number)value).doubleValue());
+                    text = numberFormat.format(((Number)value).longValue());
+                } else if (value instanceof Number) {
+                    text = numberFormat.format(((Number)value).longValue());
                 } else {
                     text = value.toString();
                 }
@@ -539,16 +672,31 @@ public class ExportManager {
                 PdfPCell cell = new PdfPCell(new Phrase(text, contentFont));
                 cell.setPadding(5);
                 
-                // Căn giữa nếu là số
-                if (value instanceof Number && 
-                    !(colName.contains("cccd") || 
-                      colName.contains("phone") || 
-                      colName.contains("điện thoại") || 
-                      colName.contains("thoại"))) {
+                // Căn chỉnh dựa trên tên cột và kiểu dữ liệu
+                boolean isIdColumn = colName.contains("id");
+                boolean isQuantityColumn = colName.contains("số lượng");
+                boolean isDateColumn = colName.contains("ngày hẹn");
+                boolean isTimeColumn = colName.contains("giờ hẹn") || colName.contains("thời gian");
+                boolean isUnitColumn = colName.contains("đơn vị tính");
+                boolean isCategoryColumn = colName.contains("phân loại");
+                boolean isStatusColumn = colName.contains("trạng thái");
+                boolean isMonthYearColumn = colName.contains("tháng/năm");
+                
+                if (isIdColumn || isQuantityColumn || isDateColumn || isTimeColumn || 
+                    isStatusColumn || isMonthYearColumn) {
+                    cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                } else if (isUnitColumn || isCategoryColumn) {
+                    cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                } else if (value instanceof Number && 
+                          !colName.contains("cccd") && 
+                          !colName.contains("phone") && 
+                          !colName.contains("điện thoại") && 
+                          !colName.contains("thoại")) {
                     cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                } else {
+                    cell.setHorizontalAlignment(Element.ALIGN_LEFT);
                 }
                 
-                // Thêm ô vào bảng
                 table.addCell(cell);
             }
         }
