@@ -51,16 +51,28 @@ public class BenhNhanController {
         return danhSach;
     }
 
-    public void themBenhNhan(BenhNhan benhNhan) throws SQLException {
+    public int themBenhNhan(BenhNhan benhNhan) throws SQLException {
         String sql = "INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, benhNhan.getHoTen());
             stmt.setDate(2, new java.sql.Date(benhNhan.getNgaySinh().getTime()));
             stmt.setString(3, benhNhan.getGioiTinh());
             stmt.setString(4, benhNhan.getSoDienThoai());
             stmt.setString(5, benhNhan.getCccd());
             stmt.setString(6, benhNhan.getDiaChi());
-            stmt.executeUpdate();
+            
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("Thêm bệnh nhân thất bại, không có hàng nào được thêm.");
+            }
+
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1); // Trả về ID được tạo tự động
+                } else {
+                    throw new SQLException("Thêm bệnh nhân thất bại, không thể lấy ID.");
+                }
+            }
         }
     }
 
