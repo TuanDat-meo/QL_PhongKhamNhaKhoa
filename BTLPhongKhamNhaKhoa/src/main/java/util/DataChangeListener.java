@@ -1,5 +1,5 @@
 package util;
 
-public class DataChangeListener {
-
+public interface DataChangeListener {
+	void onDataChanged();
 }
