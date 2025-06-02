@@ -57,8 +57,7 @@ public class LoginFrame extends JFrame {
     
     // Fonts
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 30);
-    private static final Font FIELD_FONT = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font FIELD_FONT = new Font("Segoe UI", Font.PLAIN, 14);    
     private static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 15);
     private static final Font SMALL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font ERROR_FONT = new Font("Segoe UI", Font.ITALIC, 12);
@@ -66,7 +65,7 @@ public class LoginFrame extends JFrame {
     public LoginFrame() {
         setupWindow();
         initializeComponents();
-        setupLayout();
+        setupCardLayout();
         setupActions();
         setupValidation();
         setVisible(true);
@@ -251,7 +250,82 @@ public class LoginFrame extends JFrame {
     private JButton createTextEyeButton() {
         return new JButton();
     }    
-    private void setupLayout() {
+    private void setupCardLayout() {
+        mainPanel.removeAll();
+        mainPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1;
+        gbc.weighty = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+
+        JPanel cardPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // Shadow
+                g2d.setColor(new Color(0,0,0,30));
+                g2d.fillRoundRect(8, 8, getWidth()-16, getHeight()-16, 32, 32);
+                // Card background
+                g2d.setColor(Color.WHITE);
+                g2d.fillRoundRect(0, 0, getWidth()-8, getHeight()-8, 32, 32);
+                g2d.dispose();
+            }
+        };
+        cardPanel.setOpaque(false);
+        cardPanel.setLayout(null);
+        int cardWidth = 340;
+        int cardHeight = 420;
+        cardPanel.setPreferredSize(new Dimension(cardWidth, cardHeight));
+
+        // Move all login components into cardPanel
+        int leftMargin = 30;
+        int centerWidth = cardWidth - 2*leftMargin;
+        int componentHeight = 42;
+        int y = 30;
+        JLabel titleLabel = new JLabel("LOG IN", SwingConstants.CENTER);
+        titleLabel.setFont(TITLE_FONT);
+        titleLabel.setForeground(PRIMARY_COLOR);
+        titleLabel.setBounds(0, y, cardWidth, 38);
+        cardPanel.add(titleLabel);
+        y += 48;
+        emailField.setBounds(leftMargin, y, centerWidth, componentHeight);
+        cardPanel.add(emailField);
+        y += componentHeight + 2;
+        emailErrorLabel.setBounds(leftMargin + 5, y, centerWidth, 18);
+        cardPanel.add(emailErrorLabel);
+        y += 22;
+        int passwordFieldWidth = centerWidth - 40;
+        passwordField.setBounds(leftMargin, y, passwordFieldWidth, componentHeight);
+        cardPanel.add(passwordField);
+        togglePasswordButton.setBounds(leftMargin + passwordFieldWidth + 5, y, 35, componentHeight);
+        cardPanel.add(togglePasswordButton);
+        y += componentHeight + 2;
+        passwordErrorLabel.setBounds(leftMargin + 5, y, centerWidth, 18);
+        cardPanel.add(passwordErrorLabel);
+        y += 28;
+        loginButton.setBounds(leftMargin, y, centerWidth, componentHeight);
+        cardPanel.add(loginButton);
+        y += componentHeight + 8;
+        forgotPasswordLabel.setBounds(leftMargin, y, centerWidth, 18);
+        cardPanel.add(forgotPasswordLabel);
+        y += 28;
+        JSeparator separator = new JSeparator();
+        separator.setForeground(BORDER_COLOR);
+        separator.setBounds(leftMargin, y, centerWidth, 1);
+        cardPanel.add(separator);
+        y += 18;
+        createAccountButton.setBounds(leftMargin, y, centerWidth, componentHeight);
+        cardPanel.add(createAccountButton);
+
+        mainPanel.add(cardPanel, gbc);
+        mainPanel.revalidate();
+        mainPanel.repaint();
+        setContentPane(mainPanel);
     }    
     private void setupValidation() {
         emailField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {

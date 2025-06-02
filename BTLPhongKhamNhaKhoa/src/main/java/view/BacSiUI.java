@@ -77,7 +77,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
         headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
-        
+
         // Title
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
@@ -90,30 +90,22 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         // Search panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
-        
         JLabel searchLabel = new JLabel("Tìm kiếm:");
         searchLabel.setFont(regularFont);
         searchLabel.setForeground(textColor);
-        
         searchField = new JTextField(18);
         searchField.setFont(regularFont);
         searchField.setPreferredSize(new Dimension(220, 38));
-        
-        // Create rounded border with padding
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 new CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
-             
-        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10,false);
+        searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10, false);
         searchButton.setPreferredSize(new Dimension(120, 38));
         searchButton.setFocusPainted(false);
         searchButton.addActionListener(e -> searchBacSi());
-        
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
-        
-        headerPanel.add(titlePanel, BorderLayout.WEST);
         headerPanel.add(searchPanel, BorderLayout.EAST);
         
         // Table panel
