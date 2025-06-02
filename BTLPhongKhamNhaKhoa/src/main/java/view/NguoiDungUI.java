@@ -815,7 +815,8 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
     public enum NotificationType {
         SUCCESS(new Color(86, 156, 104), "Thành công"),
         WARNING(new Color(237, 187, 85), "Cảnh báo"),
-        ERROR(new Color(192, 80, 77), "Lỗi");
+        ERROR(new Color(192, 80, 77), "Lỗi"),
+        INFO(new Color(79, 129, 189), "Thông báo");
         
         private final Color color;
         private final String title;
@@ -891,31 +892,62 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10, true);
         saveButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         saveButton.addActionListener(e -> {
-            if (hoTenField.getText().trim().isEmpty() ||                 
-                emailField.getText().trim().isEmpty() ||
-                soDienThoaiField.getText().trim().isEmpty() ||
-                matKhauField.getPassword().length == 0 ||
-                xacNhanMatKhauField.getPassword().length == 0) {
+            String hoTen = hoTenField.getText().trim();
+            String email = emailField.getText().trim();
+            String phone = soDienThoaiField.getText().trim();
+            String password = new String(matKhauField.getPassword());
+            String confirmPassword = new String(xacNhanMatKhauField.getPassword());
+
+            // Kiểm tra các trường bắt buộc
+            if (hoTen.isEmpty() || email.isEmpty() || phone.isEmpty() || 
+                password.isEmpty() || confirmPassword.isEmpty()) {
                 showWarningMessage("Vui lòng điền đầy đủ thông tin.");
                 return;
             }
-            
-            String password = new String(matKhauField.getPassword());
-            String confirmPassword = new String(xacNhanMatKhauField.getPassword());
-            
+
+            // Kiểm tra định dạng email
+            if (!isValidEmail(email)) {
+                showErrorMessage("Email không hợp lệ. Vui lòng nhập email đúng định dạng (ví dụ: example@domain.com)");
+                return;
+            }
+
+            // Kiểm tra định dạng số điện thoại
+            if (!isValidPhoneNumber(phone)) {
+                showErrorMessage("Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại đúng định dạng (ví dụ: 0123456789 hoặc 84123456789)");
+                return;
+            }
+
+            // Kiểm tra mật khẩu
             if (!password.equals(confirmPassword)) {
                 showErrorMessage("Mật khẩu và xác nhận mật khẩu không khớp.");
                 return;
             }
-            
-            NguoiDung newUser = new NguoiDung();
-            newUser.setHoTen(hoTenField.getText().trim());            
-            newUser.setEmail(emailField.getText().trim());
-            newUser.setSoDienThoai(soDienThoaiField.getText().trim());
-            newUser.setMatKhau(password);
-            newUser.setVaiTro((String) vaiTroBox.getSelectedItem());
-            
+
+            if (!isValidPassword(password)) {
+                showErrorMessage("Mật khẩu phải có ít nhất 8 ký tự, bao gồm:\n" +
+                               "- Ít nhất 1 chữ hoa\n" +
+                               "- Ít nhất 1 chữ thường\n" +
+                               "- Ít nhất 1 số\n" +
+                               "- Ít nhất 1 ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?)");
+                return;
+            }
+
             try {
+                // Kiểm tra email đã tồn tại
+                if (controller.isEmailExists(email)) {
+                    showErrorMessage("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
+                    return;
+                }
+
+                // Tạo người dùng mới
+                NguoiDung newUser = new NguoiDung();
+                newUser.setHoTen(hoTen);
+                newUser.setEmail(email);
+                newUser.setSoDienThoai(phone);
+                newUser.setMatKhau(password);
+                newUser.setVaiTro((String) vaiTroBox.getSelectedItem());
+
+                // Thêm người dùng vào database
                 controller.addUser(newUser);
                 showSuccessMessage("Thêm người dùng mới thành công!");
                 dialog.dispose();
@@ -936,133 +968,57 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         dialog.setContentPane(contentPane);
         dialog.setVisible(true);
     }
+
+    // Add validation methods
+    private boolean isValidEmail(String email) {
+        // Kiểm tra email có đúng định dạng và không chứa ký tự đặc biệt không hợp lệ
+        String emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        return email != null && email.matches(emailRegex);
+    }
+
+    private boolean isValidPhoneNumber(String phone) {
+        // Kiểm tra số điện thoại Việt Nam (bắt đầu bằng 0 hoặc 84, theo sau là 9 số)
+        String phoneRegex = "^(0|84)([0-9]{9})$";
+        return phone != null && phone.matches(phoneRegex);
+    }
+
+    private boolean isValidPassword(String password) {
+        // Kiểm tra mật khẩu có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+        
+        boolean hasUpper = false;
+        boolean hasLower = false;
+        boolean hasNumber = false;
+        boolean hasSpecial = false;
+        
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) hasUpper = true;
+            else if (Character.isLowerCase(c)) hasLower = true;
+            else if (Character.isDigit(c)) hasNumber = true;
+            else if ("!@#$%^&*()_+-=[]{}|;:,.<>?".indexOf(c) >= 0) hasSpecial = true;
+        }
+        
+        return hasUpper && hasLower && hasNumber && hasSpecial;
+    }
+    
     private void showSuccessMessage(String message) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Thành công", true);
-        dialog.setSize(350, 150);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(panelColor);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        messageLabel.setForeground(textColor);
-        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBackground(panelColor);
-        
-        JButton okButton = new JButton("OK");
-        styleButton(okButton, successColor);
-        
-        okButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(okButton);
-        
-        panel.add(messageLabel, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setContentPane(panel);
-        dialog.setVisible(true);
+        showNotification(message, NotificationType.SUCCESS);
     }
     
     private void showErrorMessage(String message) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Lỗi", true);
-        dialog.setSize(350, 150);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(panelColor);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        messageLabel.setForeground(textColor);
-        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBackground(panelColor);
-        
-        JButton okButton = new JButton("OK");
-        styleButton(okButton, accentColor);
-        
-        okButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(okButton);
-        
-        panel.add(messageLabel, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setContentPane(panel);
-        dialog.setVisible(true);
+        showNotification(message, NotificationType.ERROR);
     }
     
     private void showWarningMessage(String message) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Cảnh báo", true);
-        dialog.setSize(350, 150);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(panelColor);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        messageLabel.setForeground(textColor);
-        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBackground(panelColor);
-        
-        JButton okButton = new JButton("OK");
-        styleButton(okButton, warningColor);
-        
-        okButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(okButton);
-        
-        panel.add(messageLabel, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setContentPane(panel);
-        dialog.setVisible(true);
+        showNotification(message, NotificationType.WARNING);
     }
     
     private void showInfoMessage(String message) {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Thông báo", true);
-        dialog.setSize(350, 150);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(panelColor);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        messageLabel.setForeground(textColor);
-        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBackground(panelColor);
-        
-        JButton okButton = new JButton("OK");
-        styleButton(okButton, primaryColor);
-        
-        okButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(okButton);
-        
-        panel.add(messageLabel, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setContentPane(panel);
-        dialog.setVisible(true);
+        showNotification(message, NotificationType.INFO);
     }
+    
     private void styleButton(JButton button, Color bgColor) {
         button.setFont(buttonFont);
         button.setBackground(bgColor);
