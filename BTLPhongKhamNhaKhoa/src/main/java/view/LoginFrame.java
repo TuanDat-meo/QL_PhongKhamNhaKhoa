@@ -44,7 +44,7 @@ public class LoginFrame extends JFrame {
     private static final int MIN_PASSWORD_LENGTH = 6;
     
     // Colors
-    private static final Color BACKGROUND_COLOR = new Color(247, 248, 250);
+    private static final Color BACKGROUND_COLOR = new Color(255, 255, 255);
     private static final Color PRIMARY_COLOR = new Color(24, 119, 242);
     private static final Color PRIMARY_DARK_COLOR = new Color(12, 80, 170);
     private static final Color ACCENT_COLOR = new Color(66, 183, 42);
@@ -92,14 +92,60 @@ public class LoginFrame extends JFrame {
                 g2d.dispose();
             }
         };
-        mainPanel.setLayout(null); 
+        mainPanel.setLayout(null);
         
         JLabel titleLabel = new JLabel("LOG IN", SwingConstants.CENTER);
         titleLabel.setFont(TITLE_FONT);
         titleLabel.setForeground(PRIMARY_COLOR);
         
-        emailField = createTextField(EMAIL_PLACEHOLDER);
-        passwordField = createPasswordField(PASSWORD_PLACEHOLDER);
+        emailField = new RoundedTextField(RADIUS);
+        emailField.setFont(FIELD_FONT);
+        emailField.setForeground(LIGHT_TEXT_COLOR);
+        emailField.setText(EMAIL_PLACEHOLDER);
+        emailField.setBackground(FIELD_BACKGROUND);
+        emailField.putClientProperty("JComponent.roundRect", true);
+        emailField.putClientProperty("JTextField.placeholderText", EMAIL_PLACEHOLDER);
+        emailField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (emailField.getText().equals(EMAIL_PLACEHOLDER)) {
+                    emailField.setText("");
+                    emailField.setForeground(TEXT_COLOR);
+                }
+            }
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (emailField.getText().isEmpty()) {
+                    emailField.setText(EMAIL_PLACEHOLDER);
+                    emailField.setForeground(LIGHT_TEXT_COLOR);
+                }
+            }
+        });
+        passwordField = new RoundedPasswordField(RADIUS);
+        passwordField.setFont(FIELD_FONT);
+        passwordField.setForeground(LIGHT_TEXT_COLOR);
+        passwordField.setText(PASSWORD_PLACEHOLDER);
+        passwordField.setEchoChar((char) 0); // Show the placeholder text
+        passwordField.setBackground(FIELD_BACKGROUND);
+        passwordField.putClientProperty("JComponent.roundRect", true);
+        passwordField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (String.valueOf(passwordField.getPassword()).equals(PASSWORD_PLACEHOLDER)) {
+                    passwordField.setText("");
+                    passwordField.setForeground(TEXT_COLOR);
+                    passwordField.setEchoChar('●');
+                }
+            }
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (String.valueOf(passwordField.getPassword()).isEmpty()) {
+                    passwordField.setText(PASSWORD_PLACEHOLDER);
+                    passwordField.setForeground(LIGHT_TEXT_COLOR);
+                    passwordField.setEchoChar((char) 0);
+                }
+            }
+        });
         
         emailErrorLabel = new JLabel("");
         emailErrorLabel.setFont(ERROR_FONT);
@@ -108,11 +154,6 @@ public class LoginFrame extends JFrame {
         passwordErrorLabel = new JLabel("");
         passwordErrorLabel.setFont(ERROR_FONT);
         passwordErrorLabel.setForeground(ERROR_COLOR);
-        
-        passwordField.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
         
         loginButton = createButton("Log in", PRIMARY_COLOR, PRIMARY_DARK_COLOR);
         createAccountButton = createButton("Create new account", ACCENT_COLOR, ACCENT_DARK_COLOR);
@@ -125,84 +166,43 @@ public class LoginFrame extends JFrame {
         JSeparator separator = new JSeparator();
         separator.setForeground(BORDER_COLOR);
         
-        int leftMargin = 50;
-        int centerWidth = 280;
-        int componentHeight = 45;
-        
-        titleLabel.setBounds((getWidth() - centerWidth)/2, 70, centerWidth, 40);
-        emailField.setBounds(leftMargin, 160, centerWidth, componentHeight);
-        emailErrorLabel.setBounds(leftMargin + 5, 205, centerWidth, 20);
-        
-        int passwordFieldWidth = 230;
-        int eyeButtonWidth = centerWidth - passwordFieldWidth;
-        passwordField.setBounds(leftMargin, 230, passwordFieldWidth, componentHeight);
-        passwordErrorLabel.setBounds(leftMargin + 5, 275, centerWidth, 20);
-        
-        loginButton.setBounds(leftMargin, 310, centerWidth, componentHeight);
-        forgotPasswordLabel.setBounds((getWidth() - centerWidth)/2, 380, centerWidth, 20);
-        separator.setBounds(leftMargin, 425, centerWidth, 1);
-        createAccountButton.setBounds(leftMargin, 450, centerWidth, componentHeight);
-        
-        mainPanel.add(titleLabel);
-        mainPanel.add(emailField);
-        mainPanel.add(emailErrorLabel);
-        mainPanel.add(passwordField);
-        mainPanel.add(passwordErrorLabel);
-        mainPanel.add(loginButton);
-        mainPanel.add(forgotPasswordLabel);
-        mainPanel.add(separator);
-        mainPanel.add(createAccountButton);
-        
         togglePasswordButton = new JButton() {
             private boolean eyeOpen = false;
-            
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
                 g2.setColor(FIELD_BACKGROUND);
                 g2.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), RADIUS, RADIUS));
-                
                 g2.setColor(BORDER_COLOR);
                 g2.draw(new RoundRectangle2D.Double(0, 0, getWidth()-1, getHeight()-1, RADIUS, RADIUS));
-                
                 drawEyeIcon(g2, getWidth()/2, getHeight()/2, eyeOpen);
-                
                 g2.dispose();
-            }            
+            }
             private void drawEyeIcon(Graphics2D g, int x, int y, boolean open) {
                 int eyeWidth = 20;
                 int eyeHeight = 12;
-                
                 g.setColor(TEXT_COLOR);
                 g.setStroke(new BasicStroke(2));
-                
                 g.drawOval(x - eyeWidth/2, y - eyeHeight/2, eyeWidth, eyeHeight);
-                
                 g.fillOval(x - 3, y - 3, 6, 6);
-                
                 if (!open) {
                     g.drawLine(x - eyeWidth/2 - 3, y - eyeHeight/2 - 3, 
                                x + eyeWidth/2 + 3, y + eyeHeight/2 + 3);
                 }
-            }            
+            }
             public void setEyeOpen(boolean open) {
                 this.eyeOpen = open;
                 repaint();
-            }            
+            }
             public boolean isEyeOpen() {
                 return eyeOpen;
             }
         };
-        
         togglePasswordButton.setBorderPainted(false);
         togglePasswordButton.setContentAreaFilled(false);
         togglePasswordButton.setFocusPainted(false);
-        
-        togglePasswordButton.setFocusPainted(false);
         togglePasswordButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        togglePasswordButton.setBounds(leftMargin + passwordFieldWidth, 230, eyeButtonWidth, componentHeight);
         togglePasswordButton.setToolTipText("Hiển thị/Ẩn mật khẩu");
         
         togglePasswordButton.addActionListener(new ActionListener() {
@@ -214,7 +214,6 @@ public class LoginFrame extends JFrame {
                 if (passwordField.getEchoChar() == '●') {
                     passwordField.setEchoChar((char) 0);
                     ((JButton)e.getSource()).putClientProperty("eyeOpen", true);
-                    // Traditional instanceof check without pattern variable
                     if (togglePasswordButton instanceof JButton) {
                         try {
                             JButton button = (JButton) togglePasswordButton;
@@ -228,7 +227,6 @@ public class LoginFrame extends JFrame {
                 } else {
                     passwordField.setEchoChar('●');
                     ((JButton)e.getSource()).putClientProperty("eyeOpen", false);
-                    // Traditional instanceof check without pattern variable
                     if (togglePasswordButton instanceof JButton) {
                         try {
                             JButton button = (JButton) togglePasswordButton;
@@ -243,86 +241,63 @@ public class LoginFrame extends JFrame {
                 togglePasswordButton.repaint();
             }
         });
-
-        mainPanel.add(togglePasswordButton);        
-        setContentPane(mainPanel);
     }    
     private JButton createTextEyeButton() {
         return new JButton();
     }    
     private void setupCardLayout() {
         mainPanel.removeAll();
-        mainPanel.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1;
-        gbc.weighty = 1;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.fill = GridBagConstraints.NONE;
-
-        JPanel cardPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Shadow
-                g2d.setColor(new Color(0,0,0,30));
-                g2d.fillRoundRect(8, 8, getWidth()-16, getHeight()-16, 32, 32);
-                // Card background
-                g2d.setColor(Color.WHITE);
-                g2d.fillRoundRect(0, 0, getWidth()-8, getHeight()-8, 32, 32);
-                g2d.dispose();
-            }
-        };
-        cardPanel.setOpaque(false);
-        cardPanel.setLayout(null);
-        int cardWidth = 340;
-        int cardHeight = 420;
-        cardPanel.setPreferredSize(new Dimension(cardWidth, cardHeight));
-
-        // Move all login components into cardPanel
-        int leftMargin = 30;
-        int centerWidth = cardWidth - 2*leftMargin;
+        mainPanel.setLayout(null);
+        int panelWidth = 380; // Giá trị cố định bằng với setSize của JFrame
+        int componentWidth = 280;
+        int x = (panelWidth - componentWidth) / 2;
         int componentHeight = 42;
-        int y = 30;
+        int titleHeight = 38;
+        int gapTitleToInput = 24;
+        int y = 50; // Đặt LOG IN cách top 50px, có thể chỉnh lại cho vừa ý
         JLabel titleLabel = new JLabel("LOG IN", SwingConstants.CENTER);
         titleLabel.setFont(TITLE_FONT);
         titleLabel.setForeground(PRIMARY_COLOR);
-        titleLabel.setBounds(0, y, cardWidth, 38);
-        cardPanel.add(titleLabel);
-        y += 48;
-        emailField.setBounds(leftMargin, y, centerWidth, componentHeight);
-        cardPanel.add(emailField);
+        titleLabel.setBounds(0, y, panelWidth, titleHeight);
+        mainPanel.add(titleLabel);
+        y += titleHeight + gapTitleToInput;
+        emailField.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(BORDER_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+        emailField.setBounds(x, y, componentWidth, componentHeight);
+        mainPanel.add(emailField);
         y += componentHeight + 2;
-        emailErrorLabel.setBounds(leftMargin + 5, y, centerWidth, 18);
-        cardPanel.add(emailErrorLabel);
+        emailErrorLabel.setBounds(x, y, componentWidth, 18);
+        mainPanel.add(emailErrorLabel);
         y += 22;
-        int passwordFieldWidth = centerWidth - 40;
-        passwordField.setBounds(leftMargin, y, passwordFieldWidth, componentHeight);
-        cardPanel.add(passwordField);
-        togglePasswordButton.setBounds(leftMargin + passwordFieldWidth + 5, y, 35, componentHeight);
-        cardPanel.add(togglePasswordButton);
+        int toggleButtonWidth = 35;
+        int passwordFieldWidth = componentWidth - toggleButtonWidth;
+        passwordField.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(BORDER_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+        passwordField.setBounds(x, y, passwordFieldWidth, componentHeight);
+        togglePasswordButton.setBounds(x + passwordFieldWidth, y, toggleButtonWidth, componentHeight);
+        mainPanel.add(passwordField);
+        mainPanel.add(togglePasswordButton);
         y += componentHeight + 2;
-        passwordErrorLabel.setBounds(leftMargin + 5, y, centerWidth, 18);
-        cardPanel.add(passwordErrorLabel);
+        passwordErrorLabel.setBounds(x, y, componentWidth, 18);
+        mainPanel.add(passwordErrorLabel);
         y += 28;
-        loginButton.setBounds(leftMargin, y, centerWidth, componentHeight);
-        cardPanel.add(loginButton);
+        loginButton.setBounds(x, y, componentWidth, componentHeight);
+        mainPanel.add(loginButton);
         y += componentHeight + 8;
-        forgotPasswordLabel.setBounds(leftMargin, y, centerWidth, 18);
-        cardPanel.add(forgotPasswordLabel);
+        forgotPasswordLabel.setBounds(x, y, componentWidth, 18);
+        mainPanel.add(forgotPasswordLabel);
         y += 28;
         JSeparator separator = new JSeparator();
         separator.setForeground(BORDER_COLOR);
-        separator.setBounds(leftMargin, y, centerWidth, 1);
-        cardPanel.add(separator);
+        separator.setBounds(x, y, componentWidth, 1);
+        mainPanel.add(separator);
         y += 18;
-        createAccountButton.setBounds(leftMargin, y, centerWidth, componentHeight);
-        cardPanel.add(createAccountButton);
-
-        mainPanel.add(cardPanel, gbc);
+        createAccountButton.setBounds(x, y, componentWidth, componentHeight);
+        mainPanel.add(createAccountButton);
         mainPanel.revalidate();
         mainPanel.repaint();
         setContentPane(mainPanel);
@@ -578,7 +553,6 @@ public class LoginFrame extends JFrame {
         ));
         field.putClientProperty("JComponent.roundRect", true);
         field.putClientProperty("JTextField.placeholderText", placeholder);
-        
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -586,7 +560,7 @@ public class LoginFrame extends JFrame {
                     field.setText("");
                     field.setForeground(TEXT_COLOR);
                 }
-            }            
+            }
             @Override
             public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
@@ -595,7 +569,6 @@ public class LoginFrame extends JFrame {
                 }
             }
         });
-        
         return field;
     }    
     private JPasswordField createPasswordField(String placeholder) {
@@ -609,9 +582,7 @@ public class LoginFrame extends JFrame {
             new LineBorder(BORDER_COLOR, 1, true),
             new EmptyBorder(10, 15, 10, 15)
         ));
-        
         field.putClientProperty("JComponent.roundRect", true);
-        
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -620,7 +591,7 @@ public class LoginFrame extends JFrame {
                     field.setForeground(TEXT_COLOR);
                     field.setEchoChar('●');
                 }
-            }            
+            }
             @Override
             public void focusLost(FocusEvent e) {
                 if (String.valueOf(field.getPassword()).isEmpty()) {
@@ -629,7 +600,7 @@ public class LoginFrame extends JFrame {
                     field.setEchoChar((char) 0);
                 }
             }
-        });        
+        });
         return field;
     }    
     private JButton createButton(String text, Color bgColor, Color hoverColor) {
@@ -696,5 +667,63 @@ public class LoginFrame extends JFrame {
         SwingUtilities.invokeLater(() -> {
             new LoginFrame();
         });
+    }
+}
+
+// Thêm class RoundedTextField và RoundedPasswordField để bo góc lớn cho input
+class RoundedTextField extends JTextField {
+    private int radius;
+    public RoundedTextField(int radius) {
+        super();
+        setOpaque(false);
+        this.radius = radius;
+    }
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(getBackground());
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+        g2.setColor(new Color(226, 230, 234)); // BORDER_COLOR
+        g2.setStroke(new BasicStroke(1));
+        g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+        g2.dispose();
+        super.paintComponent(g);
+    }
+    @Override
+    public void setBorder(Border border) {
+        // Không set border để tránh bị đè lên custom
+    }
+    @Override
+    public Insets getInsets() {
+        return new Insets(10, 15, 10, 15);
+    }
+}
+class RoundedPasswordField extends JPasswordField {
+    private int radius;
+    public RoundedPasswordField(int radius) {
+        super();
+        setOpaque(false);
+        this.radius = radius;
+    }
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(getBackground());
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+        g2.setColor(new Color(226, 230, 234)); // BORDER_COLOR
+        g2.setStroke(new BasicStroke(1));
+        g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
+        g2.dispose();
+        super.paintComponent(g);
+    }
+    @Override
+    public void setBorder(Border border) {
+        // Không set border để tránh bị đè lên custom
+    }
+    @Override
+    public Insets getInsets() {
+        return new Insets(10, 15, 10, 15);
     }
 }
