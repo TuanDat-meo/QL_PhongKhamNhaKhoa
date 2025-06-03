@@ -1013,15 +1013,13 @@ public class KhoVatTuUI extends JPanel implements ActionListener, ExportManager.
             if (vatTuDangChon != null) hienThiDialogThemSua(vatTuDangChon);
             else showNotification("Vui lòng chọn vật tư từ bảng.", NotificationType.WARNING);
         } else if (source == menuItemXoa) {
-             if (vatTuDangChon != null) xoaVatTu();
-             else showNotification("Vui lòng chọn vật tư từ bảng.", NotificationType.WARNING);
-        } else if (source == btnTimKiem) { // Di chuyển logic của btnTimKiem vào đây nếu bỏ lambda
+            if (vatTuDangChon != null) xoaVatTu();
+            else showNotification("Vui lòng chọn vật tư từ bảng.", NotificationType.WARNING);
+        } else if (source == btnTimKiem) {
             timKiemVatTu();
         } else if (source == btnXuatFile) {
-            if (exportManager == null) { // Khởi tạo lại nếu cần (không nên xảy ra)
-                 exportManager = new ExportManager(this, tableModel, this);
-            }
-            exportManager.setTableModel(tableModel); // Đảm bảo nó có model mới nhất
+            // Tạo lại ExportManager với tableModel hiện tại
+            exportManager = new ExportManager(this, tableModel, this);
             exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
         }
     }

@@ -478,7 +478,6 @@ public class ValidationUtils {
             clearValidationError(component);
         }
     }
-    
     // New methods for creating styled validation labels
     public static JLabel createValidationStatusLabel() {
         JLabel label = new JLabel();
