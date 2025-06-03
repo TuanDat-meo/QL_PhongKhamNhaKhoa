@@ -430,15 +430,10 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         JButton btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> {
-            // Đảm bảo tableModel được truyền vào ExportManager nếu modelHoaDon không dùng
-             if (exportManager == null) { // Khởi tạo nếu chưa có
-                exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
-            } else { // Cập nhật model nếu cần
-                 exportManager.setTableModel(tableModel);
-            }
+            // Tạo lại ExportManager với tableModel hiện tại thay vì gọi setTableModel
+            exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
             exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
         });
-
 
         btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThem.setPreferredSize(new Dimension(100, 45));
