@@ -206,54 +206,66 @@ public class BacSiController {
             return false;
         }
     }
-    
-    // Delete a doctor and handle related records
- // Delete a doctor and handle related records by deleting appointments and treatments
     public boolean deleteBacSi(int id) {
         Connection conn = null;
         try {
             conn = connectMySQL.getConnection();
             conn.setAutoCommit(false); // Start transaction
             
-            // First, delete all future appointments for the doctor
-            if (!deleteFutureAppointments(conn, id)) {
-                conn.rollback();
-                return false;
-            }
-            
-            // Delete all treatments related to this doctor
-            if (!deleteDoctorTreatments(conn, id)) {
-                conn.rollback();
-                return false;
-            }
-            
-            // Also delete prescriptions (DonThuoc) if any
-            if (!deleteDoctorPrescriptions(conn, id)) {
-                conn.rollback();
-                return false;
-            }
-            
-            // Now delete the doctor
-            String sql = "DELETE FROM BacSi WHERE idBacSi = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            // Step 1: Delete all appointments (LichHen) for this doctor
+            String deleteAppointmentsSql = "DELETE FROM LichHen WHERE idBacSi = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteAppointmentsSql)) {
                 stmt.setInt(1, id);
-                int affectedRows = stmt.executeUpdate();
+                int appointmentsDeleted = stmt.executeUpdate();
+                System.out.println("Deleted " + appointmentsDeleted + " appointments for doctor ID: " + id);
+            }
+            
+            // Step 2: Delete all prescriptions (DonThuoc) for this doctor
+            String deletePrescriptionsSql = "DELETE FROM DonThuoc WHERE idBacSi = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deletePrescriptionsSql)) {
+                stmt.setInt(1, id);
+                int prescriptionsDeleted = stmt.executeUpdate();
+                System.out.println("Deleted " + prescriptionsDeleted + " prescriptions for doctor ID: " + id);
+            }
+            
+            // Step 3: Delete all treatments (DieuTri) for this doctor
+            String deleteTreatmentsSql = "DELETE FROM DieuTri WHERE idBacSi = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteTreatmentsSql)) {
+                stmt.setInt(1, id);
+                int treatmentsDeleted = stmt.executeUpdate();
+                System.out.println("Deleted " + treatmentsDeleted + " treatments for doctor ID: " + id);
+            }
+            
+            // Step 4: Delete any other related records that might reference this doctor
+            // Check if there are other tables that reference BacSi
+            
+            // Step 5: Finally, delete the doctor
+            String deleteDoctorSql = "DELETE FROM BacSi WHERE idBacSi = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteDoctorSql)) {
+                stmt.setInt(1, id);
+                int doctorDeleted = stmt.executeUpdate();
                 
-                if (affectedRows > 0) {
+                if (doctorDeleted > 0) {
                     conn.commit(); // Commit the transaction
+                    System.out.println("Successfully deleted doctor with ID: " + id);
                     return true;
                 } else {
                     conn.rollback(); // Rollback if doctor couldn't be deleted
+                    System.out.println("Doctor with ID " + id + " not found");
                     return false;
                 }
             }
+            
         } catch (SQLException e) {
+            System.err.println("Error deleting doctor with ID " + id + ": " + e.getMessage());
             e.printStackTrace();
             try {
                 if (conn != null) {
                     conn.rollback(); // Rollback on error
+                    System.out.println("Transaction rolled back due to error");
                 }
             } catch (SQLException ex) {
+                System.err.println("Error rolling back transaction: " + ex.getMessage());
                 ex.printStackTrace();
             }
             return false;
@@ -264,11 +276,11 @@ public class BacSiController {
                     conn.close();
                 }
             } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
                 e.printStackTrace();
             }
         }
     }
-
     // Delete future appointments for a doctor
     private boolean deleteFutureAppointments(Connection conn, int bacSiId) throws SQLException {
         // Get current date

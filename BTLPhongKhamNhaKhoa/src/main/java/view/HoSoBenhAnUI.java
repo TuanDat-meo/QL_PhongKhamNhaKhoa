@@ -7,12 +7,9 @@ import model.HoSoBenhAn;
 import util.CustomBorder;
 import util.ExportManager;
 import util.RoundedPanel;
-import view.DoanhThuUI.NotificationType;
 import model.BenhNhan;
 import model.DonThuoc;
-
 import javax.swing.*;
-import javax.swing.border.AbstractBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -20,9 +17,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
-
 import com.toedter.calendar.JDateChooser;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
@@ -47,8 +42,8 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private ExportManager exportManager;
     private JPopupMenu popupMenu;
     private JMenuItem menuItemSua;
-    private JMenuItem menuItemXoa;
-    
+    private JMenuItem menuItemXoa;    
+    private JLabel lblSoHoSo;
     // Dialog components
     private JDialog inputDialog;
     private JComboBox<String> cbBenhNhan;
@@ -57,7 +52,8 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private JDateChooser dateChooserNgayTao;
     private JComboBox<String> cbTrangThai;
     private Map<JComponent, JLabel> errorLabels = new HashMap<>();
-    
+    private boolean isEditMode = false;
+    private int currentEditingId = -1;
     // Modern Theme Colors
     private Color primaryColor = new Color(79, 129, 189); // Professional blue
     private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
@@ -72,12 +68,9 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private Color borderColor = new Color(222, 226, 230); // Light gray borders
     private Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
-    private Color errorBackgroundColor = new Color(248, 215, 218); // Light red for error backgrounds
-
     // Font settings
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
-    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
@@ -99,12 +92,12 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         JPanel contentPanel = new JPanel(new BorderLayout(0, 15));
         contentPanel.setBackground(backgroundColor);
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        contentPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
 
         JPanel tablePanel = createTablePanel();
         contentPanel.add(tablePanel, BorderLayout.CENTER);
-        
         add(contentPanel, BorderLayout.CENTER);
+        
         setupEventListeners();
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
@@ -256,22 +249,33 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         return wrapperPanel;
     }
     private JPanel createButtonPanel() {
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+    	JPanel buttonPanel = new JPanel(new BorderLayout());
         buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        buttonPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
         
-        btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.setBackground(backgroundColor);
+        
+        lblSoHoSo = new JLabel("Tổng số hồ sơ: 0");
+        lblSoHoSo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblSoHoSo.setForeground(primaryColor);
+        leftPanel.add(lblSoHoSo);
+        
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightPanel.setBackground(backgroundColor);
+        
+        btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
         
-        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
+        btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10, false);
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> showInputDialog(true));
         
-        buttonPanel.add(btnXuatFile);
-        buttonPanel.add(btnThem);
-
+        rightPanel.add(btnXuatFile);
+        rightPanel.add(btnThem);
+        buttonPanel.add(leftPanel, BorderLayout.WEST);
+        buttonPanel.add(rightPanel, BorderLayout.EAST);
         return buttonPanel;
     }
     private void createInputDialog() {
@@ -279,23 +283,25 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         inputDialog = new JDialog();
         inputDialog.setTitle("Thông tin hồ sơ bệnh án");
         inputDialog.setModal(true);
-        inputDialog.setSize(520, 610); // Tăng chiều cao để có thêm không gian
+        inputDialog.setSize(520, 550); // Tăng chiều cao để có thêm không gian
         inputDialog.setLocationRelativeTo(null);
         inputDialog.setResizable(false);
-
+        
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(Color.WHITE);
 
         JPanel headerPanel = new JPanel();
         headerPanel.setBackground(primaryColor);
         headerPanel.setLayout(new BorderLayout());
-        headerPanel.setPreferredSize(new Dimension(0, 50));
+        headerPanel.setPreferredSize(new Dimension(0, 70));
+        headerPanel.setBorder(new EmptyBorder(18, 25, 18, 25));
         
         JLabel titleLabel = new JLabel("THÊM MỚI HỒ SƠ BỆNH ÁN");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        titleLabel.setHorizontalAlignment(JLabel.LEFT);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
         
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new GridBagLayout());
@@ -308,8 +314,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         gbc.weightx = 1.0;
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.LINE_START;
-        
+        gbc.anchor = GridBagConstraints.LINE_START;        
         // Bệnh nhân field
         JLabel lblBenhNhan = new JLabel("Bệnh nhân: ");
         lblBenhNhan.setFont(regularFont);
@@ -326,6 +331,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         gbc.anchor = GridBagConstraints.CENTER;
         cbBenhNhan = createStyledComboBox();
         cbBenhNhan.setPreferredSize(new Dimension(270, 32));
+        cbBenhNhan.setFocusable(false);
         formPanel.add(cbBenhNhan, gbc);
         
         // Error label for Bệnh nhân
@@ -356,8 +362,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         gbc.anchor = GridBagConstraints.CENTER;
         txtChuanDoan = createStyledTextField();
         txtChuanDoan.setPreferredSize(new Dimension(270, 32));
-        formPanel.add(txtChuanDoan, gbc);
-        
+        formPanel.add(txtChuanDoan, gbc);        
         // Error label for Chuẩn đoán
         gbc.gridx = 1;
         gbc.gridy++;
@@ -624,33 +629,22 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             
             java.sql.Date sqlDate = new java.sql.Date(ngayTao.getTime());
             
-            // Check if this is edit or add
-            boolean isEdit = inputDialog.getTitle().contains("CHỈNH SỬA");
-            
-            if (isEdit) {
-                // Get the selected row to get the ID
-                int selectedRow = hoSoBenhAnTable.getSelectedRow();
-                if (selectedRow == -1) {
-                    showErrorMessage("Lỗi", "Không tìm thấy hồ sơ để cập nhật");
-                    return;
-                }
-                
-                int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
-                
-                // Create HoSoBenhAn object with correct constructor
+            // Sử dụng biến isEditMode thay vì kiểm tra title
+            if (isEditMode && currentEditingId != -1) {
+                // Chế độ chỉnh sửa
                 HoSoBenhAn hoSoBenhAn = new HoSoBenhAn();
-                hoSoBenhAn.setIdHoSo(idHoSo);
+                hoSoBenhAn.setIdHoSo(currentEditingId);
                 hoSoBenhAn.setIdBenhNhan(idBenhNhan);
                 hoSoBenhAn.setChuanDoan(chuanDoan);
                 hoSoBenhAn.setGhiChu(ghiChu);
                 hoSoBenhAn.setNgayTao(sqlDate);
                 hoSoBenhAn.setTrangThai(trangThai);
                 
-                // Update - sử dụng phương thức đúng
+                // Update
                 hoSoBenhAnController.suaHoSoBenhAn(hoSoBenhAn);
                 showNotification("Hồ sơ bệnh án đã được cập nhật thành công!", NotificationType.SUCCESS);
             } else {
-                // Create new HoSoBenhAn object
+                // Chế độ thêm mới
                 HoSoBenhAn hoSoBenhAn = new HoSoBenhAn();
                 hoSoBenhAn.setIdBenhNhan(idBenhNhan);
                 hoSoBenhAn.setChuanDoan(chuanDoan);
@@ -663,9 +657,18 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 showNotification("Hồ sơ bệnh án mới đã được thêm thành công!", NotificationType.SUCCESS);
             }
             
-            // Refresh the table and close dialog
-            lamMoiDanhSach();
+            // Reset trạng thái và refresh table
+            isEditMode = false;
+            currentEditingId = -1;
             inputDialog.setVisible(false);
+            
+            // Kiểm tra xem có đang trong chế độ tìm kiếm không
+            String searchText = txtTimKiem.getText().trim();
+            if (searchText.isEmpty()) {
+                lamMoiDanhSach();
+            } else {
+                timKiemHoSoBenhAn(); // Cập nhật kết quả tìm kiếm
+            }
             
         } catch (Exception e) {
             showErrorMessage("Lỗi", "Không thể lưu hồ sơ bệnh án: " + e.getMessage());
@@ -685,6 +688,11 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 showWarningMessage("Vui lòng chọn hồ sơ bệnh án để sửa.");
                 return;
             }
+            
+            // Đặt chế độ chỉnh sửa
+            isEditMode = true;
+            currentEditingId = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
+            
             inputDialog.setTitle("Chỉnh sửa hồ sơ bệnh án");
             headerTitle.setText("CHỈNH SỬA HỒ SƠ BỆNH ÁN");
 
@@ -713,6 +721,10 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 showErrorMessage("Lỗi định dạng ngày", "Không thể đọc định dạng ngày tháng");
             }
         } else {
+            // Đặt chế độ thêm mới
+            isEditMode = false;
+            currentEditingId = -1;
+            
             inputDialog.setTitle("Thêm hồ sơ bệnh án mới");
             headerTitle.setText("THÊM MỚI HỒ SƠ BỆNH ÁN");
             clearInputFields();
@@ -721,6 +733,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         inputDialog.setLocationRelativeTo(this);
         inputDialog.setVisible(true);
     }
+
     private void clearInputFields() {
         cbBenhNhan.setSelectedIndex(-1);
         txtChuanDoan.setText("");
@@ -776,7 +789,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         dateChooser.setFont(regularFont);
         dateChooser.setPreferredSize(new Dimension(270, 32)); // Đồng bộ kích thước
         dateChooser.setBorder(new CustomBorder(8, borderColor));
-        dateChooser.setDateFormatString("yyyy-MM-dd");        
+        dateChooser.setDateFormatString("dd/MM/yyyy");        
         JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateTextField.setFont(regularFont);
         dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));        
@@ -924,7 +937,52 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             }
         });
     }
+    private void xemChiTietHoSoBenhAn() {
+        int selectedRow = hoSoBenhAnTable.getSelectedRow();
+        if (selectedRow == -1) {
+            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
+            return;
+        }
 
+        try {
+            // Lấy ID hồ sơ từ hàng đã chọn
+            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
+            // Tìm kiếm hồ sơ bệnh án theo ID
+            HoSoBenhAn hoSoBenhAn = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
+            if (hoSoBenhAn == null) {
+                showErrorMessage("Lỗi dữ liệu", "Không tìm thấy hồ sơ bệnh án.");
+                return;
+            }            
+            // Tìm thông tin bệnh nhân
+            BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hoSoBenhAn.getIdBenhNhan());
+            String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "N/A";           
+            // Lấy danh sách đơn thuốc
+            List<DonThuoc> danhSachDonThuoc = donThuocController.layDanhSachDonThuocTheoHoSoBenhAnId(idHoSo);
+            // Tạo và hiển thị dialog chi tiết với tham chiếu parentUI
+            JFrame owner = (JFrame) SwingUtilities.getWindowAncestor(this);
+            ChiTietHoSoBenhAnDialog chiTietDialog = new ChiTietHoSoBenhAnDialog(
+                owner,
+                "Chi tiết Hồ sơ Bệnh án",
+                true,
+                hoSoBenhAn.getIdHoSo(),
+                tenBenhNhan,
+                hoSoBenhAn.getChuanDoan(),
+                hoSoBenhAn.getGhiChu(),
+                formatDate(hoSoBenhAn.getNgayTao()),
+                hoSoBenhAn.getTrangThai(),
+                danhSachDonThuoc,
+                this // Truyền tham chiếu parentUI
+            );            
+            chiTietDialog.setVisible(true);
+        } catch (NullPointerException e) {
+            showErrorMessage("Lỗi dữ liệu", "Dữ liệu hồ sơ bệnh án không đầy đủ: " + e.getMessage());
+        } catch (ClassCastException e) {
+            showErrorMessage("Lỗi dữ liệu", "Lỗi chuyển đổi kiểu dữ liệu: " + e.getMessage());
+        } catch (Exception e) {
+            showErrorMessage("Lỗi", "Không thể mở chi tiết hồ sơ bệnh án: " + e.getMessage());
+            e.printStackTrace(); // Ghi log lỗi để thuận tiện cho việc debug
+        }
+    }
     private JMenuItem createStyledMenuItem(String text) {
         JMenuItem menuItem = new JMenuItem(text);
         menuItem.setFont(regularFont);
@@ -942,7 +1000,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
             showErrorMessage("Lỗi dữ liệu", "Không thể tải danh sách bệnh nhân: " + e.getMessage());
         }
     }
-
     public void lamMoiDanhSach() {
         hoSoBenhAnTableModel.setRowCount(0);
         try {
@@ -959,14 +1016,26 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                     hsbA.getTrangThai()
                 };
                 hoSoBenhAnTableModel.addRow(rowData);
-            }
+            }            
+            // Cập nhật số lượng hồ sơ
+            int soLuongHoSo = danhSachHoSoBenhAn.size();
+            lblSoHoSo.setText("Tổng số hồ sơ: " + soLuongHoSo);            
         } catch (Exception e) {
             showErrorMessage("Lỗi dữ liệu", "Không thể tải danh sách hồ sơ bệnh án: " + e.getMessage());
+            // Nếu có lỗi, hiển thị 0
+            lblSoHoSo.setText("Tổng số hồ sơ: 0");
         }
     }
-
     private void timKiemHoSoBenhAn() {
-        String searchText = txtTimKiem.getText().toLowerCase();
+        String searchText = txtTimKiem.getText().trim();
+        
+        // Nếu ô tìm kiếm trống, làm mới danh sách
+        if (searchText.isEmpty()) {
+            lamMoiDanhSach();
+            showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
+            return;
+        }
+        
         hoSoBenhAnTableModel.setRowCount(0);
         
         try {
@@ -974,34 +1043,56 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
             List<HoSoBenhAn> danhSachTimKiem = danhSachHoSoBenhAn.stream()
                     .filter(hsbA -> {
-                        BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hsbA.getIdBenhNhan());
-                        String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "";
-                        return String.valueOf(hsbA.getIdHoSo()).toLowerCase().contains(searchText) ||
-                               tenBenhNhan.toLowerCase().contains(searchText) ||
-                               hsbA.getChuanDoan().toLowerCase().contains(searchText) ||
-                               hsbA.getTrangThai().toLowerCase().contains(searchText);
+                        try {
+                            BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hsbA.getIdBenhNhan());
+                            String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "";
+                            return String.valueOf(hsbA.getIdHoSo()).toLowerCase().contains(searchText.toLowerCase()) ||
+                                   tenBenhNhan.toLowerCase().contains(searchText.toLowerCase()) ||
+                                   hsbA.getChuanDoan().toLowerCase().contains(searchText.toLowerCase()) ||
+                                   hsbA.getTrangThai().toLowerCase().contains(searchText.toLowerCase()) ||
+                                   (hsbA.getGhiChu() != null && hsbA.getGhiChu().toLowerCase().contains(searchText.toLowerCase()));
+                        } catch (Exception e) {
+                            return false; // Nếu có lỗi khi tìm bệnh nhân, bỏ qua record này
+                        }
                     })
                     .collect(Collectors.toList());
 
             for (HoSoBenhAn hsbA : danhSachTimKiem) {
-                BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hsbA.getIdBenhNhan());
-                String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "N/A";
-                Object[] rowData = {
-                    hsbA.getIdHoSo(), 
-                    tenBenhNhan, 
-                    hsbA.getChuanDoan(), 
-                    hsbA.getGhiChu(), 
-                    formatDate(hsbA.getNgayTao()), 
-                    hsbA.getTrangThai()
-                };
-                hoSoBenhAnTableModel.addRow(rowData);
+                try {
+                    BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hsbA.getIdBenhNhan());
+                    String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "N/A";
+                    Object[] rowData = {
+                        hsbA.getIdHoSo(), 
+                        tenBenhNhan, 
+                        hsbA.getChuanDoan(), 
+                        hsbA.getGhiChu(), 
+                        formatDate(hsbA.getNgayTao()), 
+                        hsbA.getTrangThai()
+                    };
+                    hoSoBenhAnTableModel.addRow(rowData);
+                } catch (Exception e) {
+                    // Log error và tiếp tục với record tiếp theo
+                    System.err.println("Lỗi khi xử lý hồ sơ ID: " + hsbA.getIdHoSo() + " - " + e.getMessage());
+                }
+            }            
+            
+            // Cập nhật số lượng kết quả tìm kiếm
+            int soKetQua = danhSachTimKiem.size();
+            lblSoHoSo.setText("Kết quả tìm kiếm: " + soKetQua + " hồ sơ");
+            
+            // Cập nhật hiển thị bảng
+            hoSoBenhAnTable.revalidate();
+            hoSoBenhAnTable.repaint();
+            
+            if (soKetQua == 0) {
+                showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
+            } else {
+                showNotification("Tìm thấy " + soKetQua + " kết quả phù hợp", NotificationType.SUCCESS);
             }
             
-            if (danhSachTimKiem.isEmpty()) {
-            	showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
-            }
         } catch (Exception e) {
             showErrorMessage("Lỗi tìm kiếm", "Không thể thực hiện tìm kiếm: " + e.getMessage());
+            lblSoHoSo.setText("Lỗi: 0 hồ sơ");
         }
     }
     private void resetAllValidationErrors() {
@@ -1029,8 +1120,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         } else if (component instanceof JTextArea) {
             JScrollPane parent = (JScrollPane) component.getParent().getParent();
             parent.setBorder(new CustomBorder(8, borderColor));
-        }
-        
+        }        
         JLabel errorLabel = errorLabels.get(component);
         if (errorLabel != null) {
             errorLabel.setText(" ");
@@ -1042,16 +1132,12 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         if (selectedRow == -1) {
             showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để sửa.");
             return;
-        }
-        
-        // Gọi showInputDialog với tham số false (không phải thêm mới)
+        }        
         showInputDialog(false);
     }
-
     public void hienThiDialogSuaHoSoBenhAnTheoId(int idHoSo) {
         try {
             HoSoBenhAn hoSoBenhAnCanSua = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
-
             if (hoSoBenhAnCanSua != null) {
                 // Tìm và chọn hàng tương ứng trong bảng
                 for (int i = 0; i < hoSoBenhAnTableModel.getRowCount(); i++) {
@@ -1060,8 +1146,7 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                         hoSoBenhAnTable.setRowSelectionInterval(i, i);
                         break;
                     }
-                }
-                
+                }                
                 // Gọi showInputDialog với tham số false (không phải thêm mới)
                 showInputDialog(false);
             } else {
@@ -1079,132 +1164,68 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         }
 
         try {
-            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
-            String tenBenhNhan = (String) hoSoBenhAnTableModel.getValueAt(selectedRow, 1);
-            
-            // Create a custom confirmation dialog
-            JDialog confirmDialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Xác nhận xóa", true);
+            int modelRow = hoSoBenhAnTable.convertRowIndexToModel(selectedRow);
+            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(modelRow, 0);
+            String tenBenhNhan = (String) hoSoBenhAnTableModel.getValueAt(modelRow, 1);
+
+            // Create confirmation dialog similar to xoaBenhNhan
+            JDialog confirmDialog = new JDialog();
+            confirmDialog.setTitle("Xác nhận xóa");
+            confirmDialog.setModal(true);
             confirmDialog.setSize(400, 200);
             confirmDialog.setLocationRelativeTo(this);
-            confirmDialog.setLayout(new BorderLayout());
-            
-            JPanel contentPanel = new JPanel(new BorderLayout(20, 20));
-            contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            contentPanel.setBackground(Color.WHITE);
-            
-            JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
-            
-            JPanel messagePanel = new JPanel(new BorderLayout());
+
+            JPanel panel = new JPanel(new BorderLayout(10, 15));
+            panel.setBackground(Color.WHITE);
+            panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
             messagePanel.setBackground(Color.WHITE);
-            
-            JLabel titleLabel = new JLabel("Xác nhận xóa");
-            titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-            titleLabel.setForeground(accentColor);
-            
+
             JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn xóa hồ sơ bệnh án của <b>" + tenBenhNhan + "</b>?</html>");
             messageLabel.setFont(regularFont);
-            
-            messagePanel.add(titleLabel, BorderLayout.NORTH);
             messagePanel.add(messageLabel, BorderLayout.CENTER);
-            
-            JPanel iconContainer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-            iconContainer.setBackground(Color.WHITE);
-            iconContainer.add(iconLabel);
-            
-            contentPanel.add(iconContainer, BorderLayout.WEST);
-            contentPanel.add(messagePanel, BorderLayout.CENTER);
-            
+
+            panel.add(messagePanel, BorderLayout.CENTER);
+
             JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             buttonPanel.setBackground(Color.WHITE);
-            buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-            
-            JButton btnCancel = createRoundedButton("Hủy", new Color(153, 153, 153), Color.WHITE, 8);
-            btnCancel.addActionListener(e -> confirmDialog.dispose());
-            
-            JButton btnConfirm = createRoundedButton("Xóa", accentColor, Color.WHITE, 8);
-            btnConfirm.addActionListener(e -> {
+
+            JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
+            cancelButton.addActionListener(e -> confirmDialog.dispose());
+
+            JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, 8, false);
+            deleteButton.addActionListener(e -> {
                 try {
                     hoSoBenhAnController.xoaHoSoBenhAn(idHoSo);
-                    lamMoiDanhSach();
                     confirmDialog.dispose();
-                    showSuccessMessage("Xóa hồ sơ bệnh án thành công.");
+                    SwingUtilities.invokeLater(() -> {
+                        // Kiểm tra xem có đang trong chế độ tìm kiếm không
+                        String searchText = txtTimKiem.getText().trim();
+                        if (searchText.isEmpty()) {
+                            lamMoiDanhSach();
+                        } else {
+                            timKiemHoSoBenhAn(); // Cập nhật kết quả tìm kiếm
+                        }
+                        showSuccessToast("Hồ sơ bệnh án đã được xóa thành công!");
+                    });
                 } catch (Exception ex) {
-                    showErrorMessage("Lỗi xóa", "Không thể xóa hồ sơ bệnh án: " + ex.getMessage());
+                    showErrorMessage("Lỗi khi xóa hồ sơ bệnh án", ex.getMessage());
                 }
             });
-            
-            buttonPanel.add(btnCancel);
-            buttonPanel.add(btnConfirm);
-            
-            confirmDialog.add(contentPanel, BorderLayout.CENTER);
-            confirmDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+            buttonPanel.add(cancelButton);
+            buttonPanel.add(deleteButton);
+
+            panel.add(buttonPanel, BorderLayout.SOUTH);
+            confirmDialog.setContentPane(panel);
             confirmDialog.setVisible(true);
-            
+
         } catch (Exception e) {
             showErrorMessage("Lỗi", "Không thể xóa hồ sơ bệnh án: " + e.getMessage());
         }
     }
-
-    private void xemChiTietHoSoBenhAn() {
-        int selectedRow = hoSoBenhAnTable.getSelectedRow();
-        if (selectedRow == -1) {
-            showWarningMessage("Vui lòng chọn một hồ sơ bệnh án để xem chi tiết.");
-            return;
-        }
-
-        try {
-            // Lấy ID hồ sơ từ hàng đã chọn
-            int idHoSo = (int) hoSoBenhAnTableModel.getValueAt(selectedRow, 0);
-            
-            // Tìm kiếm hồ sơ bệnh án theo ID
-            HoSoBenhAn hoSoBenhAn = hoSoBenhAnController.timKiemHoSoBenhAnTheoId(idHoSo);
-            
-            if (hoSoBenhAn == null) {
-                showErrorMessage("Lỗi dữ liệu", "Không tìm thấy hồ sơ bệnh án.");
-                return;
-            }
-            
-            // Tìm thông tin bệnh nhân
-            BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hoSoBenhAn.getIdBenhNhan());
-            String tenBenhNhan = (benhNhan != null) ? benhNhan.getHoTen() : "N/A";
-            
-            // Lấy danh sách đơn thuốc
-            List<DonThuoc> danhSachDonThuoc = donThuocController.layDanhSachDonThuocTheoHoSoBenhAnId(idHoSo);
-            
-            // Tạo và hiển thị dialog chi tiết với tham chiếu parentUI
-            JFrame owner = (JFrame) SwingUtilities.getWindowAncestor(this);
-            ChiTietHoSoBenhAnDialog chiTietDialog = new ChiTietHoSoBenhAnDialog(
-                owner,
-                "Chi tiết Hồ sơ Bệnh án",
-                true,
-                hoSoBenhAn.getIdHoSo(),
-                tenBenhNhan,
-                hoSoBenhAn.getChuanDoan(),
-                hoSoBenhAn.getGhiChu(),
-                formatDate(hoSoBenhAn.getNgayTao()),
-                hoSoBenhAn.getTrangThai(),
-                danhSachDonThuoc,
-                this // Truyền tham chiếu parentUI
-            );
-            
-            chiTietDialog.setVisible(true);
-        } catch (NullPointerException e) {
-            showErrorMessage("Lỗi dữ liệu", "Dữ liệu hồ sơ bệnh án không đầy đủ: " + e.getMessage());
-        } catch (ClassCastException e) {
-            showErrorMessage("Lỗi dữ liệu", "Lỗi chuyển đổi kiểu dữ liệu: " + e.getMessage());
-        } catch (Exception e) {
-            showErrorMessage("Lỗi", "Không thể mở chi tiết hồ sơ bệnh án: " + e.getMessage());
-            e.printStackTrace(); // Ghi log lỗi để thuận tiện cho việc debug
-        }
-    }
-    private String formatDate(Date date) {
-        if (date == null) return "N/A";
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        return sdf.format(date);
-    }
-
-    // Create a custom rounded button with specified parameters
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
         JButton button = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1221,7 +1242,6 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
                 return false;
             }
         };
-
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -1229,7 +1249,12 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        // Sử dụng padding khác nhau tùy theo button
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); // Padding nhỏ hơn cho "Chỉnh Sửa"
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường cho "Đóng"
+        }
 
         // Add hover effect
         button.addMouseListener(new MouseAdapter() {
@@ -1246,11 +1271,53 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
 
         return button;
     }
+    
+    private String formatDate(Date date) {
+        if (date == null) return "N/A";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        return sdf.format(date);
+    }
+    // Create a custom rounded button with specified parameters
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+        return button;
+    }
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
-    }
-    
+    }    
     private void showSuccessMessage(String message) {
         JOptionPane optionPane = new JOptionPane(
             message,
@@ -1339,14 +1406,46 @@ public class HoSoBenhAnUI extends JPanel implements ExportManager.MessageCallbac
     @Override
     public void showMessage(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(
-            SwingUtilities.getWindowAncestor(this),
-            message,
-            title,
-            messageType
+            SwingUtilities.getWindowAncestor(this), message, title, messageType
         );
     }
 	@Override
-	public void showSuccessToast(String message) {		
-	}
+	public void showSuccessToast(String message) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);        
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));               
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);        
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+                screenSize.width - toastDialog.getWidth() - 20,
+                screenSize.height - toastDialog.getHeight() - 60
+        );        
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
 }
                 		    

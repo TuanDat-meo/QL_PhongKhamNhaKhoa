@@ -6,6 +6,7 @@ import util.CustomBorder;
 import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
+import view.BenhNhanUI.NotificationType;
 import util.RoundedPanel;
 
 import javax.swing.*;
@@ -17,6 +18,8 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.HashMap;
@@ -99,10 +102,30 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         searchField.setBorder(BorderFactory.createCompoundBorder(
                 new CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (searchField.getText().trim().isEmpty()) {
+                    	loadBacSiData();
+                        showSuccessToast("Dữ liệu đã được làm mới!");
+                    } else {
+                    	searchBacSi();
+                    }
+                }
+            }
+        }); 
         searchButton = createRoundedButton("Tìm kiếm", primaryColor, buttonTextColor, 10, false);
         searchButton.setPreferredSize(new Dimension(120, 38));
         searchButton.setFocusPainted(false);
-        searchButton.addActionListener(e -> searchBacSi());
+        searchButton.addActionListener(e -> {
+            if (searchField.getText().trim().isEmpty()) {
+            	loadBacSiData();
+                showSuccessToast("Dữ liệu đã được làm mới!");
+            } else {
+            	searchBacSi();
+            }
+        });
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
@@ -117,10 +140,9 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         tablePanel.setBackground(panelColor);
         tablePanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         
-        // Create table with simplified columns matching the image
         String[] columns = {
-            "ID", "Họ Tên", "Chuyên Khoa", "Bằng Cấp", "Kinh Nghiệm", "Phòng Khám", "Email", "Số Điện Thoại"
-        };
+        	    "ID", "Họ Tên", "Chuyên Khoa", "Kinh Nghiệm", "Phòng Khám", "Email", "Số Điện Thoại"
+        	};
         
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -160,41 +182,49 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
         header.setReorderingAllowed(false);
         
-        // Set column widths - proportional to the reference image
         TableColumnModel columnModel = bacSiTable.getColumnModel();
-        columnModel.getColumn(0).setPreferredWidth(50);   // ID
+        columnModel.getColumn(0).setPreferredWidth(50);   // ID 
         columnModel.getColumn(1).setPreferredWidth(180);  // Họ Tên
-        columnModel.getColumn(2).setPreferredWidth(150);  // Chuyên Khoa
-        columnModel.getColumn(3).setPreferredWidth(100);  // Bằng Cấp
-        columnModel.getColumn(4).setPreferredWidth(80);   // Kinh Nghiệm
-        columnModel.getColumn(5).setPreferredWidth(120);  // Phòng Khám
-        columnModel.getColumn(6).setPreferredWidth(180);  // Email
-        columnModel.getColumn(7).setPreferredWidth(120);  // Số Điện Thoại
-        
+        columnModel.getColumn(2).setPreferredWidth(180);  // Chuyên Khoa
+        columnModel.getColumn(3).setPreferredWidth(120);  // Kinh Nghiệm
+        columnModel.getColumn(4).setPreferredWidth(180);  // Phòng Khám
+        columnModel.getColumn(5).setPreferredWidth(180);  // Email
+        columnModel.getColumn(6).setPreferredWidth(140);  // Số Điện Thoại
+
+        // Set minimum widths to prevent columns from becoming too narrow
+        columnModel.getColumn(0).setMinWidth(50);
+        columnModel.getColumn(1).setMinWidth(150);
+        columnModel.getColumn(2).setMinWidth(150);
+        columnModel.getColumn(3).setMinWidth(100); 
+        columnModel.getColumn(4).setMinWidth(150);
+        columnModel.getColumn(5).setMinWidth(150);
+        columnModel.getColumn(6).setMinWidth(120);
         // Alternating row colors
         bacSiTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 
+                // Set alternating row colors
                 if (!isSelected) {
                     if (value == null || value.toString().trim().isEmpty()) {
-                        component.setBackground(Color.WHITE); // Nền trắng cho ô trống
+                        component.setBackground(Color.WHITE);
                     } else {
-                        component.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor); // Nền xen kẽ
+                        component.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
                     }
                 }
                 
-                if (column == 0) {
-                    ((JLabel) component).setHorizontalAlignment(SwingConstants.CENTER);
-                } else {
-                    ((JLabel) component).setHorizontalAlignment(SwingConstants.LEFT);
-                }
+                JLabel label = (JLabel) component;
+                
+                // Căn giữa tất cả nội dung trong table
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+                
+                // Add some padding for better visual appearance
+                label.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
                 
                 return component;
             }
-        });
-        
+        });        
         bacSiTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -440,7 +470,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         panel.add(fieldPanel);
         panel.add(separator);
     }
-    
     public void loadBacSiData() {
         tableModel.setRowCount(0);
         List<BacSi> bacSiList = bacSiController.getAllBacSi();
@@ -450,7 +479,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
                 bacSi.getIdBacSi(),
                 bacSi.getHoTenBacSi(),
                 bacSi.getChuyenKhoa(),
-                bacSi.getBangCap(),
                 bacSi.getKinhNghiem() + " năm",
                 bacSi.getTenPhong(),
                 bacSi.getEmailNguoiDung(),
@@ -461,34 +489,153 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         
         currentBacSiId = -1;
     }
-    
     private void searchBacSi() {
-        String searchTerm = searchField.getText().trim();
+        String searchTerm = searchField.getText().trim().toLowerCase();
         if (searchTerm.isEmpty()) {
             loadBacSiData();
             return;
         }
         
-        tableModel.setRowCount(0);
-        List<BacSi> bacSiList = bacSiController.searchBacSi(searchTerm);
-        
-        for (BacSi bacSi : bacSiList) {
-            Object[] rowData = {
-                bacSi.getIdBacSi(),
-                bacSi.getHoTenBacSi(),
-                bacSi.getChuyenKhoa(),
-                bacSi.getBangCap(),
-                bacSi.getKinhNghiem() + " năm",
-                bacSi.getTenPhong(),
-                bacSi.getEmailNguoiDung(),
-                bacSi.getSoDienThoaiNguoiDung()
-            };
-            tableModel.addRow(rowData);
+        try {
+            // Lấy tất cả dữ liệu bác sĩ
+            List<BacSi> allBacSi = bacSiController.getAllBacSi();
+            tableModel.setRowCount(0);
+            
+            int matchCount = 0;
+            
+            for (BacSi bacSi : allBacSi) {
+                // Kiểm tra từng trường dữ liệu có chứa từ khóa tìm kiếm không (không phân biệt hoa thường)
+                boolean isMatch = false;
+                
+                // Tìm theo ID (chuyển sang string để so sánh)
+                if (String.valueOf(bacSi.getIdBacSi()).toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo họ tên
+                if (bacSi.getHoTenBacSi() != null && 
+                    bacSi.getHoTenBacSi().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo chuyên khoa
+                if (bacSi.getChuyenKhoa() != null && 
+                    bacSi.getChuyenKhoa().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo bằng cấp
+                if (bacSi.getBangCap() != null && 
+                    bacSi.getBangCap().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo kinh nghiệm (chuyển sang string)
+                if (String.valueOf(bacSi.getKinhNghiem()).toLowerCase().contains(searchTerm) ||
+                    (String.valueOf(bacSi.getKinhNghiem()) + " năm").toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo tên phòng
+                if (bacSi.getTenPhong() != null && 
+                    bacSi.getTenPhong().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo email
+                if (bacSi.getEmailNguoiDung() != null && 
+                    bacSi.getEmailNguoiDung().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Tìm theo số điện thoại
+                if (bacSi.getSoDienThoaiNguoiDung() != null && 
+                    bacSi.getSoDienThoaiNguoiDung().toLowerCase().contains(searchTerm)) {
+                    isMatch = true;
+                }
+                
+                // Nếu có khớp thì thêm vào bảng
+                if (isMatch) {
+                    Object[] rowData = {
+                        bacSi.getIdBacSi(),
+                        bacSi.getHoTenBacSi(),
+                        bacSi.getChuyenKhoa(),
+                        bacSi.getKinhNghiem() + " năm",
+                        bacSi.getTenPhong(),
+                        bacSi.getEmailNguoiDung(),
+                        bacSi.getSoDienThoaiNguoiDung()
+                    };
+                    tableModel.addRow(rowData);
+                    matchCount++;
+                }
+            }
+            
+            currentBacSiId = -1;
+            
+            // Hiển thị thông báo kết quả tìm kiếm
+            if (matchCount == 0) {
+                showNotification("Không tìm thấy kết quả nào cho: '" + searchTerm + "'", NotificationType.WARNING);
+            } else {
+                showNotification("Tìm thấy " + matchCount + " kết quả cho: '" + searchTerm + "'", NotificationType.SUCCESS);
+            }
+            
+        } catch (Exception e) {
+            showErrorMessage("Lỗi khi tìm kiếm bác sĩ", e.getMessage());
+            e.printStackTrace();
         }
-        
-        currentBacSiId = -1;
     }
-    
+    public enum NotificationType {
+        SUCCESS(new Color(86, 156, 104), "Thành công"),
+        WARNING(new Color(237, 187, 85), "Cảnh báo"),
+        ERROR(new Color(192, 80, 77), "Lỗi");        
+        private final Color color;
+        private final String title;        
+        NotificationType(Color color, String title) {
+            this.color = color;
+            this.title = title;
+        }
+    }
+    private void showNotification(String message, NotificationType type) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(type.color);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+        JLabel titleLabel = new JLabel(type.title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(Color.WHITE);
+        toastPanel.add(titleLabel);        
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
     private void showAddBacSiDialog() {
         BacSiDialog dialog = new BacSiDialog(parentFrame, null);
         dialog.setVisible(true);
@@ -575,7 +722,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     
     public void deleteBacSi() {
         if (currentBacSiId == -1) {
-            showMessage("Vui lòng chọn một bác sĩ để xóa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            showWarningMessage("Vui lòng chọn bác sĩ để xóa.");
             return;
         }
         
@@ -585,26 +732,105 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             return;
         }
         
+        // Kiểm tra xem bác sĩ có lịch hẹn trong tương lai không
+        boolean hasFutureAppointments = bacSiController.hasFutureAppointments(currentBacSiId);
+        
+        // Lấy danh sách bác sĩ cùng chuyên khoa để thay thế
+        List<BacSi> replacementDoctors = bacSiController.getOtherDoctorsBySpecialty(currentBacSiId);
+        
+        String message;
+        if (hasFutureAppointments && !replacementDoctors.isEmpty()) {
+            message = "Bác sĩ này có lịch hẹn trong tương lai.\n" +
+                     "Bạn có muốn chuyển lịch hẹn cho bác sĩ khác cùng chuyên khoa không?\n\n" +
+                     "Chọn 'Yes' để chuyển lịch hẹn\n" +
+                     "Chọn 'No' để hủy tất cả lịch hẹn trong tương lai";
+        } else if (hasFutureAppointments && replacementDoctors.isEmpty()) {
+            message = "Bác sĩ này có lịch hẹn trong tương lai.\n" +
+                     "Không có bác sĩ khác cùng chuyên khoa để chuyển lịch hẹn.\n" +
+                     "Tất cả lịch hẹn trong tương lai sẽ bị hủy.\n\n" +
+                     "Bạn có chắc chắn muốn xóa bác sĩ này?";
+        } else {
+            message = "Bạn có chắc chắn muốn xóa bác sĩ này?";
+        }
+        
         int choice = JOptionPane.showConfirmDialog(parentFrame, 
-            "Bạn có chắc chắn muốn xóa bác sĩ này?",
+            message,
             "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         
         if (choice == JOptionPane.YES_OPTION) {
-            boolean success = bacSiController.deleteBacSi(currentBacSiId);
-            if (success) {
-                showSuccessToast("Đã xóa bác sĩ thành công.");
-                loadBacSiData();
-            } else {
-                // Only show appointment warning if the user is a doctor
-                if ("doctor".equalsIgnoreCase(currentUserRole)) {
-                    showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Bác sĩ này có thể có lịch hẹn hoặc điều trị hiện tại.");
-                } else {
-                    showMessage("Hủy xóa thành công.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            int replacementDoctorId = -1;
+            
+            // Nếu có lịch hẹn và có bác sĩ thay thế, cho phép chọn bác sĩ thay thế
+            if (hasFutureAppointments && !replacementDoctors.isEmpty()) {
+                String[] doctorNames = new String[replacementDoctors.size() + 1];
+                doctorNames[0] = "Hủy tất cả lịch hẹn (không chuyển)";
+                
+                for (int i = 0; i < replacementDoctors.size(); i++) {
+                    BacSi doctor = replacementDoctors.get(i);
+                    doctorNames[i + 1] = doctor.getHoTenBacSi() + " - " + doctor.getTenPhong();
                 }
+                
+                String selectedDoctor = (String) JOptionPane.showInputDialog(
+                    parentFrame,
+                    "Chọn bác sĩ thay thế hoặc hủy lịch hẹn:",
+                    "Chọn bác sĩ thay thế",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    doctorNames,
+                    doctorNames[0]
+                );
+                
+                if (selectedDoctor == null) {
+                    // User cancelled the selection
+                    showMessage("Đã hủy thao tác xóa bác sĩ.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                
+                // Tìm ID của bác sĩ được chọn
+                for (int i = 0; i < doctorNames.length; i++) {
+                    if (doctorNames[i].equals(selectedDoctor) && i > 0) {
+                        replacementDoctorId = replacementDoctors.get(i - 1).getIdBacSi();
+                        break;
+                    }
+                }
+            }
+            
+            // Thực hiện xóa với bác sĩ thay thế (nếu có)
+            boolean success;
+            if (replacementDoctorId > 0) {
+                success = bacSiController.deleteBacSiWithReplacement(currentBacSiId, replacementDoctorId);
+                if (success) {
+                    String replacementDoctorName = "";
+                    for (BacSi doctor : replacementDoctors) {
+                        if (doctor.getIdBacSi() == replacementDoctorId) {
+                            replacementDoctorName = doctor.getHoTenBacSi();
+                            break;
+                        }
+                    }
+                    showSuccessToast("Đã xóa bác sĩ thành công. Lịch hẹn đã được chuyển cho bác sĩ " + replacementDoctorName + ".");
+                }
+            } else {
+                // Xóa bình thường (sẽ hủy lịch hẹn)
+                success = bacSiController.deleteBacSi(currentBacSiId);
+                if (success) {
+                    if (hasFutureAppointments) {
+                        showSuccessToast("Đã xóa bác sĩ thành công. Tất cả lịch hẹn trong tương lai đã được hủy.");
+                    } else {
+                        showSuccessToast("Đã xóa bác sĩ thành công.");
+                    }
+                }
+            }
+            
+            if (success) {
+                loadBacSiData();
+                // Reset current selection
+                currentBacSiId = -1;
+            } else {
+                showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Vui lòng thử lại sau.");
             }
         } else {
             // User clicked "No" - show "cancel deletion successful" message
-            showMessage("Hủy xóa thành công.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            showMessage("Đã hủy thao tác xóa bác sĩ.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         }
     }
     
@@ -657,7 +883,41 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     // Implementation of MessageCallback interface
     @Override
     public void showSuccessToast(String message) {
-        JOptionPane.showMessageDialog(parentFrame, message, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);        
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));               
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);        
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+                screenSize.width - toastDialog.getWidth() - 20,
+                screenSize.height - toastDialog.getHeight() - 60
+        );        
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
     
     @Override
@@ -669,7 +929,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     public void showMessage(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(parentFrame, message, title, messageType);
     }
-    
-    // Custom rounded panel with shadow
-    
+    private void showWarningMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+    }
 }

@@ -869,6 +869,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
         Dimension buttonSize = new Dimension(90, 36);
+        
         JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10,false);
         btnLuu.setPreferredSize(buttonSize);
         btnLuu.setMinimumSize(buttonSize);
@@ -877,7 +878,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         btnLuu.setBorderPainted(false);
         btnLuu.addActionListener(e -> luuBenhNhan());
 
-        JButton btnHuy = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
+        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
         btnHuy.setBorder(new LineBorder(borderColor, 1));
         btnHuy.setPreferredSize(buttonSize);
         btnHuy.setMinimumSize(buttonSize);
@@ -888,8 +889,8 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             resetAllValidationErrors();
             inputDialog.setVisible(false);
         });
-        buttonPanel.add(btnHuy);
         buttonPanel.add(btnLuu);
+        buttonPanel.add(btnHuy);;
 
         // Add panels to main panel
         mainPanel.add(headerPanel, BorderLayout.NORTH);
