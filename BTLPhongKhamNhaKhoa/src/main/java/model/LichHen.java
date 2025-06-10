@@ -40,6 +40,7 @@ public class LichHen {
     public enum TrangThaiLichHen {
         CHO_XAC_NHAN("Chờ xác nhận"),
         DA_XAC_NHAN("Đã xác nhận"),
+        DA_HOAN_THANH("Đã hoàn thành"),
         DA_HUY("Đã hủy");
 
         private final String value;
@@ -54,22 +55,28 @@ public class LichHen {
 
         // Phương thức từ String sang enum
         public static TrangThaiLichHen fromString(String text) {
+            if (text == null || text.trim().isEmpty()) {
+                throw new IllegalArgumentException("Trạng thái không được để trống");
+            }
+            
             for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
-                if (t.value.equalsIgnoreCase(text)) {
+                if (t.value.equalsIgnoreCase(text.trim())) {
                     return t;
                 }
             }
-            throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng");
-        }
-    }
-    public static TrangThaiLichHen fromString(String text) {
-        for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
-            if (t.value.equalsIgnoreCase(text)) {
-                return t;
+            
+            // Log lỗi để debug
+            System.err.println("Không tìm thấy trạng thái: '" + text + "'. Các trạng thái hợp lệ:");
+            for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
+                System.err.println("- " + t.value);
             }
+            
+            throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng: " + text);
         }
-        throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng");
     }
+
+    // ĐÃ XÓA phương thức fromString() trùng lặp ở đây
+
     // Getters & Setters
     public int getIdLichHen() {
         return idLichHen;
@@ -145,12 +152,17 @@ public class LichHen {
 
     // Lấy giá trị trạng thái dưới dạng String
     public String getTrangThai() {
-        return trangThai.getValue();
+        return trangThai != null ? trangThai.getValue() : null;
     }
 
     // Set trạng thái từ String
     public void setTrangThai(String trangThai) {
         this.trangThai = TrangThaiLichHen.fromString(trangThai);
+    }
+
+    // Thêm setter cho enum trực tiếp
+    public void setTrangThai(TrangThaiLichHen trangThai) {
+        this.trangThai = trangThai;
     }
 
     public String getMoTa() {
@@ -171,7 +183,7 @@ public class LichHen {
           .append(", Ngày hẹn: ").append(ngayHen)
           .append(", Phòng: ").append(tenPhong)
           .append(", Giờ hẹn: ").append(gioHen)
-          .append(", Trạng thái: ").append(trangThai.getValue())  // Trạng thái là giá trị của enum
+          .append(", Trạng thái: ").append(trangThai != null ? trangThai.getValue() : "null")
           .append(", Mô tả: ").append(moTa)
           .append("]");
         return sb.toString();

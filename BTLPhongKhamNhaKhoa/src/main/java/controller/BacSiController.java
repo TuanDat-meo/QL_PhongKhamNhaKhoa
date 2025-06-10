@@ -217,7 +217,7 @@ public class BacSiController {
             try (PreparedStatement stmt = conn.prepareStatement(deleteAppointmentsSql)) {
                 stmt.setInt(1, id);
                 int appointmentsDeleted = stmt.executeUpdate();
-                System.out.println("Deleted " + appointmentsDeleted + " appointments for doctor ID: " + id);
+                //System.out.println("Deleted " + appointmentsDeleted + " appointments for doctor ID: " + id);
             }
             
             // Step 2: Delete all prescriptions (DonThuoc) for this doctor
@@ -225,7 +225,7 @@ public class BacSiController {
             try (PreparedStatement stmt = conn.prepareStatement(deletePrescriptionsSql)) {
                 stmt.setInt(1, id);
                 int prescriptionsDeleted = stmt.executeUpdate();
-                System.out.println("Deleted " + prescriptionsDeleted + " prescriptions for doctor ID: " + id);
+                //System.out.println("Deleted " + prescriptionsDeleted + " prescriptions for doctor ID: " + id);
             }
             
             // Step 3: Delete all treatments (DieuTri) for this doctor
@@ -233,7 +233,7 @@ public class BacSiController {
             try (PreparedStatement stmt = conn.prepareStatement(deleteTreatmentsSql)) {
                 stmt.setInt(1, id);
                 int treatmentsDeleted = stmt.executeUpdate();
-                System.out.println("Deleted " + treatmentsDeleted + " treatments for doctor ID: " + id);
+                //System.out.println("Deleted " + treatmentsDeleted + " treatments for doctor ID: " + id);
             }
             
             // Step 4: Delete any other related records that might reference this doctor
@@ -247,25 +247,25 @@ public class BacSiController {
                 
                 if (doctorDeleted > 0) {
                     conn.commit(); // Commit the transaction
-                    System.out.println("Successfully deleted doctor with ID: " + id);
+                    //System.out.println("Successfully deleted doctor with ID: " + id);
                     return true;
                 } else {
                     conn.rollback(); // Rollback if doctor couldn't be deleted
-                    System.out.println("Doctor with ID " + id + " not found");
+                    //System.out.println("Doctor with ID " + id + " not found");
                     return false;
                 }
             }
             
         } catch (SQLException e) {
-            System.err.println("Error deleting doctor with ID " + id + ": " + e.getMessage());
+            //System.err.println("Error deleting doctor with ID " + id + ": " + e.getMessage());
             e.printStackTrace();
             try {
                 if (conn != null) {
                     conn.rollback(); // Rollback on error
-                    System.out.println("Transaction rolled back due to error");
+                    //System.out.println("Transaction rolled back due to error");
                 }
             } catch (SQLException ex) {
-                System.err.println("Error rolling back transaction: " + ex.getMessage());
+                //System.err.println("Error rolling back transaction: " + ex.getMessage());
                 ex.printStackTrace();
             }
             return false;
@@ -276,7 +276,7 @@ public class BacSiController {
                     conn.close();
                 }
             } catch (SQLException e) {
-                System.err.println("Error closing connection: " + e.getMessage());
+                //System.err.println("Error closing connection: " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -342,13 +342,13 @@ public class BacSiController {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     String specialty = rs.getString("chuyenKhoa");
-                    System.out.println("Retrieved specialty: " + specialty + " for doctor ID: " + doctorId);
+                    //System.out.println("Retrieved specialty: " + specialty + " for doctor ID: " + doctorId);
                     return specialty;
                 }
             }
         }
         
-        System.out.println("No specialty found for doctor ID: " + doctorId);
+        //System.out.println("No specialty found for doctor ID: " + doctorId);
         return null;
     }
  // Add these methods to BacSiController.java

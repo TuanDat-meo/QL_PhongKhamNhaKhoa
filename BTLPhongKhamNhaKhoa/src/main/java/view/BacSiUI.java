@@ -18,10 +18,14 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -489,6 +493,47 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         
         currentBacSiId = -1;
     }
+    private String[] getChuyenKhoaOptions() {
+        return new String[]{
+            "Nha khoa tổng quát",
+            "Răng hàm mặt",
+            "Chỉnh nha",
+            "Nha chu",
+            "Nội nha",
+            "Phục hình răng",
+            "Nha khoa trẻ em",
+            "Implant nha khoa",
+            "Phẫu thuật miệng",
+            "Tẩy trắng răng",
+            "Nha khoa thẩm mỹ"
+        };
+    }
+    private String showChuyenKhoaSelectionDialog(String currentChuyenKhoa) {
+        String[] options = getChuyenKhoaOptions();
+        
+        // Tìm chỉ số của chuyên khoa hiện tại (nếu có)
+        int selectedIndex = 0;
+        if (currentChuyenKhoa != null && !currentChuyenKhoa.trim().isEmpty()) {
+            for (int i = 0; i < options.length; i++) {
+                if (options[i].equals(currentChuyenKhoa)) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        String selectedOption = (String) JOptionPane.showInputDialog(
+            parentFrame,
+            "Chọn chuyên khoa:",
+            "Chuyên khoa",
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[selectedIndex]
+        );
+        
+        return selectedOption;
+    }
     private void searchBacSi() {
         String searchTerm = searchField.getText().trim().toLowerCase();
         if (searchTerm.isEmpty()) {
@@ -712,14 +757,12 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             }
         });
         
-        dialog.setVisible(true);
-        
+        dialog.setVisible(true);        
         // This check will still work as a fallback
         if (dialog.isConfirmed()) {
             loadBacSiData();
         }
     }
-    
     public void deleteBacSi() {
         if (currentBacSiId == -1) {
             showWarningMessage("Vui lòng chọn bác sĩ để xóa.");
@@ -735,105 +778,673 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         // Kiểm tra xem bác sĩ có lịch hẹn trong tương lai không
         boolean hasFutureAppointments = bacSiController.hasFutureAppointments(currentBacSiId);
         
-        // Lấy danh sách bác sĩ cùng chuyên khoa để thay thế
-        List<BacSi> replacementDoctors = bacSiController.getOtherDoctorsBySpecialty(currentBacSiId);
-        
-        String message;
-        if (hasFutureAppointments && !replacementDoctors.isEmpty()) {
-            message = "Bác sĩ này có lịch hẹn trong tương lai.\n" +
-                     "Bạn có muốn chuyển lịch hẹn cho bác sĩ khác cùng chuyên khoa không?\n\n" +
-                     "Chọn 'Yes' để chuyển lịch hẹn\n" +
-                     "Chọn 'No' để hủy tất cả lịch hẹn trong tương lai";
-        } else if (hasFutureAppointments && replacementDoctors.isEmpty()) {
-            message = "Bác sĩ này có lịch hẹn trong tương lai.\n" +
-                     "Không có bác sĩ khác cùng chuyên khoa để chuyển lịch hẹn.\n" +
-                     "Tất cả lịch hẹn trong tương lai sẽ bị hủy.\n\n" +
-                     "Bạn có chắc chắn muốn xóa bác sĩ này?";
-        } else {
-            message = "Bạn có chắc chắn muốn xóa bác sĩ này?";
-        }
-        
-        int choice = JOptionPane.showConfirmDialog(parentFrame, 
-            message,
-            "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        
-        if (choice == JOptionPane.YES_OPTION) {
-            int replacementDoctorId = -1;
+        if (hasFutureAppointments) {
+            // Lấy danh sách TẤT CẢ bác sĩ khác (loại trừ bác sĩ hiện tại)
+            List<BacSi> allOtherDoctors = bacSiController.getAllBacSi();
+            List<BacSi> replacementDoctors = new ArrayList<>();
             
-            // Nếu có lịch hẹn và có bác sĩ thay thế, cho phép chọn bác sĩ thay thế
-            if (hasFutureAppointments && !replacementDoctors.isEmpty()) {
-                String[] doctorNames = new String[replacementDoctors.size() + 1];
-                doctorNames[0] = "Hủy tất cả lịch hẹn (không chuyển)";
-                
-                for (int i = 0; i < replacementDoctors.size(); i++) {
-                    BacSi doctor = replacementDoctors.get(i);
-                    doctorNames[i + 1] = doctor.getHoTenBacSi() + " - " + doctor.getTenPhong();
-                }
-                
-                String selectedDoctor = (String) JOptionPane.showInputDialog(
-                    parentFrame,
-                    "Chọn bác sĩ thay thế hoặc hủy lịch hẹn:",
-                    "Chọn bác sĩ thay thế",
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    doctorNames,
-                    doctorNames[0]
-                );
-                
-                if (selectedDoctor == null) {
-                    // User cancelled the selection
-                    showMessage("Đã hủy thao tác xóa bác sĩ.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    return;
-                }
-                
-                // Tìm ID của bác sĩ được chọn
-                for (int i = 0; i < doctorNames.length; i++) {
-                    if (doctorNames[i].equals(selectedDoctor) && i > 0) {
-                        replacementDoctorId = replacementDoctors.get(i - 1).getIdBacSi();
-                        break;
-                    }
+            // Lọc chỉ lấy bác sĩ có CÙNG CHUYÊN KHOA VÀ CÙNG PHÒNG KHÁM và loại bỏ bác sĩ hiện tại
+            String currentSpecialty = currentDoctor.getChuyenKhoa();
+            String currentRoom = currentDoctor.getTenPhong();
+            
+            for (BacSi doctor : allOtherDoctors) {
+                if (doctor.getIdBacSi() != currentBacSiId && 
+                    doctor.getChuyenKhoa() != null && 
+                    doctor.getChuyenKhoa().equals(currentSpecialty) &&
+                    doctor.getTenPhong() != null &&
+                    doctor.getTenPhong().equals(currentRoom)) {
+                    replacementDoctors.add(doctor);
                 }
             }
             
-            // Thực hiện xóa với bác sĩ thay thế (nếu có)
-            boolean success;
-            if (replacementDoctorId > 0) {
-                success = bacSiController.deleteBacSiWithReplacement(currentBacSiId, replacementDoctorId);
-                if (success) {
-                    String replacementDoctorName = "";
-                    for (BacSi doctor : replacementDoctors) {
-                        if (doctor.getIdBacSi() == replacementDoctorId) {
-                            replacementDoctorName = doctor.getHoTenBacSi();
-                            break;
-                        }
-                    }
-                    showSuccessToast("Đã xóa bác sĩ thành công. Lịch hẹn đã được chuyển cho bác sĩ " + replacementDoctorName + ".");
-                }
-            } else {
-                // Xóa bình thường (sẽ hủy lịch hẹn)
-                success = bacSiController.deleteBacSi(currentBacSiId);
-                if (success) {
-                    if (hasFutureAppointments) {
-                        showSuccessToast("Đã xóa bác sĩ thành công. Tất cả lịch hẹn trong tương lai đã được hủy.");
-                    } else {
-                        showSuccessToast("Đã xóa bác sĩ thành công.");
-                    }
-                }
+            if (replacementDoctors.isEmpty()) {
+                // Không có bác sĩ nào cùng chuyên khoa và cùng phòng khám - hiển thị dialog cảnh báo đẹp
+                showCannotDeleteDialog(currentDoctor, currentSpecialty, currentRoom);
+                return;
             }
             
-            if (success) {
-                loadBacSiData();
-                // Reset current selection
-                currentBacSiId = -1;
-            } else {
-                showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Vui lòng thử lại sau.");
+            // Hiển thị dialog chọn bác sĩ thay thế với giao diện đẹp
+            BacSi selectedReplacement = showReplacementDoctorDialog(currentDoctor, replacementDoctors, currentSpecialty, currentRoom);
+            
+            if (selectedReplacement == null) {
+                return; // User cancelled - DỪNG LẠI HOÀN TOÀN
+            }
+            
+            // Hiển thị dialog xác nhận cuối cùng với giao diện đẹp
+            boolean finalConfirmed = showFinalDeleteConfirmationDialog(currentDoctor, selectedReplacement, currentSpecialty, currentRoom);
+            if (finalConfirmed) {
+                boolean success = bacSiController.deleteBacSiWithReplacement(currentBacSiId, selectedReplacement.getIdBacSi());
+                if (success) {
+                    showSuccessToast(String.format("Đã xóa bác sĩ thành công. Lịch hẹn đã được chuyển cho bác sĩ %s.", 
+                        selectedReplacement.getHoTenBacSi()));
+                    loadBacSiData();
+                    currentBacSiId = -1;
+                } else {
+                    showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Vui lòng thử lại sau.");
+                }
             }
         } else {
-            // User clicked "No" - show "cancel deletion successful" message
-            showMessage("Đã hủy thao tác xóa bác sĩ.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            // Không có lịch hẹn trong tương lai - hiển thị dialog xác nhận đẹp
+            boolean simpleConfirmed = showSimpleDeleteConfirmationDialog(currentDoctor);
+            if (simpleConfirmed) {
+                boolean success = bacSiController.deleteBacSi(currentBacSiId);
+                if (success) {
+                    showSuccessToast("Đã xóa bác sĩ thành công.");
+                    loadBacSiData();
+                    currentBacSiId = -1;
+                } else {
+                    showErrorMessage("Lỗi", "Không thể xóa bác sĩ. Vui lòng thử lại sau.");
+                }
+            }
         }
     }
-    
+    private void showCannotDeleteDialog(BacSi currentDoctor, String currentSpecialty, String currentRoom) {
+        JDialog dialog = new JDialog(parentFrame, "Không thể xóa bác sĩ", true);
+        dialog.setSize(520, 360);
+        dialog.setLocationRelativeTo(parentFrame);
+        dialog.setLayout(new BorderLayout());
+        
+        // Header panel với màu cảnh báo
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(warningColor);
+        headerPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
+        
+        JLabel titleLabel = new JLabel("KHÔNG THỂ XÓA BÁC SĨ");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        // Main content panel
+        JPanel mainContentPanel = new JPanel();
+        mainContentPanel.setLayout(new BoxLayout(mainContentPanel, BoxLayout.Y_AXIS));
+        mainContentPanel.setBackground(Color.WHITE);
+        mainContentPanel.setBorder(new EmptyBorder(18, 18, 12, 18));
+        
+        // Thông tin bác sĩ
+        JPanel doctorInfoPanel = new JPanel(new BorderLayout());
+        doctorInfoPanel.setBackground(new Color(248, 249, 250));
+        doctorInfoPanel.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(borderColor, 1),
+            new EmptyBorder(12, 15, 12, 15)
+        ));
+        doctorInfoPanel.setMaximumSize(new Dimension(480, 85));
+        
+        JLabel doctorNameLabel = new JLabel("Bác sĩ: " + currentDoctor.getHoTenBacSi());
+        doctorNameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        doctorNameLabel.setForeground(textColor);
+        
+        JLabel specialtyLabel = new JLabel("Chuyên khoa: " + currentSpecialty);
+        specialtyLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        specialtyLabel.setForeground(textColor);
+        
+        JLabel roomLabel = new JLabel("Phòng khám: " + currentRoom);
+        roomLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        roomLabel.setForeground(textColor);
+        
+        JPanel doctorDetailsPanel = new JPanel();
+        doctorDetailsPanel.setLayout(new BoxLayout(doctorDetailsPanel, BoxLayout.Y_AXIS));
+        doctorDetailsPanel.setBackground(new Color(248, 249, 250));
+        doctorDetailsPanel.add(doctorNameLabel);
+        doctorDetailsPanel.add(Box.createVerticalStrut(4));
+        doctorDetailsPanel.add(specialtyLabel);
+        doctorDetailsPanel.add(Box.createVerticalStrut(4));
+        doctorDetailsPanel.add(roomLabel);
+        
+        doctorInfoPanel.add(doctorDetailsPanel, BorderLayout.CENTER);
+        
+        // Lý do không thể xóa
+        JLabel reasonTitle = new JLabel("Lý do không thể xóa:");
+        reasonTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        reasonTitle.setForeground(textColor);
+        reasonTitle.setBorder(new EmptyBorder(12, 0, 6, 0));
+        
+        JTextArea reasonText = new JTextArea();
+        reasonText.setText("Bác sĩ này có lịch hẹn trong tương lai và không có bác sĩ nào khác " +
+                          "cùng chuyên khoa và cùng phòng khám trong hệ thống để thay thế.");
+        reasonText.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        reasonText.setForeground(textColor);
+        reasonText.setBackground(Color.WHITE);
+        reasonText.setEditable(false);
+        reasonText.setWrapStyleWord(true);
+        reasonText.setLineWrap(true);
+        reasonText.setBorder(new EmptyBorder(6, 0, 0, 0));
+        
+        // Hướng dẫn giải quyết
+        JLabel solutionTitle = new JLabel("Để xóa bác sĩ này, bạn có thể:");
+        solutionTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        solutionTitle.setForeground(textColor);
+        solutionTitle.setBorder(new EmptyBorder(10, 0, 6, 0));
+        
+        JTextArea solutionText = new JTextArea();
+        solutionText.setText("1. Hủy tất cả lịch hẹn trong tương lai của bác sĩ này\n" +
+                            "2. Thêm bác sĩ khác cùng chuyên khoa và cùng phòng khám vào hệ thống");
+        solutionText.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        solutionText.setForeground(textColor);
+        solutionText.setBackground(Color.WHITE);
+        solutionText.setEditable(false);
+        solutionText.setBorder(new EmptyBorder(6, 0, 0, 0));
+        
+        mainContentPanel.add(doctorInfoPanel);
+        mainContentPanel.add(reasonTitle);
+        mainContentPanel.add(reasonText);
+        mainContentPanel.add(solutionTitle);
+        mainContentPanel.add(solutionText);
+        
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
+        buttonPanel.setBackground(backgroundColor);
+        
+        JButton okButton = createRoundedButton("Đã hiểu", primaryColor, buttonTextColor, 6, false);
+        okButton.setPreferredSize(new Dimension(90, 32));
+        okButton.addActionListener(e -> dialog.dispose());
+        
+        buttonPanel.add(okButton);
+        
+        dialog.add(headerPanel, BorderLayout.NORTH); 
+        dialog.add(mainContentPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.setVisible(true);
+    }
+    private BacSi showReplacementDoctorDialog(BacSi currentDoctor, List<BacSi> replacementDoctors, String currentSpecialty, String currentRoom) {
+	    JDialog dialog = new JDialog(parentFrame, "Chọn bác sĩ thay thế", true);
+	
+	    // Kích thước dialog đã giảm chiều cao
+	    dialog.setSize(600, 450); // Giảm từ 520 xuống 450
+	    dialog.setLocationRelativeTo(parentFrame);
+	    dialog.setLayout(new BorderLayout());
+	
+	    final BacSi[] selectedDoctor = {null};
+	    final boolean[] userCancelled = {false};
+	
+	    // Xử lý sự kiện đóng dialog
+	    dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+	    dialog.addWindowListener(new WindowAdapter() {
+	        @Override
+	        public void windowClosing(WindowEvent e) {
+	            userCancelled[0] = true;
+	            selectedDoctor[0] = null;
+	            dialog.dispose();
+	        }
+	    });
+	
+	    // Header panel
+	    JPanel headerPanel = new JPanel(new BorderLayout());
+	    headerPanel.setBackground(primaryColor);
+	    headerPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
+	
+	    JLabel titleLabel = new JLabel("CHỌN BÁC SĨ THAY THẾ");
+	    titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+	    titleLabel.setForeground(Color.WHITE);
+	    titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+	
+	    headerPanel.add(titleLabel, BorderLayout.CENTER);
+	
+	    // Main content panel
+	    JPanel mainPanel = new JPanel(new BorderLayout());
+	    mainPanel.setBackground(Color.WHITE);
+	    mainPanel.setBorder(new EmptyBorder(15, 15, 8, 15));
+	
+	    // Thông tin bác sĩ hiện tại
+	    JPanel currentDoctorPanel = createUniformInfoPanel(
+	        "Bác sĩ cần xóa:", 
+	        currentDoctor.getHoTenBacSi(), 
+	        currentSpecialty, 
+	        currentRoom,
+	        currentDoctor.getKinhNghiem(),
+	        currentDoctor.getBangCap(),
+	        new Color(252, 248, 248), 
+	        accentColor
+	    );
+	
+	    // Thông báo
+	    JLabel messageLabel = new JLabel(String.format(
+	        "Bác sĩ này có lịch hẹn trong tương lai. Tìm thấy %d bác sĩ thay thế cùng chuyên khoa và phòng khám:",
+	        replacementDoctors.size()));
+	    messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+	    messageLabel.setForeground(textColor);
+	    messageLabel.setBorder(new EmptyBorder(8, 0, 8, 0));
+	
+	    // Container cho danh sách bác sĩ với chiều cao cố định cho 2 bác sĩ
+	    JPanel listContainer = new JPanel(new BorderLayout());
+	    listContainer.setBackground(Color.WHITE);
+	    listContainer.setPreferredSize(new Dimension(570, 130)); // Giảm từ 163 xuống 130 (đủ cho 2 items)
+	
+	    // Tạo JList với custom renderer
+	    DefaultListModel<BacSi> listModel = new DefaultListModel<>();
+	    for (BacSi doctor : replacementDoctors) {
+	        listModel.addElement(doctor);
+	    }
+	
+	    JList<BacSi> doctorsList = new JList<>(listModel);
+	    doctorsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+	    doctorsList.setSelectedIndex(0); // Chọn mặc định item đầu tiên
+	    doctorsList.setFixedCellHeight(65); // Chiều cao cố định cho mỗi item
+	    selectedDoctor[0] = replacementDoctors.get(0);
+	
+	    // Custom cell renderer cho list
+	    doctorsList.setCellRenderer(new ListCellRenderer<BacSi>() {
+	        @Override
+	        public Component getListCellRendererComponent(JList<? extends BacSi> list, BacSi doctor, 
+	                int index, boolean isSelected, boolean cellHasFocus) {
+	
+	            JPanel panel = new JPanel(new BorderLayout());
+	            panel.setBorder(new EmptyBorder(8, 12, 8, 12));
+	            panel.setPreferredSize(new Dimension(540, 45)); // Kích thước cố định
+	
+	            if (isSelected) {
+	                panel.setBackground(new Color(230, 247, 255));
+	                panel.setBorder(BorderFactory.createCompoundBorder(
+	                    new LineBorder(primaryColor, 2),
+	                    new EmptyBorder(6, 10, 6, 10)
+	                ));
+	            } else {
+	                panel.setBackground(Color.WHITE);
+	                panel.setBorder(BorderFactory.createCompoundBorder(
+	                    new LineBorder(borderColor, 1),
+	                    new EmptyBorder(7, 11, 7, 11)
+	                ));
+	            }
+	
+	            // Thông tin bác sĩ
+	            JPanel doctorInfoPanel = new JPanel();
+	            doctorInfoPanel.setLayout(new BoxLayout(doctorInfoPanel, BoxLayout.Y_AXIS));
+	            doctorInfoPanel.setBackground(panel.getBackground());
+	
+	            JLabel nameLabel = new JLabel(doctor.getHoTenBacSi());
+	            nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+	            nameLabel.setForeground(isSelected ? primaryColor : textColor);
+	
+	            String experienceInfo = String.format("Kinh nghiệm: %d năm", doctor.getKinhNghiem());
+	            JLabel experienceLabel = new JLabel(experienceInfo);
+	            experienceLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+	            experienceLabel.setForeground(new Color(108, 117, 125));
+	
+	            String degreeInfo = String.format("Bằng cấp: %s", doctor.getBangCap());
+	            JLabel degreeLabel = new JLabel(degreeInfo);
+	            degreeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+	            degreeLabel.setForeground(new Color(108, 117, 125));
+	
+	            doctorInfoPanel.add(nameLabel);
+	            doctorInfoPanel.add(Box.createVerticalStrut(2));
+	            doctorInfoPanel.add(experienceLabel);
+	            doctorInfoPanel.add(Box.createVerticalStrut(1));
+	            doctorInfoPanel.add(degreeLabel);
+	
+	            // Thêm icon được chọn
+	            if (isSelected) {
+	                JLabel selectedIcon = new JLabel("+");
+	                selectedIcon.setFont(new Font("Segoe UI", Font.BOLD, 16));
+	                selectedIcon.setForeground(primaryColor);
+	                selectedIcon.setPreferredSize(new Dimension(20, 20));
+	                selectedIcon.setVerticalAlignment(SwingConstants.CENTER);
+	                panel.add(selectedIcon, BorderLayout.EAST);
+	            }
+	
+	            panel.add(doctorInfoPanel, BorderLayout.CENTER);
+	
+	            return panel;
+	        }
+	    });
+	
+	    // Xử lý sự kiện chọn
+	    doctorsList.addListSelectionListener(e -> {
+	        if (!e.getValueIsAdjusting()) {
+	            int selectedIndex = doctorsList.getSelectedIndex();
+	            if (selectedIndex >= 0) {
+	                selectedDoctor[0] = replacementDoctors.get(selectedIndex);
+	            }
+	        }
+	    });
+	
+	    // Scroll pane với chiều cao phù hợp cho 2 items
+	    JScrollPane scrollPane = new JScrollPane(doctorsList);
+	    scrollPane.setBorder(new LineBorder(borderColor, 1));
+	    scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+	    scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+	    scrollPane.setPreferredSize(new Dimension(570, 130)); // Giảm từ 163 xuống 130
+	    scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+	
+	    listContainer.add(scrollPane, BorderLayout.CENTER);
+	
+	    // Thông tin tổng quan với thông báo về cuộn (chỉ hiện khi có > 2 bác sĩ)
+	    String scrollHint = replacementDoctors.size() > 2 ? " (Cuộn để xem thêm)" : "";
+	    JLabel summaryLabel = new JLabel(String.format(
+	        "Chọn 1 trong %d bác sĩ ở trên để thay thế cho lịch hẹn trong tương lai%s",
+	        replacementDoctors.size(), scrollHint));
+	    summaryLabel.setFont(new Font("Segoe UI", Font.ITALIC, 10));
+	    summaryLabel.setForeground(new Color(108, 117, 125));
+	    summaryLabel.setBorder(new EmptyBorder(6, 0, 0, 0));
+	
+	    // Tổ chức layout
+	    JPanel topPanel = new JPanel();
+	    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+	    topPanel.setBackground(Color.WHITE);
+	    topPanel.add(currentDoctorPanel);
+	    topPanel.add(messageLabel);
+	
+	    JPanel centerPanel = new JPanel(new BorderLayout());
+	    centerPanel.setBackground(Color.WHITE);
+	    centerPanel.add(listContainer, BorderLayout.CENTER);
+	    centerPanel.add(summaryLabel, BorderLayout.SOUTH);
+	
+	    mainPanel.add(topPanel, BorderLayout.NORTH);
+	    mainPanel.add(centerPanel, BorderLayout.CENTER);
+	
+	    // Button panel
+	    JPanel buttonPanel = createUniformButtonPanel(
+	        new String[]{"Hủy", "Tiếp tục"},
+	        new Color[]{new Color(108, 117, 125), successColor},
+	        new Dimension[]{new Dimension(80, 32), new Dimension(90, 32)},
+	        new ActionListener[]{
+	            e -> {
+	                userCancelled[0] = true;
+	                selectedDoctor[0] = null;
+	                dialog.dispose();
+	            },
+	            e -> {
+	                if (selectedDoctor[0] == null) {
+	                    JOptionPane.showMessageDialog(dialog, 
+	                        "Vui lòng chọn một bác sĩ thay thế!", 
+	                        "Thông báo", 
+	                        JOptionPane.WARNING_MESSAGE);
+	                    return;
+	                }
+	                userCancelled[0] = false;
+	                dialog.dispose();
+	            }
+	        }
+	    );
+	
+	    dialog.add(headerPanel, BorderLayout.NORTH);
+	    dialog.add(mainPanel, BorderLayout.CENTER);
+	    dialog.add(buttonPanel, BorderLayout.SOUTH);
+	
+	    dialog.setVisible(true);
+	
+	    if (userCancelled[0]) {
+	        return null;
+	    }
+	
+	    return selectedDoctor[0];
+	}
+    // Hàm tạo panel thông tin đồng nhất
+    private JPanel createUniformInfoPanel(String title, String doctorName, String specialty, 
+                                         String room, int experience, String degree,
+                                         Color backgroundColor, Color borderColor) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(backgroundColor);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(borderColor, 1),
+            new EmptyBorder(10, 12, 10, 12)
+        ));
+        panel.setPreferredSize(new Dimension(550, 60));
+        panel.setMaximumSize(new Dimension(550, 60));
+        panel.setMinimumSize(new Dimension(550, 60));
+        
+        JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 2));
+        infoPanel.setBackground(backgroundColor);
+        
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        titleLabel.setForeground(borderColor);
+        
+        JLabel nameLabel = new JLabel(doctorName);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        nameLabel.setForeground(textColor);
+        
+        JLabel detailsLabel = new JLabel(String.format("%s - %s | KN: %d năm | %s", 
+            specialty, room, experience, degree));
+        detailsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        detailsLabel.setForeground(new Color(108, 117, 125));
+        
+        infoPanel.add(titleLabel);
+        infoPanel.add(nameLabel);
+        infoPanel.add(detailsLabel);
+        
+        panel.add(infoPanel, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    // Hàm tạo panel button đồng nhất
+    private JPanel createUniformButtonPanel(String[] buttonTexts, Color[] buttonColors, 
+                                           Dimension[] buttonSizes, ActionListener[] listeners) {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+        buttonPanel.setBackground(backgroundColor);
+        
+        for (int i = 0; i < buttonTexts.length; i++) {
+            JButton button = createRoundedButton(buttonTexts[i], buttonColors[i], buttonTextColor, 6, false);
+            button.setPreferredSize(buttonSizes[i]);
+            button.addActionListener(listeners[i]);
+            buttonPanel.add(button);
+        }
+        
+        return buttonPanel;
+    }
+ // Dialog xác nhận xóa cuối cùng
+    private boolean showFinalDeleteConfirmationDialog(BacSi currentDoctor, BacSi replacementDoctor, 
+                                                     String currentSpecialty, String currentRoom) {
+        JDialog dialog = new JDialog(parentFrame, "Xác nhận xóa bác sĩ", true);
+        dialog.setSize(500, 380);
+        dialog.setLocationRelativeTo(parentFrame);
+        dialog.setLayout(new BorderLayout());
+        
+        final boolean[] confirmed = {false};
+        
+        // Xử lý sự kiện đóng dialog
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                confirmed[0] = false;
+                dialog.dispose();
+            }
+        });
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(accentColor);
+        headerPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
+        
+        JLabel titleLabel = new JLabel("XÁC NHẬN XÓA BÁC SĨ");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        // Main content panel
+        JPanel mainContentPanel = new JPanel();
+        mainContentPanel.setLayout(new BoxLayout(mainContentPanel, BoxLayout.Y_AXIS));
+        mainContentPanel.setBorder(new EmptyBorder(15, 15, 10, 15));
+        mainContentPanel.setBackground(Color.WHITE);
+        
+        // Cảnh báo
+        JLabel warningLabel = new JLabel("Bạn đang thực hiện hành động không thể hoàn tác!");
+        warningLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        warningLabel.setForeground(accentColor);
+        warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        warningLabel.setBorder(new EmptyBorder(0, 0, 12, 0));
+        
+        // Thông tin bác sĩ bị xóa
+        JPanel deletePanel = createCompactInfoPanel("BÁC SĨ SẼ BỊ XÓA", 
+            currentDoctor.getHoTenBacSi(), currentSpecialty, currentRoom, 
+            currentDoctor.getKinhNghiem(), accentColor);
+        
+        // Thông tin bác sĩ thay thế
+        JPanel replacePanel = createCompactInfoPanel("BÁC SĨ THAY THẾ", 
+            replacementDoctor.getHoTenBacSi(), currentSpecialty, currentRoom, 
+            replacementDoctor.getKinhNghiem(), successColor);
+        
+        // Thông báo về lịch hẹn
+        JLabel appointmentLabel = new JLabel("Tất cả lịch hẹn sẽ được chuyển cho bác sĩ thay thế.");
+        appointmentLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        appointmentLabel.setForeground(textColor);
+        appointmentLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        appointmentLabel.setBorder(new EmptyBorder(8, 0, 0, 0));
+        
+        mainContentPanel.add(warningLabel);
+        mainContentPanel.add(deletePanel);
+        mainContentPanel.add(Box.createVerticalStrut(8));
+        mainContentPanel.add(replacePanel);
+        mainContentPanel.add(appointmentLabel);
+        
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
+        buttonPanel.setBackground(backgroundColor);
+        
+        JButton cancelButton = createRoundedButton("Hủy", new Color(108, 117, 125), buttonTextColor, 6, false);
+        cancelButton.setPreferredSize(new Dimension(70, 32));
+        cancelButton.addActionListener(e -> {
+            confirmed[0] = false;
+            dialog.dispose();
+        });
+        
+        JButton confirmButton = createRoundedButton("Xác nhận xóa", accentColor, buttonTextColor, 6, false);
+        confirmButton.setPreferredSize(new Dimension(110, 32));
+        confirmButton.addActionListener(e -> {
+            confirmed[0] = true;
+            dialog.dispose();
+        });
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(confirmButton);
+        
+        dialog.add(headerPanel, BorderLayout.NORTH);
+        dialog.add(mainContentPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.setVisible(true);
+        return confirmed[0];
+    }
+ // Dialog xác nhận xóa đơn giản
+    private boolean showSimpleDeleteConfirmationDialog(BacSi currentDoctor) {
+        JDialog dialog = new JDialog(parentFrame, "Xác nhận xóa bác sĩ", true);
+        dialog.setSize(420, 280);
+        dialog.setLocationRelativeTo(parentFrame);
+        dialog.setLayout(new BorderLayout());
+        
+        final boolean[] confirmed = {false};
+        
+        // Xử lý sự kiện đóng dialog
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                confirmed[0] = false;
+                dialog.dispose();
+            }
+        });
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(accentColor);
+        headerPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
+        
+        JLabel titleLabel = new JLabel("XÁC NHẬN XÓA BÁC SĨ");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        // Main content panel
+        JPanel mainContentPanel = new JPanel();
+        mainContentPanel.setLayout(new BoxLayout(mainContentPanel, BoxLayout.Y_AXIS));
+        mainContentPanel.setBorder(new EmptyBorder(15, 15, 10, 15));
+        mainContentPanel.setBackground(Color.WHITE);
+        
+        // Cảnh báo
+        JLabel warningLabel = new JLabel("Bạn đang thực hiện hành động không thể hoàn tác!");
+        warningLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        warningLabel.setForeground(accentColor);
+        warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        warningLabel.setBorder(new EmptyBorder(0, 0, 12, 0));
+        
+        // Thông tin bác sĩ
+        JPanel doctorPanel = createCompactInfoPanel("BÁC SĨ SẼ BỊ XÓA", 
+            currentDoctor.getHoTenBacSi(), currentDoctor.getChuyenKhoa(), 
+            currentDoctor.getTenPhong(), currentDoctor.getKinhNghiem(), accentColor);
+        
+        // Thông báo không có lịch hẹn
+        JLabel noAppointmentLabel = new JLabel("Bác sĩ này không có lịch hẹn trong tương lai.");
+        noAppointmentLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        noAppointmentLabel.setForeground(new Color(108, 117, 125));
+        noAppointmentLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        noAppointmentLabel.setBorder(new EmptyBorder(8, 0, 0, 0));
+        
+        mainContentPanel.add(warningLabel);
+        mainContentPanel.add(doctorPanel);
+        mainContentPanel.add(noAppointmentLabel);
+        
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
+        buttonPanel.setBackground(backgroundColor);
+        
+        JButton cancelButton = createRoundedButton("Hủy", new Color(108, 117, 125), buttonTextColor, 6, false);
+        cancelButton.setPreferredSize(new Dimension(70, 32));
+        cancelButton.addActionListener(e -> {
+            confirmed[0] = false;
+            dialog.dispose();
+        });
+        
+        JButton confirmButton = createRoundedButton("Xác nhận xóa", accentColor, buttonTextColor, 6, false);
+        confirmButton.setPreferredSize(new Dimension(110, 32));
+        confirmButton.addActionListener(e -> {
+            confirmed[0] = true;
+            dialog.dispose();
+        });
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(confirmButton);
+        
+        dialog.add(headerPanel, BorderLayout.NORTH);
+        dialog.add(mainContentPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.setVisible(true);
+        return confirmed[0];
+    }
+    // Tạo info panel compact hơn
+    private JPanel createCompactInfoPanel(String title, String doctorName, String specialty, 
+                                         String room, int experience, Color borderColor) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(borderColor, 1), // Giảm border width
+            new EmptyBorder(10, 12, 10, 12) // Giảm padding
+        ));
+        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(450, 90)); // Giảm chiều cao
+        
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 12)); // Giảm font size
+        titleLabel.setForeground(borderColor);
+        
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBackground(Color.WHITE);
+        
+        JLabel nameLabel = new JLabel(doctorName);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13)); // Giảm font size
+        nameLabel.setForeground(textColor);
+        
+        JLabel detailsLabel = new JLabel(String.format("%s | %s | KN: %d năm", specialty, room, experience));
+        detailsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10)); // Gộp thông tin và giảm font size
+        detailsLabel.setForeground(textColor);
+        
+        infoPanel.add(titleLabel);
+        infoPanel.add(Box.createVerticalStrut(5));
+        infoPanel.add(nameLabel);
+        infoPanel.add(Box.createVerticalStrut(2));
+        infoPanel.add(detailsLabel);
+        
+        panel.add(infoPanel, BorderLayout.CENTER);
+        
+        return panel;
+    }
     private void showAppointments() {
         if (currentBacSiId == -1) {
             showErrorMessage("Lỗi", "Vui lòng chọn một bác sĩ để xem lịch hẹn.");
@@ -879,8 +1490,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         // Reload data when notified of changes
         loadBacSiData();
     }
-    
-    // Implementation of MessageCallback interface
     @Override
     public void showSuccessToast(String message) {
         JDialog toastDialog = new JDialog();

@@ -7,7 +7,6 @@ import model.NguoiDungItem;
 import model.PhongKham;
 import model.PhongKhamItem;
 import util.CustomBorder;
-import util.ValidationUtils;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -31,14 +30,13 @@ public class BacSiDialog extends JDialog {
     private JTextField degreeField;
     private JTextField experienceField;
     private JComboBox<NguoiDungItem> userComboBox;
-    private JComboBox<PhongKhamItem> clinicComboBox;
-    
+    private JComboBox<PhongKhamItem> clinicComboBox;    
+    private JComboBox<String> specialtyComboBox;
     private BacSi currentBacSi;
     private boolean confirmed = false;
     private BacSiController bacSiController;
     private Map<JComponent, JLabel> errorLabels = new HashMap<>();
     
-    // Color scheme matching BenhNhanUI
     private Color primaryColor = new Color(79, 129, 189);
     private Color secondaryColor = new Color(141, 180, 226);
     private Color accentColor = new Color(192, 80, 77);
@@ -51,7 +49,6 @@ public class BacSiDialog extends JDialog {
     private Color borderColor = new Color(222, 226, 230);
     private Color errorColor = new Color(220, 53, 69);
     
-    // Font scheme matching BenhNhanUI
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 16);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
@@ -63,13 +60,11 @@ public class BacSiDialog extends JDialog {
         this.bacSiController = new BacSiController();
         initializeComponents();
         
-        // Load data if editing
         if (bacSi != null) {
             setTitle("Chỉnh Sửa Thông Tin Bác Sĩ");
             loadDoctorData();
         }
-    }
-    
+    }    
     private void initializeComponents() {
         Color requiredFieldColor = new Color(255, 0, 0);
         setModal(true);
@@ -123,7 +118,7 @@ public class BacSiDialog extends JDialog {
             
             gbc.gridx = 1;
             gbc.anchor = GridBagConstraints.CENTER;
-            userComboBox = createStyledComboBox();
+            userComboBox = createStyledComboBoxWithScroll();
             userComboBox.setPreferredSize(new Dimension(230, 32));
             
             // Add default selection option
@@ -134,6 +129,9 @@ public class BacSiDialog extends JDialog {
             for (NguoiDung user : availableUsers) {
                 userComboBox.addItem(new NguoiDungItem(user));
             }
+            
+            // Set custom renderer
+            userComboBox.setRenderer(new CustomComboBoxRenderer());
             
             formPanel.add(userComboBox, gbc);
             
@@ -178,7 +176,7 @@ public class BacSiDialog extends JDialog {
         formPanel.add(lblNameError, gbc);
         errorLabels.put(nameField, lblNameError);
         
-        // Specialty field
+        // Specialty field - FIX: Initialize specialtyComboBox here
         gbc.gridx = 0;
         gbc.gridy++;
         gbc.insets = new Insets(3, 4, 0, 4);
@@ -196,9 +194,19 @@ public class BacSiDialog extends JDialog {
         
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.CENTER;
-        specialtyField = createStyledTextField();
-        specialtyField.setPreferredSize(new Dimension(230, 32));
-        formPanel.add(specialtyField, gbc);
+        // FIX: Initialize specialtyComboBox properly
+        specialtyComboBox = createStyledComboBoxWithScroll();
+        specialtyComboBox.setPreferredSize(new Dimension(230, 32));
+        
+        // Add dental specialties
+        for (String specialty : getDentalSpecialties()) {
+            specialtyComboBox.addItem(specialty);
+        }
+        
+        // Set custom renderer
+        specialtyComboBox.setRenderer(new CustomComboBoxRenderer());
+        
+        formPanel.add(specialtyComboBox, gbc);
         
         // Error label for Specialty
         gbc.gridx = 1;
@@ -206,7 +214,7 @@ public class BacSiDialog extends JDialog {
         gbc.insets = new Insets(0, 4, 5, 4);
         JLabel lblSpecialtyError = createErrorLabel();
         formPanel.add(lblSpecialtyError, gbc);
-        errorLabels.put(specialtyField, lblSpecialtyError);
+        errorLabels.put(specialtyComboBox, lblSpecialtyError);
         
         // Degree field
         gbc.gridx = 0;
@@ -286,7 +294,7 @@ public class BacSiDialog extends JDialog {
         
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.CENTER;
-        clinicComboBox = createStyledComboBox();
+        clinicComboBox = createStyledComboBoxWithScroll();
         clinicComboBox.setPreferredSize(new Dimension(230, 32));
         
         // Add default selection option
@@ -297,6 +305,9 @@ public class BacSiDialog extends JDialog {
         for (PhongKham clinic : clinics) {
             clinicComboBox.addItem(new PhongKhamItem(clinic));
         }
+        
+        // Set custom renderer
+        clinicComboBox.setRenderer(new CustomComboBoxRenderer());
         
         formPanel.add(clinicComboBox, gbc);
         
@@ -351,7 +362,24 @@ public class BacSiDialog extends JDialog {
         // Set default button (responds to Enter key)
         getRootPane().setDefaultButton(btnLuu);
     }
-    
+    private String[] getDentalSpecialties() {
+        return new String[]{
+            "Lựa chọn",
+            "Nha khoa tổng quát",
+            "Nha khoa thẩm mỹ",
+            "Chỉnh nha",
+            "Nha chu",
+            "Nội nha", 
+            "Phẫu thuật hàm mặt",
+            "Nha khoa trẻ em",
+            "Cấy ghép Implant",
+            "Phục hình răng",
+            "Răng hàm mặt",
+            "Nha khoa dự phòng",
+            "X quang răng",
+            "Bệnh lý miệng"
+        };
+    }
     private JPanel createScrollableFormPanel() {
         // Create the main form panel
         JPanel formPanel = new JPanel();
@@ -458,9 +486,18 @@ public class BacSiDialog extends JDialog {
         
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.CENTER;
-        specialtyField = createStyledTextField();
-        specialtyField.setPreferredSize(new Dimension(230, 32));
-        formPanel.add(specialtyField, gbc);
+        specialtyComboBox = createStyledComboBoxWithScroll();
+        specialtyComboBox.setPreferredSize(new Dimension(230, 32));
+        
+        // Thêm các chuyên khoa
+        for (String specialty : getDentalSpecialties()) {
+            specialtyComboBox.addItem(specialty);
+        }
+        
+        // Set custom renderer cho specialty combo box
+        specialtyComboBox.setRenderer(new CustomComboBoxRenderer());
+        
+        formPanel.add(specialtyComboBox, gbc);
         
         // Error label for Specialty
         gbc.gridx = 1;
@@ -468,8 +505,7 @@ public class BacSiDialog extends JDialog {
         gbc.insets = new Insets(0, 4, 4, 4);
         JLabel lblSpecialtyError = createErrorLabel();
         formPanel.add(lblSpecialtyError, gbc);
-        errorLabels.put(specialtyField, lblSpecialtyError);
-        
+        errorLabels.put(specialtyComboBox, lblSpecialtyError);
         // Degree field
         gbc.gridx = 0;
         gbc.gridy++;
@@ -783,17 +819,14 @@ public class BacSiDialog extends JDialog {
         comboBox.setMaximumRowCount(8);        
         return comboBox;
     }    
-    // Enhanced method to create ComboBox with both horizontal and vertical scroll capability
     private JComboBox createStyledComboBoxWithScroll() {
         JComboBox comboBox = new JComboBox();
         comboBox.setFont(regularFont);
         comboBox.setBackground(Color.WHITE);
         comboBox.setMaximumRowCount(8);
-        comboBox.setUI(new ScrollableComboBoxUI());
-        
+        comboBox.setUI(new ScrollableComboBoxUI());        
         return comboBox;
-    }
-    
+    }    
     private JLabel createErrorLabel() {
         JLabel errorLabel = new JLabel(" ");
         errorLabel.setFont(errorFont);
@@ -803,8 +836,7 @@ public class BacSiDialog extends JDialog {
         errorLabel.setPreferredSize(new Dimension(230, 16));
         errorLabel.setMinimumSize(new Dimension(230, 16));
         return errorLabel;
-    }
-    
+    }    
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
         JButton button = new JButton(text) {
             @Override
@@ -822,7 +854,6 @@ public class BacSiDialog extends JDialog {
                 return false;
             }
         };
-
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -836,8 +867,6 @@ public class BacSiDialog extends JDialog {
         } else {
             button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         }
-
-        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -849,15 +878,12 @@ public class BacSiDialog extends JDialog {
                 button.setBackground(bgColor);
             }
         });
-
         return button;
-    }
-    
+    }    
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
-    }
-    
+    }    
     private void showValidationError(JComponent component, String message) {
         if (component instanceof JTextField) {
             component.setBorder(new CompoundBorder(
@@ -871,8 +897,7 @@ public class BacSiDialog extends JDialog {
             errorLabel.setText("<html><div style='width: 200px;'>" + message + "</div></html>");
             errorLabel.setVisible(true);
         }
-    }
-    
+    }    
     private void clearValidationError(JComponent component) {
         if (component instanceof JTextField) {
             component.setBorder(new CompoundBorder(
@@ -886,17 +911,16 @@ public class BacSiDialog extends JDialog {
             errorLabel.setText(" ");
             errorLabel.setVisible(true);
         }
-    }
-    
+    }    
     private void resetAllValidationErrors() {
         clearValidationError(nameField);
-        clearValidationError(specialtyField);
+        clearValidationError(specialtyComboBox); // THAY ĐỔI từ specialtyField
         clearValidationError(degreeField);
         clearValidationError(experienceField);
         clearValidationError(clinicComboBox);
         if (userComboBox != null) {
             clearValidationError(userComboBox);
-        }
+        }        
         
         for (JLabel errorLabel : errorLabels.values()) {
             errorLabel.setText(" ");
@@ -911,10 +935,25 @@ public class BacSiDialog extends JDialog {
                 currentBacSi = refreshedBacSi;
             }
         }
-        
         // Set fields with current doctor data
         nameField.setText(currentBacSi.getHoTenBacSi());
-        specialtyField.setText(currentBacSi.getChuyenKhoa());
+        
+        // Set specialty - tìm và chọn chuyên khoa phù hợp
+        String currentSpecialty = currentBacSi.getChuyenKhoa();
+        boolean specialtyFound = false;
+        for (int i = 0; i < specialtyComboBox.getItemCount(); i++) {
+            if (specialtyComboBox.getItemAt(i).equals(currentSpecialty)) {
+                specialtyComboBox.setSelectedIndex(i);
+                specialtyFound = true;
+                break;
+            }
+        }
+        // Nếu không tìm thấy chuyên khoa trong danh sách, thêm vào và chọn
+        if (!specialtyFound && currentSpecialty != null && !currentSpecialty.trim().isEmpty()) {
+            specialtyComboBox.addItem(currentSpecialty);
+            specialtyComboBox.setSelectedItem(currentSpecialty);
+        }
+        
         degreeField.setText(currentBacSi.getBangCap());
         experienceField.setText(String.valueOf(currentBacSi.getKinhNghiem()));
         
@@ -927,7 +966,7 @@ public class BacSiDialog extends JDialog {
             userComboBox.removeAllItems();
             userComboBox.addItem(new NguoiDungItem(user));
             userComboBox.setEnabled(false); // Can't change user when editing
-        }
+        }        
         
         // Select the current clinic - FIXED VERSION
         PhongKham currentClinic = bacSiController.getPhongKhamById(currentBacSi.getIdPhongKham());
@@ -946,14 +985,13 @@ public class BacSiDialog extends JDialog {
             // If currentClinic is null, select the default option (first item which is null)
             clinicComboBox.setSelectedIndex(0);
         }
-    }
-    
+    }    
     private void saveDoctor() {
         // Clear all previous validation errors
         resetAllValidationErrors();
         
         String hoTenBacSi = nameField.getText().trim();
-        String chuyenKhoa = specialtyField.getText().trim();
+        String chuyenKhoa = (String) specialtyComboBox.getSelectedItem(); // THAY ĐỔI
         String bangCap = degreeField.getText().trim();
         String kinhNghiemStr = experienceField.getText().trim();
         
@@ -977,23 +1015,16 @@ public class BacSiDialog extends JDialog {
                 nameField.requestFocus();
                 isValid = false;
             }
-        }
+        }        
         
-        // Validate specialty
-        if (chuyenKhoa.isEmpty()) {
-            showValidationError(specialtyField, "Chuyên khoa không được để trống");
+        // Validate specialty - THAY ĐỔI VALIDATION
+        if (chuyenKhoa == null || chuyenKhoa.equals("Lựa chọn") || chuyenKhoa.trim().isEmpty()) {
+            showValidationError(specialtyComboBox, "Vui lòng chọn chuyên khoa");
             if (isValid) {
-                specialtyField.requestFocus();
-                isValid = false;
-            }
-        } else if (chuyenKhoa.length() < 2) {
-            showValidationError(specialtyField, "Chuyên khoa phải có ít nhất 2 ký tự");
-            if (isValid) {
-                specialtyField.requestFocus();
+                specialtyComboBox.requestFocus();
                 isValid = false;
             }
         }
-        
         // Validate degree
         if (bangCap.isEmpty()) {
             showValidationError(degreeField, "Bằng cấp không được để trống");
@@ -1007,8 +1038,7 @@ public class BacSiDialog extends JDialog {
                 degreeField.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         // Validate experience
         int kinhNghiem;
         if (kinhNghiemStr.isEmpty()) {
@@ -1051,8 +1081,7 @@ public class BacSiDialog extends JDialog {
                     isValid = false;
                 }
             }
-        }
-        
+        }        
         // Validate clinic selection
         PhongKhamItem selectedClinic = (PhongKhamItem) clinicComboBox.getSelectedItem();
         if (selectedClinic == null || selectedClinic.getPhongKham() == null) {
@@ -1061,21 +1090,17 @@ public class BacSiDialog extends JDialog {
                 clinicComboBox.requestFocus();
                 isValid = false;
             }
-        }
-        
+        }        
         if (!isValid) {
             return;
-        }
-        
+        }        
         // Get validated experience value
-        kinhNghiem = Integer.parseInt(kinhNghiemStr);
-        
+        kinhNghiem = Integer.parseInt(kinhNghiemStr);        
         // Create or update doctor
         try {
             if (currentBacSi == null) {
                 // Create new doctor
                 NguoiDungItem selectedUser = (NguoiDungItem) userComboBox.getSelectedItem();
-                
                 BacSi newBacSi = new BacSi();
                 newBacSi.setIdNguoiDung(selectedUser.getNguoiDung().getIdNguoiDung());
                 newBacSi.setHoTenBacSi(hoTenBacSi);
@@ -1161,17 +1186,16 @@ public class BacSiDialog extends JDialog {
         );
     }    
     private void setupEnterKeyNavigation() {
-        JComponent[] components;
-        
+        JComponent[] components;        
         if (currentBacSi == null) {
             components = new JComponent[] {
-                userComboBox,nameField,specialtyField,degreeField,experienceField,clinicComboBox
+                userComboBox,nameField,specialtyComboBox,degreeField,experienceField,clinicComboBox // THAY ĐỔI
             };
         } else {
             components = new JComponent[] {
-                nameField,specialtyField,degreeField,experienceField,clinicComboBox
+                nameField,specialtyComboBox,degreeField,experienceField,clinicComboBox // THAY ĐỔI
             };
-        }        
+        }      
         for (int i = 0; i < components.length - 1; i++) {
             final int nextIndex = i + 1;
             if (components[i] instanceof JTextField) {
