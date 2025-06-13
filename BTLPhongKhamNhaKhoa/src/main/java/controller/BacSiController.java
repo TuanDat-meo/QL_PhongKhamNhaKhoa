@@ -1,4 +1,3 @@
-// BacSiController.java - Controller with integrated DAO functionality
 package controller;
 
 import model.BacSi;
@@ -14,7 +13,7 @@ import java.util.List;
 
 public class BacSiController {
     
-    // Get all doctors with related info
+    // Lấy tất cả bác sĩ với thông tin liên quan
     public List<BacSi> getAllBacSi() {
         List<BacSi> bacSiList = new ArrayList<>();
         String sql = "SELECT bs.*, pk.tenPhong, nd.email, nd.soDienThoai " +
@@ -37,7 +36,7 @@ public class BacSiController {
                 bacSi.setBangCap(rs.getString("bangCap"));
                 bacSi.setKinhNghiem(rs.getInt("kinhNghiem"));
                 
-                // Related info
+                // Thông tin liên quan
                 bacSi.setTenPhong(rs.getString("tenPhong"));
                 bacSi.setEmailNguoiDung(rs.getString("email"));
                 bacSi.setSoDienThoaiNguoiDung(rs.getString("soDienThoai"));
@@ -51,7 +50,7 @@ public class BacSiController {
         return bacSiList;
     }
     
-    // Search doctors by name, specialty or clinic name
+    // Tìm kiếm bác sĩ theo tên, chuyên khoa hoặc tên phòng khám
     public List<BacSi> searchBacSi(String searchTerm) {
         List<BacSi> bacSiList = new ArrayList<>();
         String sql = "SELECT bs.*, pk.tenPhong, nd.email, nd.soDienThoai " +
@@ -80,7 +79,7 @@ public class BacSiController {
                     bacSi.setBangCap(rs.getString("bangCap"));
                     bacSi.setKinhNghiem(rs.getInt("kinhNghiem"));
                     
-                    // Related info
+                    // Thông tin liên quan
                     bacSi.setTenPhong(rs.getString("tenPhong"));
                     bacSi.setEmailNguoiDung(rs.getString("email"));
                     bacSi.setSoDienThoaiNguoiDung(rs.getString("soDienThoai"));
@@ -94,6 +93,8 @@ public class BacSiController {
         
         return bacSiList;
     }
+
+    // Kiểm tra người dùng có phải là bác sĩ không
     public boolean isUserDoctor(int userId) {
         String sql = "SELECT COUNT(*) FROM BacSi WHERE idNguoiDung = ?";
         
@@ -113,7 +114,8 @@ public class BacSiController {
         
         return false;
     }
-    // Get a doctor by ID
+
+    // Lấy thông tin bác sĩ theo ID
     public BacSi getBacSiById(int id) {
         BacSi bacSi = null;
         String sql = "SELECT bs.*, pk.tenPhong, nd.email, nd.soDienThoai " +
@@ -138,7 +140,7 @@ public class BacSiController {
                     bacSi.setBangCap(rs.getString("bangCap"));
                     bacSi.setKinhNghiem(rs.getInt("kinhNghiem"));
                     
-                    // Related info
+                    // Thông tin liên quan
                     bacSi.setTenPhong(rs.getString("tenPhong"));
                     bacSi.setEmailNguoiDung(rs.getString("email"));
                     bacSi.setSoDienThoaiNguoiDung(rs.getString("soDienThoai"));
@@ -151,7 +153,7 @@ public class BacSiController {
         return bacSi;
     }
     
-    // Add a new doctor
+    // Thêm bác sĩ mới
     public boolean addBacSi(BacSi bacSi) {
         String sql = "INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, kinhNghiem) " +
                      "VALUES (?, ?, ?, ?, ?, ?)";
@@ -183,7 +185,7 @@ public class BacSiController {
         return false;
     }
     
-    // Update doctor's information
+    // Cập nhật thông tin bác sĩ
     public boolean updateBacSi(BacSi bacSi) {
         String sql = "UPDATE BacSi SET hoTenBacSi = ?, idNguoiDung = ?, idPhongKham = ?, " +
                      "chuyenKhoa = ?, bangCap = ?, kinhNghiem = ? WHERE idBacSi = ?";
@@ -206,133 +208,75 @@ public class BacSiController {
             return false;
         }
     }
+
+    // Xóa bác sĩ và tất cả dữ liệu liên quan
     public boolean deleteBacSi(int id) {
         Connection conn = null;
         try {
             conn = connectMySQL.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+            conn.setAutoCommit(false); // Bắt đầu transaction
             
-            // Step 1: Delete all appointments (LichHen) for this doctor
+            // Bước 1: Xóa tất cả lịch hẹn của bác sĩ này
             String deleteAppointmentsSql = "DELETE FROM LichHen WHERE idBacSi = ?";
             try (PreparedStatement stmt = conn.prepareStatement(deleteAppointmentsSql)) {
                 stmt.setInt(1, id);
-                int appointmentsDeleted = stmt.executeUpdate();
-                //System.out.println("Deleted " + appointmentsDeleted + " appointments for doctor ID: " + id);
+                stmt.executeUpdate();
             }
             
-            // Step 2: Delete all prescriptions (DonThuoc) for this doctor
+            // Bước 2: Xóa tất cả đơn thuốc của bác sĩ này
             String deletePrescriptionsSql = "DELETE FROM DonThuoc WHERE idBacSi = ?";
             try (PreparedStatement stmt = conn.prepareStatement(deletePrescriptionsSql)) {
                 stmt.setInt(1, id);
-                int prescriptionsDeleted = stmt.executeUpdate();
-                //System.out.println("Deleted " + prescriptionsDeleted + " prescriptions for doctor ID: " + id);
+                stmt.executeUpdate();
             }
             
-            // Step 3: Delete all treatments (DieuTri) for this doctor
+            // Bước 3: Xóa tất cả điều trị của bác sĩ này
             String deleteTreatmentsSql = "DELETE FROM DieuTri WHERE idBacSi = ?";
             try (PreparedStatement stmt = conn.prepareStatement(deleteTreatmentsSql)) {
                 stmt.setInt(1, id);
-                int treatmentsDeleted = stmt.executeUpdate();
-                //System.out.println("Deleted " + treatmentsDeleted + " treatments for doctor ID: " + id);
+                stmt.executeUpdate();
             }
             
-            // Step 4: Delete any other related records that might reference this doctor
-            // Check if there are other tables that reference BacSi
+            // Bước 4: Xóa các bản ghi liên quan khác có thể tham chiếu đến bác sĩ này
             
-            // Step 5: Finally, delete the doctor
+            // Bước 5: Cuối cùng, xóa bác sĩ
             String deleteDoctorSql = "DELETE FROM BacSi WHERE idBacSi = ?";
             try (PreparedStatement stmt = conn.prepareStatement(deleteDoctorSql)) {
                 stmt.setInt(1, id);
                 int doctorDeleted = stmt.executeUpdate();
                 
                 if (doctorDeleted > 0) {
-                    conn.commit(); // Commit the transaction
-                    //System.out.println("Successfully deleted doctor with ID: " + id);
+                    conn.commit(); // Commit transaction
                     return true;
                 } else {
-                    conn.rollback(); // Rollback if doctor couldn't be deleted
-                    //System.out.println("Doctor with ID " + id + " not found");
+                    conn.rollback(); // Rollback nếu không thể xóa bác sĩ
                     return false;
                 }
             }
             
         } catch (SQLException e) {
-            //System.err.println("Error deleting doctor with ID " + id + ": " + e.getMessage());
             e.printStackTrace();
             try {
                 if (conn != null) {
-                    conn.rollback(); // Rollback on error
-                    //System.out.println("Transaction rolled back due to error");
+                    conn.rollback(); // Rollback khi có lỗi
                 }
             } catch (SQLException ex) {
-                //System.err.println("Error rolling back transaction: " + ex.getMessage());
                 ex.printStackTrace();
             }
             return false;
         } finally {
             try {
                 if (conn != null) {
-                    conn.setAutoCommit(true); // Reset auto-commit
+                    conn.setAutoCommit(true); // Khôi phục auto-commit
                     conn.close();
                 }
             } catch (SQLException e) {
-                //System.err.println("Error closing connection: " + e.getMessage());
                 e.printStackTrace();
             }
         }
     }
-    // Delete future appointments for a doctor
-    private boolean deleteFutureAppointments(Connection conn, int bacSiId) throws SQLException {
-        // Get current date
-        java.util.Date today = new java.util.Date();
-        java.sql.Date currentDate = new java.sql.Date(today.getTime());
-        
-        // Delete future appointments
-        String sql = "DELETE FROM LichHen WHERE idBacSi = ? AND ngayHen >= ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, bacSiId);
-            stmt.setDate(2, currentDate);
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-
-    // Delete all treatments by a doctor
-    private boolean deleteDoctorTreatments(Connection conn, int bacSiId) throws SQLException {
-        String sql = "DELETE FROM DieuTri WHERE idBacSi = ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, bacSiId);
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-
-    // Delete all prescriptions by a doctor
-    private boolean deleteDoctorPrescriptions(Connection conn, int bacSiId) throws SQLException {
-        String sql = "DELETE FROM DonThuoc WHERE idBacSi = ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, bacSiId);
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-
-    // Get doctor's specialty
+   
+    // Lấy chuyên khoa của bác sĩ
     public String getDoctorSpecialty(Connection conn, int doctorId) throws SQLException {
         String sql = "SELECT chuyenKhoa FROM BacSi WHERE idBacSi = ?";
         
@@ -341,233 +285,257 @@ public class BacSiController {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    String specialty = rs.getString("chuyenKhoa");
-                    //System.out.println("Retrieved specialty: " + specialty + " for doctor ID: " + doctorId);
-                    return specialty;
+                    return rs.getString("chuyenKhoa");
                 }
             }
         }
         
-        //System.out.println("No specialty found for doctor ID: " + doctorId);
         return null;
     }
- // Add these methods to BacSiController.java
 
- // Reassign future appointments from one doctor to another
- public boolean reassignFutureAppointments(int oldDoctorId, int newDoctorId) {
-     // Get current date
-     java.util.Date today = new java.util.Date();
-     java.sql.Date currentDate = new java.sql.Date(today.getTime());
-     
-     String sql = "UPDATE LichHen SET idBacSi = ? WHERE idBacSi = ? AND ngayHen >= ?";
-     
-     try (Connection conn = connectMySQL.getConnection();
-          PreparedStatement stmt = conn.prepareStatement(sql)) {
-         
-         stmt.setInt(1, newDoctorId);
-         stmt.setInt(2, oldDoctorId);
-         stmt.setDate(3, currentDate);
-         
-         stmt.executeUpdate();
-         return true;
-     } catch (SQLException e) {
-         e.printStackTrace();
-         return false;
-     }
- }
+    // Chuyển giao lịch hẹn tương lai từ bác sĩ cũ sang bác sĩ mới
+    public boolean reassignFutureAppointments(int oldDoctorId, int newDoctorId) {
+        // Lấy ngày hiện tại
+        java.util.Date today = new java.util.Date();
+        java.sql.Date currentDate = new java.sql.Date(today.getTime());
+        
+        String sql = "UPDATE LichHen SET idBacSi = ? WHERE idBacSi = ? AND ngayHen >= ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, newDoctorId);
+            stmt.setInt(2, oldDoctorId);
+            stmt.setDate(3, currentDate);
+            
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
- // Reassign all treatments from one doctor to another
- public boolean reassignAllTreatments(int oldDoctorId, int newDoctorId) {
-     String sql = "UPDATE DieuTri SET idBacSi = ? WHERE idBacSi = ?";
-     
-     try (Connection conn = connectMySQL.getConnection();
-          PreparedStatement stmt = conn.prepareStatement(sql)) {
-         
-         stmt.setInt(1, newDoctorId);
-         stmt.setInt(2, oldDoctorId);
-         
-         stmt.executeUpdate();
-         return true;
-     } catch (SQLException e) {
-         e.printStackTrace();
-         return false;
-     }
- }
+    // Chuyển giao tất cả điều trị từ bác sĩ cũ sang bác sĩ mới
+    public boolean reassignAllTreatments(int oldDoctorId, int newDoctorId) {
+        String sql = "UPDATE DieuTri SET idBacSi = ? WHERE idBacSi = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, newDoctorId);
+            stmt.setInt(2, oldDoctorId);
+            
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
- // Reassign all prescriptions from one doctor to another
- public boolean reassignAllPrescriptions(int oldDoctorId, int newDoctorId) {
-     String sql = "UPDATE DonThuoc SET idBacSi = ? WHERE idBacSi = ?";
-     
-     try (Connection conn = connectMySQL.getConnection();
-          PreparedStatement stmt = conn.prepareStatement(sql)) {
-         
-         stmt.setInt(1, newDoctorId);
-         stmt.setInt(2, oldDoctorId);
-         
-         stmt.executeUpdate();
-         return true;
-     } catch (SQLException e) {
-         e.printStackTrace();
-         return false;
-     }
- }
+    // Chuyển giao tất cả đơn thuốc từ bác sĩ cũ sang bác sĩ mới
+    public boolean reassignAllPrescriptions(int oldDoctorId, int newDoctorId) {
+        String sql = "UPDATE DonThuoc SET idBacSi = ? WHERE idBacSi = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, newDoctorId);
+            stmt.setInt(2, oldDoctorId);
+            
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
- // Get doctors of the same specialty
- public List<BacSi> getDoctorsBySpecialty(String specialty) {
-     List<BacSi> bacSiList = new ArrayList<>();
-     String sql = "SELECT bs.*, pk.tenPhong, nd.email, nd.soDienThoai " +
-                  "FROM BacSi bs " +
-                  "JOIN PhongKham pk ON bs.idPhongKham = pk.idPhongKham " +
-                  "JOIN NguoiDung nd ON bs.idNguoiDung = nd.idNguoiDung " +
-                  "WHERE bs.chuyenKhoa = ? " +
-                  "ORDER BY bs.hoTenBacSi";
-     
-     try (Connection conn = connectMySQL.getConnection();
-          PreparedStatement stmt = conn.prepareStatement(sql)) {
-         
-         stmt.setString(1, specialty);
-         
-         try (ResultSet rs = stmt.executeQuery()) {
-             while (rs.next()) {
-                 BacSi bacSi = new BacSi();
-                 bacSi.setIdBacSi(rs.getInt("idBacSi"));
-                 bacSi.setHoTenBacSi(rs.getString("hoTenBacSi"));
-                 bacSi.setIdNguoiDung(rs.getInt("idNguoiDung"));
-                 bacSi.setIdPhongKham(rs.getInt("idPhongKham"));
-                 bacSi.setChuyenKhoa(rs.getString("chuyenKhoa"));
-                 bacSi.setBangCap(rs.getString("bangCap"));
-                 bacSi.setKinhNghiem(rs.getInt("kinhNghiem"));
-                 
-                 // Related info
-                 bacSi.setTenPhong(rs.getString("tenPhong"));
-                 bacSi.setEmailNguoiDung(rs.getString("email"));
-                 bacSi.setSoDienThoaiNguoiDung(rs.getString("soDienThoai"));
-                 
-                 bacSiList.add(bacSi);
-             }
-         }
-     } catch (SQLException e) {
-         e.printStackTrace();
-     }
-     
-     return bacSiList;
- }
+    // Lấy danh sách bác sĩ theo chuyên khoa
+    public List<BacSi> getDoctorsBySpecialty(String specialty) {
+        List<BacSi> bacSiList = new ArrayList<>();
+        String sql = "SELECT bs.*, pk.tenPhong, nd.email, nd.soDienThoai " +
+                     "FROM BacSi bs " +
+                     "JOIN PhongKham pk ON bs.idPhongKham = pk.idPhongKham " +
+                     "JOIN NguoiDung nd ON bs.idNguoiDung = nd.idNguoiDung " +
+                     "WHERE bs.chuyenKhoa = ? " +
+                     "ORDER BY bs.hoTenBacSi";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, specialty);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    BacSi bacSi = new BacSi();
+                    bacSi.setIdBacSi(rs.getInt("idBacSi"));
+                    bacSi.setHoTenBacSi(rs.getString("hoTenBacSi"));
+                    bacSi.setIdNguoiDung(rs.getInt("idNguoiDung"));
+                    bacSi.setIdPhongKham(rs.getInt("idPhongKham"));
+                    bacSi.setChuyenKhoa(rs.getString("chuyenKhoa"));
+                    bacSi.setBangCap(rs.getString("bangCap"));
+                    bacSi.setKinhNghiem(rs.getInt("kinhNghiem"));
+                    
+                    // Thông tin liên quan
+                    bacSi.setTenPhong(rs.getString("tenPhong"));
+                    bacSi.setEmailNguoiDung(rs.getString("email"));
+                    bacSi.setSoDienThoaiNguoiDung(rs.getString("soDienThoai"));
+                    
+                    bacSiList.add(bacSi);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
+        return bacSiList;
+    }
 
- // Modified deleteBacSi method with doctor replacement
- public boolean deleteBacSiWithReplacement(int id, int replacementDoctorId) {
-     Connection conn = null;
-     try {
-         conn = connectMySQL.getConnection();
-         conn.setAutoCommit(false); // Start transaction
-         
-         // If replacement doctor is provided, reassign appointments and treatments
-         if (replacementDoctorId > 0) {
-             // Reassign future appointments
-             String appointmentSql = "UPDATE LichHen SET idBacSi = ? WHERE idBacSi = ? AND ngayHen >= CURRENT_DATE()";
-             try (PreparedStatement stmt = conn.prepareStatement(appointmentSql)) {
-                 stmt.setInt(1, replacementDoctorId);
-                 stmt.setInt(2, id);
-                 stmt.executeUpdate();
-             }
-             
-             // Reassign treatments
-             String treatmentSql = "UPDATE DieuTri SET idBacSi = ? WHERE idBacSi = ?";
-             try (PreparedStatement stmt = conn.prepareStatement(treatmentSql)) {
-                 stmt.setInt(1, replacementDoctorId);
-                 stmt.setInt(2, id);
-                 stmt.executeUpdate();
-             }
-             
-             // Reassign prescriptions
-             String prescriptionSql = "UPDATE DonThuoc SET idBacSi = ? WHERE idBacSi = ?";
-             try (PreparedStatement stmt = conn.prepareStatement(prescriptionSql)) {
-                 stmt.setInt(1, replacementDoctorId);
-                 stmt.setInt(2, id);
-                 stmt.executeUpdate();
-             }
-         } else {
-             // No replacement doctor, delete future appointments
-             if (!deleteFutureAppointments(conn, id)) {
-                 conn.rollback();
-                 return false;
-             }
-             
-             // Delete all treatments related to this doctor
-             if (!deleteDoctorTreatments(conn, id)) {
-                 conn.rollback();
-                 return false;
-             }
-             
-             // Also delete prescriptions (DonThuoc) if any
-             if (!deleteDoctorPrescriptions(conn, id)) {
-                 conn.rollback();
-                 return false;
-             }
-         }
-         
-         // Now delete the doctor
-         String sql = "DELETE FROM BacSi WHERE idBacSi = ?";
-         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-             stmt.setInt(1, id);
-             int affectedRows = stmt.executeUpdate();
-             
-             if (affectedRows > 0) {
-                 conn.commit(); // Commit the transaction
-                 return true;
-             } else {
-                 conn.rollback(); // Rollback if doctor couldn't be deleted
-                 return false;
-             }
-         }
-     } catch (SQLException e) {
-         e.printStackTrace();
-         try {
-             if (conn != null) {
-                 conn.rollback(); // Rollback on error
-             }
-         } catch (SQLException ex) {
-             ex.printStackTrace();
-         }
-         return false;
-     } finally {
-         try {
-             if (conn != null) {
-                 conn.setAutoCommit(true); // Reset auto-commit
-                 conn.close();
-             }
-         } catch (SQLException e) {
-             e.printStackTrace();
-         }
-     }
- }
+    // Xóa bác sĩ với bác sĩ thay thế
+    public boolean deleteBacSiWithReplacement(int doctorIdToDelete, int replacementDoctorId) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        
+        try {
+            conn = connectMySQL.getConnection();
+            conn.setAutoCommit(false); // Bắt đầu transaction
+            
+            // Bước 1: Cập nhật TẤT CẢ lịch hẹn trong tương lai
+            String updateFutureAppointmentsSQL = 
+                "UPDATE lichhen SET idBacSi = ? WHERE idBacSi = ? AND ngayHen >= CURDATE()";
+            pstmt = conn.prepareStatement(updateFutureAppointmentsSQL);
+            pstmt.setInt(1, replacementDoctorId);
+            pstmt.setInt(2, doctorIdToDelete);
+            pstmt.executeUpdate();
+            pstmt.close();
+            
+            // Bước 2: Cập nhật TẤT CẢ điều trị liên quan đến bác sĩ
+            String updateTreatmentsSQL = 
+                "UPDATE dieutri SET idBacSi = ? WHERE idBacSi = ?";
+            pstmt = conn.prepareStatement(updateTreatmentsSQL);
+            pstmt.setInt(1, replacementDoctorId);
+            pstmt.setInt(2, doctorIdToDelete);
+            pstmt.executeUpdate();
+            pstmt.close();
+            
+            // Bước 3: Cập nhật TẤT CẢ đơn thuốc liên quan đến bác sĩ (nếu có bảng này)
+            try {
+                String updatePrescriptionsSQL = 
+                    "UPDATE donthuoc SET idBacSi = ? WHERE idBacSi = ?";
+                pstmt = conn.prepareStatement(updatePrescriptionsSQL);
+                pstmt.setInt(1, replacementDoctorId);
+                pstmt.setInt(2, doctorIdToDelete);
+                pstmt.executeUpdate();
+                pstmt.close();
+            } catch (SQLException e) {
+                // Bảng donthuoc có thể không tồn tại hoặc không có cột idBacSi
+            }
+            
+            // Bước 4: Hủy TẤT CẢ lịch hẹn trong quá khứ (thay vì cập nhật)
+            String cancelPastAppointmentsSQL = 
+                "UPDATE lichhen SET trangThai = 'Đã hủy' WHERE idBacSi = ? AND ngayHen < CURDATE()";
+            pstmt = conn.prepareStatement(cancelPastAppointmentsSQL);
+            pstmt.setInt(1, doctorIdToDelete);
+            pstmt.executeUpdate();
+            pstmt.close();
+            
+            // Bước 5: Kiểm tra xem còn bản ghi nào tham chiếu đến bác sĩ không
+            String checkReferencesSQL = 
+                "SELECT COUNT(*) as total FROM lichhen WHERE idBacSi = ?";
+            pstmt = conn.prepareStatement(checkReferencesSQL);
+            pstmt.setInt(1, doctorIdToDelete);
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            int remainingReferences = rs.getInt("total");
+            rs.close();
+            pstmt.close();
+            
+            if (remainingReferences > 0) {
+                // Nếu vẫn còn tham chiếu, xóa trực tiếp các bản ghi này
+                String deleteRemainingSQL = "DELETE FROM lichhen WHERE idBacSi = ?";
+                pstmt = conn.prepareStatement(deleteRemainingSQL);
+                pstmt.setInt(1, doctorIdToDelete);
+                pstmt.executeUpdate();
+                pstmt.close();
+            }
+            
+            // Bước 6: Kiểm tra các bảng khác có thể tham chiếu đến bác sĩ
+            // Kiểm tra bảng dieutri
+            String checkTreatmentSQL = "SELECT COUNT(*) as total FROM dieutri WHERE idBacSi = ?";
+            pstmt = conn.prepareStatement(checkTreatmentSQL);
+            pstmt.setInt(1, doctorIdToDelete);
+            rs = pstmt.executeQuery();
+            rs.next();
+            rs.close();
+            pstmt.close();
+            
+            // Bước 7: Cuối cùng mới xóa bác sĩ
+            String deleteDoctorSQL = "DELETE FROM bacsi WHERE idBacSi = ?";
+            pstmt = conn.prepareStatement(deleteDoctorSQL);
+            pstmt.setInt(1, doctorIdToDelete);
+            int doctorDeleted = pstmt.executeUpdate();
+            pstmt.close();
+            
+            if (doctorDeleted > 0) {
+                conn.commit(); // Commit transaction
+                return true;
+            } else {
+                conn.rollback();
+                return false;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                // Xử lý lỗi rollback
+            }
+            
+            return false;
+        } finally {
+            try {
+                if (pstmt != null) pstmt.close();
+                if (conn != null) {
+                    conn.setAutoCommit(true); // Khôi phục auto-commit
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                // Xử lý lỗi đóng kết nối
+            }
+        }
+    }
+    // Kiểm tra bác sĩ có lịch hẹn trong tương lai không
+    public boolean hasFutureAppointments(int bacSiId) {
+        // Lấy ngày hiện tại
+        java.util.Date today = new java.util.Date();
+        java.sql.Date currentDate = new java.sql.Date(today.getTime());
+        
+        String sql = "SELECT COUNT(*) FROM LichHen WHERE idBacSi = ? AND ngayHen >= ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, bacSiId);
+            stmt.setDate(2, currentDate);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
+        return false;
+    }
 
- // Check if a doctor has future appointments
- public boolean hasFutureAppointments(int bacSiId) {
-     // Get current date
-     java.util.Date today = new java.util.Date();
-     java.sql.Date currentDate = new java.sql.Date(today.getTime());
-     
-     String sql = "SELECT COUNT(*) FROM LichHen WHERE idBacSi = ? AND ngayHen >= ?";
-     
-     try (Connection conn = connectMySQL.getConnection();
-          PreparedStatement stmt = conn.prepareStatement(sql)) {
-         
-         stmt.setInt(1, bacSiId);
-         stmt.setDate(2, currentDate);
-         
-         try (ResultSet rs = stmt.executeQuery()) {
-             if (rs.next()) {
-                 return rs.getInt(1) > 0;
-             }
-         }
-     } catch (SQLException e) {
-         e.printStackTrace();
-     }
-     
-     return false;
- }
-
- // Get doctors of the same specialty, excluding the one to be deleted
  public List<BacSi> getOtherDoctorsBySpecialty(int doctorId) {
      List<BacSi> bacSiList = new ArrayList<>();
      
@@ -625,61 +593,7 @@ public class BacSiController {
      
      return bacSiList;
  }
-    // Check if doctor has the same specialty
-    private boolean hasSameSpecialty(Connection conn, int doctorId, String specialty) throws SQLException {
-        if (specialty == null) {
-            return false;
-        }
-        
-        String sql = "SELECT COUNT(*) FROM BacSi WHERE idBacSi = ? AND chuyenKhoa = ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, doctorId);
-            stmt.setString(2, specialty);
-            
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        }
-        
-        return false;
-    }
 
-    // Reassign all treatments to a new doctor
-    private boolean reassignTreatments(Connection conn, int oldDoctorId, int newDoctorId) throws SQLException {
-        String sql = "UPDATE DieuTri SET idBacSi = ? WHERE idBacSi = ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, newDoctorId);
-            stmt.setInt(2, oldDoctorId);
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-    
-    // Reassign all prescriptions to a new doctor
-    private boolean reassignPrescriptions(Connection conn, int oldDoctorId, int newDoctorId) throws SQLException {
-        String sql = "UPDATE DonThuoc SET idBacSi = ? WHERE idBacSi = ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, newDoctorId);
-            stmt.setInt(2, oldDoctorId);
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-
-    // Check if doctor has any treatments
     public boolean hasTreatments(Connection conn, int bacSiId) throws SQLException {
         String sql = "SELECT COUNT(*) FROM DieuTri WHERE idBacSi = ?";
         
@@ -789,31 +703,7 @@ public class BacSiController {
         }
         
         return replacementDoctors;
-    }
-    private boolean cancelFutureAppointments(Connection conn, int bacSiId) throws SQLException {
-        // Get current date
-        java.util.Date today = new java.util.Date();
-        java.sql.Date currentDate = new java.sql.Date(today.getTime());
-        
-        // Update status of future appointments to "Đã hủy" without using COLLATE or N prefix
-        String sql = "UPDATE LichHen SET trangThai = ? " +
-                "WHERE idBacSi = ? AND ngayHen >= ? AND trangThai != ?";
-        
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            // Use setString directly for Vietnamese text
-            stmt.setString(1, "Đã hủy");
-            stmt.setInt(2, bacSiId);
-            stmt.setDate(3, currentDate);
-            stmt.setString(4, "Đã hủy");
-            
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw e; // Rethrow for proper transaction handling
-        }
-    }
-    
+    }    
     // Get future appointments for a doctor - Fixed to handle Vietnamese text
     public List<LichHen> getFutureAppointments(int bacSiId) {
         List<LichHen> lichHenList = new ArrayList<>();
