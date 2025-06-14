@@ -32,7 +32,7 @@ public class BenhNhanController {
 
     public List<BenhNhan> layDanhSachBenhNhan() throws SQLException {
         List<BenhNhan> danhSach = new ArrayList<>();
-        String sql = "SELECT * FROM BenhNhan";
+        String sql = "SELECT * FROM BenhNhan ORDER BY idBenhNhan DESC";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
