@@ -101,7 +101,7 @@ public class NguoiDungController {
         java.util.List<NguoiDung> userList = new java.util.ArrayList<>();
 
         try {
-            String query = "SELECT * FROM NguoiDung ORDER BY IdNguoiDung";
+            String query = "SELECT * FROM NguoiDung ORDER BY IdNguoiDung DESC";
             statement = connection.prepareStatement(query);
             resultSet = statement.executeQuery();
             
