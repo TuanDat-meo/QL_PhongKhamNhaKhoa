@@ -29,8 +29,9 @@ public class ValidationUtils {
     private static final String HO_TEN_PATTERN = "^[\\p{L} .'-]+$";
     private static final String SO_DIEN_THOAI_PATTERN = "^(0|\\+84)\\d{9}$";
     private static final String CCCD_PATTERN = "^\\d{9}|\\d{12}$";
-    private static final String EMAIL_PATTERN = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
-    private static final String PHONE_PATTERN = "^(0|\\+84)(3|5|7|8|9)([0-9]{8})$";
+    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    private static final String PHONE_PATTERN = "^0\\d{9}$";
+    private static final String PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
     
     private static final int MIN_PASSWORD_LENGTH = 6;
     
@@ -352,77 +353,30 @@ public class ValidationUtils {
         return true;
     }
     
-    public static boolean validateEmail(String email, JComponent component, JComponent errorLabel) {
-        if (email == null || email.isEmpty()) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(EMAIL_EMPTY_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(EMAIL_EMPTY_ERROR);
-            }
-            return false;
-        }
+    public static boolean validateEmail(String email, JComponent field, JLabel errorLabel) {
         if (!Pattern.matches(EMAIL_PATTERN, email)) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(EMAIL_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(EMAIL_ERROR);
-            }
+            setError(field, errorLabel, "Invalid email format");
             return false;
         }
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(SUCCESS_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
-        }
+        setSuccess(field, errorLabel);
         return true;
     }
     
-    public static boolean validatePhoneNumber(String phone, JComponent component, JComponent errorLabel) {
-        if (phone == null || phone.isEmpty()) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PHONE_EMPTY_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PHONE_EMPTY_ERROR);
-            }
-            return false;
-        }
+    public static boolean validatePhoneNumber(String phone, JComponent field, JLabel errorLabel) {
         if (!Pattern.matches(PHONE_PATTERN, phone)) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PHONE_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PHONE_ERROR);
-            }
+            setError(field, errorLabel, "Phone number must start with 0 and have 10 digits");
             return false;
         }
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(SUCCESS_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
+        setSuccess(field, errorLabel);
+        return true;
+    }
+    
+    public static boolean validatePassword(String password, JComponent field, JLabel errorLabel) {
+        if (!Pattern.matches(PASSWORD_PATTERN, password)) {
+            setError(field, errorLabel, "Password must be at least 8 characters and contain uppercase, lowercase, number and special character");
+            return false;
         }
+        setSuccess(field, errorLabel);
         return true;
     }
     
@@ -492,5 +446,37 @@ public class ValidationUtils {
         label.setForeground(ERROR_COLOR);
         label.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         return label;
+    }
+
+    public static void setError(JComponent field, JLabel errorLabel, String errorMessage) {
+        errorLabel.setText(errorMessage);
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(ERROR_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    
+    public static void setSuccess(JComponent field, JLabel errorLabel) {
+        errorLabel.setText("");
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(SUCCESS_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    
+    public static void clearValidationError(JComponent field, JLabel errorLabel) {
+        errorLabel.setText("");
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(BORDER_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    
+    public static void validateConfirmPassword(String password, String confirmPassword, JComponent field, JLabel errorLabel) {
+        if (!confirmPassword.equals(password)) {
+            setError(field, errorLabel, "Passwords do not match");
+            return;
+        }
+        setSuccess(field, errorLabel);
     }
 }
