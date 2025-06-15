@@ -41,19 +41,19 @@ public class BacSiDialog extends JDialog {
     private Color secondaryColor = new Color(141, 180, 226);
     private Color accentColor = new Color(192, 80, 77);
     private Color successColor = new Color(86, 156, 104);
-    private Color warningColor = new Color(237, 187, 85);
     private Color backgroundColor = new Color(248, 249, 250);
     private Color textColor = new Color(33, 37, 41);
-    private Color panelColor = new Color(255, 255, 255);
     private Color buttonTextColor = Color.WHITE;
     private Color borderColor = new Color(222, 226, 230);
     private Color errorColor = new Color(220, 53, 69);
     
-    private Font titleFont = new Font("Segoe UI", Font.BOLD, 16);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
-    
+    private int newDoctorId = -1;
+    public int getNewDoctorId() {
+        return newDoctorId;
+    }
     public BacSiDialog(JFrame parent, BacSi bacSi) {
         super(parent, "Thêm Mới Bác Sĩ", true);
         this.currentBacSi = bacSi;

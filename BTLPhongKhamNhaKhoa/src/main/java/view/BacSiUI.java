@@ -64,9 +64,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     private String currentUserRole;
     private JFrame parentFrame;
     private ExportManager exportManager;
-    private JDialog inputDialog;
-    private JTextField txtHoTen, txtChuyenKhoa, txtBangCap, txtKinhNghiem, txtTenPhong, txtEmail, txtSoDienThoai;
-    private Map<JComponent, JLabel> errorLabels = new HashMap<>();
     public BacSiUI() {
         bacSiController = new BacSiController();
         exportManager = new ExportManager(this, tableModel, null);
@@ -491,47 +488,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         }
         
         currentBacSiId = -1;
-    }
-    private String[] getChuyenKhoaOptions() {
-        return new String[]{
-            "Nha khoa tổng quát",
-            "Răng hàm mặt",
-            "Chỉnh nha",
-            "Nha chu",
-            "Nội nha",
-            "Phục hình răng",
-            "Nha khoa trẻ em",
-            "Implant nha khoa",
-            "Phẫu thuật miệng",
-            "Tẩy trắng răng",
-            "Nha khoa thẩm mỹ"
-        };
-    }
-    private String showChuyenKhoaSelectionDialog(String currentChuyenKhoa) {
-        String[] options = getChuyenKhoaOptions();
-        
-        // Tìm chỉ số của chuyên khoa hiện tại (nếu có)
-        int selectedIndex = 0;
-        if (currentChuyenKhoa != null && !currentChuyenKhoa.trim().isEmpty()) {
-            for (int i = 0; i < options.length; i++) {
-                if (options[i].equals(currentChuyenKhoa)) {
-                    selectedIndex = i;
-                    break;
-                }
-            }
-        }
-        
-        String selectedOption = (String) JOptionPane.showInputDialog(
-            parentFrame,
-            "Chọn chuyên khoa:",
-            "Chuyên khoa",
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            options,
-            options[selectedIndex]
-        );
-        
-        return selectedOption;
     }
     private void searchBacSi() {
         String searchTerm = searchField.getText().trim().toLowerCase();

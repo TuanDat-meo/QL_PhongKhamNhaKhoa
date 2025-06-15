@@ -13,6 +13,7 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class AppointmentsDialog extends JDialog {
@@ -24,7 +25,7 @@ public class AppointmentsDialog extends JDialog {
     private JPopupMenu popupMenu;
     private JMenuItem menuItemXemChiTiet;
     private JMenuItem menuItemCapNhat;
-    private Color primaryColor = new Color(79, 129, 189);
+    private Color primaryColor = new Color(79, 129, 189); 
     private Color secondaryColor = new Color(141, 180, 226);
     private Color accentColor = new Color(192, 80, 77);
     private Color successColor = new Color(86, 156, 104);
@@ -37,6 +38,9 @@ public class AppointmentsDialog extends JDialog {
     private Color tableHeaderColor = new Color(79, 129, 189);
     private Color tableStripeColor = new Color(245, 247, 250);
     private Color borderColor = new Color(222, 226, 230);
+    // Updated selection colors to match medical records table
+    private Color tableSelectionBackground = new Color(230, 244, 255);
+    private Color tableSelectionForeground = new Color(33, 37, 41);
    
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font errorFont = new Font("Segoe UI", Font.ITALIC, 11);
@@ -52,12 +56,71 @@ public class AppointmentsDialog extends JDialog {
         
         setSize(800, 480);
         setLocationRelativeTo(parent);
+        setFocusableWindowState(false); // Disable initial focus
         
         initializeComponents(appointments);
         setupPopupMenu();
         setupEventHandlers();        
         setResizable(true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        
+        // Set focus back to normal after initialization
+        SwingUtilities.invokeLater(() -> setFocusableWindowState(true));
+    }
+    
+    // New rounded button method
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Use different padding based on button type
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); // Smaller padding for "Edit"
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Normal padding for "Close"
+        }
+
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+    
+    // Updated darkenColor method using HSB
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
     }
     
     private void initializeComponents(List<LichHen> appointments) {
@@ -242,99 +305,231 @@ public class AppointmentsDialog extends JDialog {
             return;
         }
         
-        // Get current data
+        // Get current data - Fix the casting issues
         int appointmentId = (Integer) tableModel.getValueAt(selectedRow, 0);
         String currentStatus = (String) tableModel.getValueAt(selectedRow, 6);
         String patientName = (String) tableModel.getValueAt(selectedRow, 1);
+        String doctorName = (String) tableModel.getValueAt(selectedRow, 2);
         
-        // Status options - Updated to match the enum exactly
+        // Fix: Handle date and time properly - check the actual data type first
+        Object dateObj = tableModel.getValueAt(selectedRow, 3);
+        Object timeObj = tableModel.getValueAt(selectedRow, 4);
+        
+        String appointmentDate;
+        String appointmentTime;
+        
+        // Convert date object to string
+        if (dateObj instanceof java.sql.Date) {
+            java.sql.Date sqlDate = (java.sql.Date) dateObj;
+            // Format the date as needed
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+            appointmentDate = dateFormat.format(sqlDate);
+        } else if (dateObj instanceof java.util.Date) {
+            java.util.Date utilDate = (java.util.Date) dateObj;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+            appointmentDate = dateFormat.format(utilDate);
+        } else {
+            appointmentDate = dateObj != null ? dateObj.toString() : "";
+        }
+        
+        // Convert time object to string
+        if (timeObj instanceof java.sql.Time) {
+            java.sql.Time sqlTime = (java.sql.Time) timeObj;
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+            appointmentTime = timeFormat.format(sqlTime);
+        } else if (timeObj instanceof java.util.Date) {
+            java.util.Date utilDate = (java.util.Date) timeObj;
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+            appointmentTime = timeFormat.format(utilDate);
+        } else {
+            appointmentTime = timeObj != null ? timeObj.toString() : "";
+        }
+        
+        // Status options
         String[] statusOptions = {"Chờ xác nhận", "Đã xác nhận", "Đã hoàn thành", "Đã hủy"};
         
-        // Create custom dialog for status selection
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
+        // Create custom dialog
+        JDialog dialog = new JDialog(this, "Cập Nhật Trạng Thái Lịch Hẹn", true);
+        dialog.setSize(400, 320);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        dialog.setFocusableWindowState(false); // Disable initial focus
         
-        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST; gbc.insets = new Insets(5, 5, 5, 5);
-        panel.add(new JLabel("Bệnh nhân: " + patientName), gbc);
+        // Main container
+        JPanel mainContainer = new JPanel(new BorderLayout());
+        mainContainer.setBackground(backgroundColor);
         
-        gbc.gridy = 1;
-        panel.add(new JLabel("Trạng thái hiện tại: " + currentStatus), gbc);
+        // Header Panel - Updated color scheme
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBackground(primaryColor); // Changed from blue to primary color
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
         
-        gbc.gridy = 2;
-        panel.add(new JLabel("Chọn trạng thái mới:"), gbc);
+        JLabel titleLabel = new JLabel("Cập Nhật Trạng Thái");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
+        headerPanel.add(titleLabel);
+        
+        // Content Panel
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(panelColor);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
+        
+        // Simplified info display
+        JPanel infoPanel = new JPanel(new GridLayout(2, 2, 10, 5));
+        infoPanel.setBackground(panelColor);
+        
+        infoPanel.add(new JLabel("BN: " + patientName));
+        infoPanel.add(new JLabel("BS: " + doctorName));
+        infoPanel.add(new JLabel("Ngày: " + appointmentDate));
+        infoPanel.add(new JLabel("Giờ: " + appointmentTime));
+        
+        contentPanel.add(infoPanel);
+        contentPanel.add(Box.createVerticalStrut(15));
+        
+        // Current Status
+        JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        statusPanel.setBackground(panelColor);
+        statusPanel.add(new JLabel("Hiện tại: "));
+        JLabel currentStatusLabel = new JLabel(currentStatus);
+        currentStatusLabel.setForeground(getStatusColor(currentStatus));
+        statusPanel.add(currentStatusLabel);
+        
+        contentPanel.add(statusPanel);
+        contentPanel.add(Box.createVerticalStrut(10));
+        
+        // New Status Selection
+        JPanel newStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        newStatusPanel.setBackground(panelColor);
+        newStatusPanel.add(new JLabel("Đổi thành: "));
         JComboBox<String> statusCombo = new JComboBox<>(statusOptions);
         statusCombo.setSelectedItem(currentStatus);
-        statusCombo.setPreferredSize(new Dimension(200, 25));
+        statusCombo.setPreferredSize(new Dimension(150, 30));
+        statusCombo.setFocusable(false); // Disable focus
+        newStatusPanel.add(statusCombo);
         
-        gbc.gridy = 3;
-        panel.add(statusCombo, gbc);
+        contentPanel.add(newStatusPanel);
         
-        int result = JOptionPane.showConfirmDialog(
-            this,
-            panel,
-            "Cập Nhật Trạng Thái Lịch Hẹn",
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE
-        );
+        // Button Panel - Updated to use rounded buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(panelColor);
+        buttonPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, borderColor),
+            BorderFactory.createEmptyBorder(15, 20, 15, 20)
+        ));
         
-        if (result == JOptionPane.OK_OPTION) {
+        // Cancel Button - Updated color
+        JButton cancelButton = createRoundedButton("Hủy", new Color(148, 163, 184), Color.WHITE, 8, true);
+        cancelButton.setPreferredSize(new Dimension(80, 35));
+        cancelButton.addActionListener(e -> dialog.dispose());
+        
+        // Update Button - Updated color
+        JButton updateButton = createRoundedButton("Cập Nhật", warningColor, Color.WHITE, 8, true);
+        updateButton.setPreferredSize(new Dimension(80, 35));
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(updateButton);
+        
+        // Assemble dialog
+        mainContainer.add(headerPanel, BorderLayout.NORTH);
+        mainContainer.add(contentPanel, BorderLayout.CENTER);
+        mainContainer.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.setContentPane(mainContainer);
+        
+        // Update button action
+        updateButton.addActionListener(e -> {
             String newStatus = (String) statusCombo.getSelectedItem();
             
             if (newStatus != null && !newStatus.equals(currentStatus)) {
-                // Show loading cursor
-                setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                // Show confirmation
+                int confirm = JOptionPane.showConfirmDialog(
+                    dialog,
+                    String.format("Bạn có chắc chắn muốn thay đổi trạng thái từ\n'%s' thành '%s'?", 
+                        currentStatus, newStatus),
+                    "Xác nhận cập nhật",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+                );
                 
-                try {
-                    // Update in database
-                    boolean success = lichHenController.capNhatTrangThaiLichHen(appointmentId, newStatus);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    dialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                    updateButton.setEnabled(false);
+                    updateButton.setText("Đang cập nhật...");
                     
-                    if (success) {
-                        // Update table model
-                        tableModel.setValueAt(newStatus, selectedRow, 6);
+                    try {
+                        boolean success = lichHenController.capNhatTrangThaiLichHen(appointmentId, newStatus);
                         
-                        // Update original appointments list
-                        for (LichHen appointment : originalAppointments) {
-                            if (appointment.getIdLichHen() == appointmentId) {
-                                appointment.setTrangThai(newStatus);
-                                break;
+                        if (success) {
+                            // Update table model
+                            tableModel.setValueAt(newStatus, selectedRow, 6);
+                            
+                            // Update original appointments list
+                            for (LichHen appointment : originalAppointments) {
+                                if (appointment.getIdLichHen() == appointmentId) {
+                                    appointment.setTrangThai(newStatus);
+                                    break;
+                                }
                             }
+                            
+                            // Show success message
+                            JOptionPane.showMessageDialog(dialog,
+                                "Trạng thái lịch hẹn đã được cập nhật thành công!",
+                                "Cập nhật thành công",
+                                JOptionPane.INFORMATION_MESSAGE);
+                            
+                            appointmentsTable.repaint();
+                            dialog.dispose();
+                            
+                        } else {
+                            JOptionPane.showMessageDialog(dialog,
+                                "Không thể cập nhật trạng thái lịch hẹn.\nVui lòng thử lại sau.",
+                                "Lỗi cập nhật",
+                                JOptionPane.ERROR_MESSAGE);
                         }
-                        
-                        // Show success message
-                        JOptionPane.showMessageDialog(this, 
-                            String.format("Trạng thái lịch hẹn đã được cập nhật thành công!\n\nBệnh nhân: %s\nTrạng thái cũ: %s\nTrạng thái mới: %s", 
-                                patientName, currentStatus, newStatus),
-                            "Cập nhật thành công",
-                            JOptionPane.INFORMATION_MESSAGE);
-                        
-                        // Refresh table to show changes
-                        appointmentsTable.repaint();
-                        
-                    } else {
-                        JOptionPane.showMessageDialog(this,
-                            "Không thể cập nhật trạng thái lịch hẹn.\nVui lòng kiểm tra kết nối cơ sở dữ liệu và thử lại.",
-                            "Lỗi cập nhật",
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(dialog,
+                            "Đã xảy ra lỗi khi cập nhật trạng thái:\n" + ex.getMessage(),
+                            "Lỗi hệ thống",
                             JOptionPane.ERROR_MESSAGE);
+                        ex.printStackTrace();
+                    } finally {
+                        dialog.setCursor(Cursor.getDefaultCursor());
+                        updateButton.setEnabled(true);
+                        updateButton.setText("Cập Nhật");
                     }
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this,
-                        "Đã xảy ra lỗi khi cập nhật trạng thái:\n" + ex.getMessage(),
-                        "Lỗi hệ thống",
-                        JOptionPane.ERROR_MESSAGE);
-                    ex.printStackTrace();
-                } finally {
-                    // Reset cursor
-                    setCursor(Cursor.getDefaultCursor());
                 }
             } else {
-                JOptionPane.showMessageDialog(this,
-                    "Trạng thái không thay đổi.",
+                JOptionPane.showMessageDialog(dialog,
+                    "Vui lòng chọn trạng thái khác với trạng thái hiện tại.",
                     "Thông báo",
                     JOptionPane.INFORMATION_MESSAGE);
             }
-        }
+        });
+        
+        // Set focus back to normal after showing
+        SwingUtilities.invokeLater(() -> dialog.setFocusableWindowState(true));
+        
+        dialog.setVisible(true);
     }
+    
+    private Color getStatusColor(String status) {
+        switch (status) {
+            case "Đã xác nhận":
+                return new Color(40, 167, 69);
+            case "Chờ xác nhận":
+                return new Color(255, 133, 27);
+            case "Đã hoàn thành":
+                return new Color(111, 66, 193);
+            case "Đã hủy":
+                return new Color(220, 53, 69);
+            default:
+                return new Color(33, 37, 41);
+        }
+    }  
     
     private void styleTable() {
         appointmentsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -342,9 +537,11 @@ public class AppointmentsDialog extends JDialog {
         appointmentsTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         appointmentsTable.setShowGrid(false);
         appointmentsTable.setIntercellSpacing(new Dimension(0, 1));
-        appointmentsTable.setSelectionBackground(secondaryColor);
-        appointmentsTable.setSelectionForeground(buttonTextColor);
+        // Updated selection colors to match medical records table
+        appointmentsTable.setSelectionBackground(tableSelectionBackground);
+        appointmentsTable.setSelectionForeground(tableSelectionForeground);
         appointmentsTable.setFont(tableFont);
+        appointmentsTable.setFocusable(false); // Disable table focus
         
         JTableHeader header = appointmentsTable.getTableHeader();
         header.setFont(tableHeaderFont);
@@ -388,12 +585,18 @@ public class AppointmentsDialog extends JDialog {
                             default:
                                 setForeground(textColor);
                         }
+                    } else {
+                        // When selected, use the same selection foreground color as medical records table
+                        setForeground(tableSelectionForeground);
                     }
                 } else {
                     setHorizontalAlignment(SwingConstants.LEFT);
                     setFont(tableFont);
                     if (!isSelected) {
                         setForeground(textColor);
+                    } else {
+                        // When selected, use the same selection foreground color as medical records table
+                        setForeground(tableSelectionForeground);
                     }
                 }
                 
@@ -420,12 +623,14 @@ public class AppointmentsDialog extends JDialog {
             BorderFactory.createEmptyBorder(15, 25, 15, 25)
         ));
         
-        // Refresh Button
-        JButton refreshButton = createStyledButton("Làm Mới", successColor, buttonTextColor);
+        // Refresh Button - Updated to use rounded button
+        JButton refreshButton = createRoundedButton("Làm Mới", successColor, buttonTextColor, 10, false);
+        refreshButton.setPreferredSize(new Dimension(100, 32));
         refreshButton.addActionListener(e -> refreshTable());
         
-        // Close Button
-        JButton closeButton = createStyledButton("Đóng", new Color(108, 117, 125), buttonTextColor);
+        // Close Button - Updated to use rounded button
+        JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10, false);
+        closeButton.setPreferredSize(new Dimension(100, 32));
         closeButton.addActionListener(e -> dispose());
         
         buttonPanel.add(refreshButton);
@@ -433,43 +638,6 @@ public class AppointmentsDialog extends JDialog {
         
         return buttonPanel;
     }
-    
-    private JButton createStyledButton(String text, Color bgColor, Color fgColor) {
-        JButton button = new JButton(text);
-        button.setBackground(bgColor);
-        button.setForeground(fgColor);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setFont(buttonFont);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setPreferredSize(new Dimension(100, 32));
-        
-        button.addMouseListener(new MouseAdapter() {
-            Color originalColor = bgColor;
-            
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(darkenColor(originalColor, 0.9f));
-            }
-            
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(originalColor);
-            }
-        });
-        
-        return button;
-    }
-    
-    private Color darkenColor(Color color, float factor) {
-        return new Color(
-            Math.max((int)(color.getRed() * factor), 0),
-            Math.max((int)(color.getGreen() * factor), 0),
-            Math.max((int)(color.getBlue() * factor), 0),
-            color.getAlpha()
-        );
-    }
-    
     private void refreshTable() {
         // Show loading cursor
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -508,8 +676,7 @@ public class AppointmentsDialog extends JDialog {
     private void setupEventHandlers() {
         // The popup menu handles double-click events
         // No additional setup needed since popup menu is already configured
-    }
-    
+    }    
     private void viewSelectedAppointmentDetails() {
         int selectedRow = appointmentsTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -540,11 +707,11 @@ public class AppointmentsDialog extends JDialog {
         }
     }
 }
-
 // Separate dialog for showing appointment and medical record details with updated colors
 class AppointmentDetailsDialog extends JDialog {
     private HoSoBenhAnController hoSoController;
     private LichHen appointment;    
+    private Color primaryColor = new Color(79, 129, 189); 
     private Color backgroundColor = new Color(248, 249, 250);
     private Color textColor = new Color(33, 37, 41);
     private Color panelColor = new Color(255, 255, 255);
@@ -561,7 +728,7 @@ class AppointmentDetailsDialog extends JDialog {
         super(parent, "Chi Tiết Lịch Hẹn - " + appointment.getHoTenBenhNhan(), true);
         this.appointment = appointment;
         this.hoSoController = hoSoController;
-        setSize(580, 480);
+        setSize(580, 520);
         setLocationRelativeTo(parent);        
         initializeDetailsComponents();        
         setResizable(true);
@@ -635,14 +802,9 @@ class AppointmentDetailsDialog extends JDialog {
             BorderFactory.createEmptyBorder(12, 20, 12, 20)
         ));
         
-        JButton closeButton = new JButton("Đóng");
-        closeButton.setBackground(new Color(108, 117, 125));
-        closeButton.setForeground(buttonTextColor);
-        closeButton.setFocusPainted(false);
-        closeButton.setBorderPainted(false);
-        closeButton.setFont(buttonFont);
-        closeButton.setPreferredSize(new Dimension(80, 32));
-        closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Sử dụng rounded button
+        JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 8, false);
+        closeButton.setPreferredSize(new Dimension(80, 35));
         closeButton.addActionListener(e -> dispose());
         
         buttonPanel.add(closeButton);
@@ -795,6 +957,35 @@ class AppointmentDetailsDialog extends JDialog {
         JTable medicalTable = new JTable(medicalTableModel);
         styleMedicalTable(medicalTable);
         
+        // Thêm mouse listener cho việc nhấn đúp và chuột phải
+        medicalTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    // Nhấn đúp để xem chi tiết
+                    int selectedRow = medicalTable.getSelectedRow();
+                    if (selectedRow != -1) {
+                        int recordId = (Integer) medicalTableModel.getValueAt(selectedRow, 0);
+                        showMedicalRecordDetails(recordId);
+                    }
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showMedicalRecordPopup(e, medicalTable, medicalTableModel);
+                }
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showMedicalRecordPopup(e, medicalTable, medicalTableModel);
+                }
+            }
+        });
+        
         JScrollPane scrollPane = new JScrollPane(medicalTable);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(218, 220, 224), 1));
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -802,59 +993,92 @@ class AppointmentDetailsDialog extends JDialog {
         
         tablePanel.add(scrollPane, BorderLayout.CENTER);
         
-        // Thông tin và nút
-        JPanel bottomPanel = createBottomPanel(patientRecords.size(), patientId, medicalTable, medicalTableModel);
+        // Thông tin hướng dẫn
+        JPanel bottomPanel = createMedicalRecordsBottomPanel(patientRecords.size(), patientId);
         tablePanel.add(bottomPanel, BorderLayout.SOUTH);
         
         return tablePanel;
-    }
-    
-    private JPanel createBottomPanel(int recordCount, int patientId, JTable medicalTable, DefaultTableModel medicalTableModel) {
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBackground(Color.WHITE);
-        
-        // Thông tin bệnh nhân
-        JLabel infoLabel = new JLabel(String.format(
-            "Hiển thị %d hồ sơ bệnh án của bệnh nhân: %s (ID: %d)", 
-            recordCount, appointment.getHoTenBenhNhan(), patientId));
-        infoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        infoLabel.setForeground(new Color(40, 167, 69));
-        infoLabel.setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
-        
-        // Nút xem chi tiết
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 20));
-        buttonPanel.setBackground(Color.WHITE);
-        
-        JButton viewRecordButton = new JButton("Xem Chi Tiết Hồ Sơ");
-        viewRecordButton.setBackground(new Color(0, 123, 255));
-        viewRecordButton.setForeground(Color.WHITE);
-        viewRecordButton.setFocusPainted(false);
-        viewRecordButton.setBorderPainted(false);
-        viewRecordButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        viewRecordButton.setPreferredSize(new Dimension(150, 38));
-        viewRecordButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        viewRecordButton.addActionListener(e -> {
-            int selectedRow = medicalTable.getSelectedRow();
-            if (selectedRow != -1) {
-                int recordId = (Integer) medicalTableModel.getValueAt(selectedRow, 0);
+    }    
+ // Thay thế phương thức showMedicalRecordPopup hiện tại
+    private void showMedicalRecordPopup(MouseEvent e, JTable medicalTable, DefaultTableModel medicalTableModel) {
+        int row = medicalTable.rowAtPoint(e.getPoint());
+        if (row >= 0 && row < medicalTable.getRowCount()) {
+            medicalTable.setRowSelectionInterval(row, row);
+            
+            // Lấy thông tin hồ sơ được chọn
+            int recordId = (Integer) medicalTableModel.getValueAt(row, 0);
+            
+            // Tạo popup menu với thiết kế mới
+            JPopupMenu medicalPopup = new JPopupMenu();
+            medicalPopup.setBorder(new LineBorder(borderColor, 1));
+            medicalPopup.setBackground(panelColor);
+            
+            // Menu item: Xem Chi Tiết
+            JMenuItem viewDetailsItem = createMenuItem("Xem Chi Tiết Hồ Sơ");
+            viewDetailsItem.addActionListener(actionEvent -> {
                 showMedicalRecordDetails(recordId);
-            } else {
-                JOptionPane.showMessageDialog(this, 
-                    "Vui lòng chọn một hồ sơ để xem chi tiết!",
-                    "Thông báo",
-                    JOptionPane.WARNING_MESSAGE);
+            });
+            medicalPopup.add(viewDetailsItem);
+            
+            // Hiển thị popup menu
+            medicalPopup.show(e.getComponent(), e.getX(), e.getY());
+        }
+    }
+
+    // Phương thức tạo menu item với style thống nhất
+    private JMenuItem createMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(regularFont);
+        menuItem.setForeground(textColor);
+        menuItem.setBackground(panelColor);
+        menuItem.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        menuItem.setOpaque(true);
+        menuItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Thêm hover effect
+        menuItem.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                menuItem.setBackground(tableStripeColor);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                menuItem.setBackground(panelColor);
             }
         });
         
-        buttonPanel.add(viewRecordButton);
+        return menuItem;
+    }
+    private JPanel createMedicalRecordsBottomPanel(int recordCount, int patientId) {
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.setBackground(Color.WHITE);
         
-        bottomPanel.add(infoLabel, BorderLayout.NORTH);
-        bottomPanel.add(buttonPanel, BorderLayout.SOUTH);
+        // Thông tin bệnh nhân và hướng dẫn
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(15, 0, 5, 0));
+        
+        JLabel recordCountLabel = new JLabel(String.format(
+            "Hiển thị %d hồ sơ bệnh án của bệnh nhân: %s (ID: %d)", 
+            recordCount, appointment.getHoTenBenhNhan(), patientId));
+        recordCountLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        recordCountLabel.setForeground(new Color(40, 167, 69));
+        
+        JLabel instructionLabel = new JLabel("Nhấn đúp vào dòng để xem chi tiết hoặc nhấn chuột phải để hiển thị menu");
+        instructionLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        instructionLabel.setForeground(new Color(108, 117, 125));
+        
+        infoPanel.add(recordCountLabel);
+        infoPanel.add(Box.createVerticalStrut(5));
+        infoPanel.add(instructionLabel);
+        
+        bottomPanel.add(infoPanel, BorderLayout.CENTER);
         
         return bottomPanel;
     }
-    
+        
     private void styleMedicalTable(JTable table) {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setRowHeight(40);
@@ -954,14 +1178,9 @@ class AppointmentDetailsDialog extends JDialog {
                 BorderFactory.createEmptyBorder(20, 30, 20, 30)
             ));
             
-            JButton closeDetailButton = new JButton("Đóng");
-            closeDetailButton.setBackground(new Color(108, 117, 125));
-            closeDetailButton.setForeground(Color.WHITE);
-            closeDetailButton.setFocusPainted(false);
-            closeDetailButton.setBorderPainted(false);
-            closeDetailButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            // Sử dụng rounded button
+            JButton closeDetailButton = createRoundedButton("Đóng", primaryColor, Color.WHITE, 8, false);
             closeDetailButton.setPreferredSize(new Dimension(100, 38));
-            closeDetailButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             closeDetailButton.addActionListener(e -> detailsDialog.dispose());
             
             buttonPanel.add(closeDetailButton);
@@ -1016,5 +1235,61 @@ class AppointmentDetailsDialog extends JDialog {
             valueComponent.setForeground(new Color(33, 37, 41));
             panel.add(valueComponent, gbc);
         }
+    }
+    
+    // Phương thức tạo rounded button
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+            
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Sử dụng padding khác nhau tùy theo button
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12)); // Padding nhỏ hơn
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường
+        }
+        
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+        
+        return button;
+    }
+    
+    // Phương thức tạo màu tối hơn cho hover effect
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
     }
 }
