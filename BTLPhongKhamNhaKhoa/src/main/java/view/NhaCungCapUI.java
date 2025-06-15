@@ -7,7 +7,7 @@ import util.DataChangeListener;
 import util.ExportManager;
 import util.RoundedPanel;
 import util.ExportManager.MessageCallback;
-import view.DoanhThuUI.NotificationType;
+import view.DoanhThuUI.NotificationType; // Giả định đây là lớp NotificationType đúng
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -16,13 +16,12 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.text.NumberFormat;
+import java.time.format.DateTimeFormatter; // Import cho định dạng ngày tháng
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,11 +30,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
     private NhaCungCapController nhaCungCapController;
     private DefaultTableModel nhaCungCapTableModel;
     private JTable nhaCungCapTable;
-
-    private JTextField txtMaNCC;
-    private JTextField txtTenNCC;
-    private JTextField txtDiaChi;
-    private JTextField txtSoDienThoai;
 
     private JButton btnThem;
     private JButton btnXuatFile;
@@ -51,22 +45,22 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
     private JTextField txtTimKiem;
     private JLabel lblTimKiem;
 
-    // Modern styling properties
-    private Color primaryColor = new Color(79, 129, 189); // Professional blue
-    private Color secondaryColor = new Color(141, 180, 226); // Lighter blue
-    private Color accentColor = new Color(192, 80, 77); // Refined red for delete
-    private Color successColor = new Color(86, 156, 104); // Elegant green for add
-    private Color warningColor = new Color(237, 187, 85); // Softer yellow for edit
-    private Color backgroundColor = new Color(248, 249, 250); // Extremely light gray background
-    private Color textColor = new Color(33, 37, 41); // Near-black text
-    private Color panelColor = new Color(255, 255, 255); // White panels
+    // Modern styling properties (giữ nguyên)
+    private Color primaryColor = new Color(79, 129, 189);
+    private Color secondaryColor = new Color(141, 180, 226);
+    private Color accentColor = new Color(192, 80, 77);
+    private Color successColor = new Color(86, 156, 104);
+    private Color warningColor = new Color(237, 187, 85);
+    private Color backgroundColor = new Color(248, 249, 250);
+    private Color textColor = new Color(33, 37, 41);
+    private Color panelColor = new Color(255, 255, 255);
     private Color buttonTextColor = Color.WHITE;
-    private Color tableHeaderColor = new Color(79, 129, 189); // Match primary color
-    private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
-    private Color borderColor = new Color(222, 226, 230); // Light gray borders
-    private Color totalRowColor = new Color(232, 240, 254); // Light blue for total row
+    private Color tableHeaderColor = new Color(79, 129, 189);
+    private Color tableStripeColor = new Color(245, 247, 250);
+    private Color borderColor = new Color(222, 226, 230);
+    private Color totalRowColor = new Color(232, 240, 254);
 
-    // Font settings
+    // Font settings (giữ nguyên)
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
@@ -75,17 +69,15 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
     private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
     private Font totalRowFont = new Font("Segoe UI", Font.BOLD, 14);
 
-    // Business Logic
     private ExportManager exportManager;
 
     public NhaCungCapUI() {
         initializeUI();
         setupEventListeners();
         
-        // Initialize ExportManager
         exportManager = new ExportManager(this, nhaCungCapTableModel, this);
         
-        lamMoiDanhSach();
+        lamMoiDanhSach(); // Tải dữ liệu từ CSDL khi khởi tạo
     }
     
     private void initializeUI() {
@@ -93,16 +85,10 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         setBorder(new EmptyBorder(20, 10, 20, 10));
         setBackground(backgroundColor);
 
-        // Add header panel with title and search
         add(createHeaderPanel(), BorderLayout.NORTH);
-        
-        // Add main table panel
         add(createTablePanel(), BorderLayout.CENTER);
-        
-        // Add button panel at bottom
         add(createButtonPanel(), BorderLayout.SOUTH);
         
-        // Setup popup menu for right-click actions
         setupPopupMenu();
     }
     
@@ -111,7 +97,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         headerPanel.setBackground(backgroundColor);
         headerPanel.setBorder(new EmptyBorder(0, 10, 15, 10));
 
-        // Title Panel with text
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
         
@@ -122,7 +107,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         
         headerPanel.add(titlePanel, BorderLayout.WEST);
 
-        // Search Panel with rounded styling
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
 
@@ -134,12 +118,10 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         txtTimKiem.setFont(regularFont);
         txtTimKiem.setPreferredSize(new Dimension(220, 38));
         
-        // Create rounded border with padding
         txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
                 new CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
                 
-        // Add key listener for Enter key
         txtTimKiem.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -164,33 +146,29 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
         
-        // Create a panel with shadow effect
         RoundedPanel tablePanel = new RoundedPanel(15, true);
         tablePanel.setLayout(new BorderLayout());
         tablePanel.setBackground(panelColor);
         tablePanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         
-        // Create table model
+        // Cập nhật tên cột cho bảng để khớp với model NhaCungCap mới (6 cột)
         nhaCungCapTableModel = new DefaultTableModel(
-            new Object[]{"ID", "Tên NCC", "Ngày đăng ký", "Loại hàng", "Số điện thoại", "Mã số thuế", "Địa chỉ"}, 0) {
+            new Object[]{"ID", "Tên NCC", "Địa chỉ", "Số điện thoại", "Mã số thuế", "Ngày đăng ký"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Make table non-editable
+                return false;
             }
         };
         
-        // Create table with styling
         nhaCungCapTable = new JTable(nhaCungCapTableModel) {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
                 Component comp = super.prepareRenderer(renderer, row, column);
                 
-                // Center the content
                 if (comp instanceof JLabel) {
                     ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
                 }
                 
-                // Add alternating row colors
                 if (!comp.getBackground().equals(getSelectionBackground())) {
                     comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
                 }
@@ -198,16 +176,13 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
             }
         };
         
-        // Set default cell renderer to center all content
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         
-        // Apply center renderer to all columns
         for (int i = 0; i < nhaCungCapTable.getColumnCount(); i++) {
             nhaCungCapTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
         }
         
-        // Table styling
         nhaCungCapTable.setFont(tableFont);
         nhaCungCapTable.setRowHeight(40);
         nhaCungCapTable.setShowGrid(false);
@@ -218,7 +193,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         nhaCungCapTable.setAutoCreateRowSorter(true);
         nhaCungCapTable.setBorder(null);
 
-        // Style table header
         JTableHeader header = nhaCungCapTable.getTableHeader();
         header.setFont(tableHeaderFont);
         header.setBackground(tableHeaderColor);
@@ -227,20 +201,17 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(60, 107, 161)));
         header.setReorderingAllowed(false);
         
-        // Center the header text
         ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
         
-        // Set column widths
+        // Điều chỉnh lại độ rộng cột phù hợp với 6 cột mới
         TableColumnModel columnModel = nhaCungCapTable.getColumnModel();
-        columnModel.getColumn(0).setPreferredWidth(50);
-        columnModel.getColumn(1).setPreferredWidth(200);
-        columnModel.getColumn(2).setPreferredWidth(120);
-        columnModel.getColumn(3).setPreferredWidth(120);
-        columnModel.getColumn(4).setPreferredWidth(120);
-        columnModel.getColumn(5).setPreferredWidth(100);
-        columnModel.getColumn(6).setPreferredWidth(250);
+        columnModel.getColumn(0).setPreferredWidth(50);  // ID
+        columnModel.getColumn(1).setPreferredWidth(150); // Tên NCC
+        columnModel.getColumn(2).setPreferredWidth(200); // Địa chỉ
+        columnModel.getColumn(3).setPreferredWidth(100); // Số điện thoại
+        columnModel.getColumn(4).setPreferredWidth(100); // Mã số thuế
+        columnModel.getColumn(5).setPreferredWidth(100); // Ngày đăng ký
         
-        // Add table to scroll pane
         JScrollPane tableScrollPane = new JScrollPane(nhaCungCapTable);
         tableScrollPane.setBorder(BorderFactory.createEmptyBorder());
         tableScrollPane.getViewport().setBackground(Color.WHITE);
@@ -286,7 +257,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         popupMenu.addSeparator();
         popupMenu.add(menuItemXoa);
 
-        // Add mouse listener to table for right-click popup menu
         nhaCungCapTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent evt) {
@@ -301,7 +271,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
                     popupMenu.show(evt.getComponent(), evt.getX(), evt.getY());
                 }
                 
-                // Double click to view details
                 if (evt.getClickCount() == 2 && !evt.isPopupTrigger()) {
                     xemChiTietNhaCungCap();
                 }
@@ -328,60 +297,43 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         menuItem.setBackground(panelColor);
         menuItem.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         return menuItem;
-    }    
+    }       
+    
     private void setupEventListeners() {
-        // Table selection listener
         nhaCungCapTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int selectedRow = nhaCungCapTable.getSelectedRow();
-                if (selectedRow != -1) {
-                    // Lưu dữ liệu đã chọn (để sửa hoặc xóa)
-                    selectedRow = nhaCungCapTable.convertRowIndexToModel(selectedRow);
-                    txtMaNCC = new JTextField(String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 0)));
-                    txtTenNCC = new JTextField(String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 1)));
-                    txtDiaChi = new JTextField(String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 6)));
-                    txtSoDienThoai = new JTextField(String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 4)));
-                }
-            }
+            // Logic ở đây không cần thiết phải cập nhật JTextField
         });
+
         btnTimKiem.addActionListener(e -> {
-            // Check if search field is empty
             if (txtTimKiem.getText().trim().isEmpty()) {
-                // If empty, refresh the data
-            	lamMoiDanhSach();
+                lamMoiDanhSach();
                 showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
             } else {
-                // If not empty, filter the data
-            	filterDanhSach();
+                filterDanhSach();
             }
         });
         
-        // Setup enter key on search field
-        btnTimKiem.addKeyListener(new KeyAdapter() {
+        txtTimKiem.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (txtTimKiem.getText().trim().isEmpty()) {
-                        // If empty, refresh the data
-                    	lamMoiDanhSach();
+                        lamMoiDanhSach();
                         showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
                     } else {
-                        // If not empty, filter the data
-                    	filterDanhSach();
+                        filterDanhSach();
                     }
                 }
             }
         });
-        // Button listeners
+
         btnThem.addActionListener(e -> {
-            NhaCungCapDialog dialog = new NhaCungCapDialog(getParentFrame(), getNhaCungCapController(), null, NhaCungCapUI.this);
+            NhaCungCapDialog dialog = new NhaCungCapDialog(getParentFrame(), getNhaCungCapController(), null, this);
             dialog.setVisible(true);
         });
 
         btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
-        btnTimKiem.addActionListener(e -> filterDanhSach());
         
-        // Popup menu action listeners
         menuItemXemChiTiet.addActionListener(e -> xemChiTietNhaCungCap());
         menuItemSua.addActionListener(e -> suaNhaCungCapTuPopup());
         menuItemXoa.addActionListener(e -> xoaNhaCungCapTuPopup());
@@ -400,6 +352,7 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
             this.title = title;
         }
     }
+    
     public void showNotification(String message, NotificationType type) {
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
@@ -431,7 +384,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         toastDialog.add(toastPanel);
         toastDialog.pack();
 
-        // Position at bottom right
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         toastDialog.setLocation(
             screenSize.width - toastDialog.getWidth() - 20,
@@ -440,7 +392,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
 
         toastDialog.setVisible(true);
 
-        // Auto-hide after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
@@ -451,117 +402,86 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         }).start();
     }
     
-    /**
-     * Hiển thị hộp thoại thông báo lỗi
-     * @param message Nội dung lỗi
-     */
     public void showErrorMessage(String message) {
-        JOptionPane.showMessageDialog(
-            this, 
-            message, 
-            "Lỗi", 
-            JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, "Lỗi", JOptionPane.ERROR_MESSAGE);
     }
     
-    /**
-     * Hiển thị hộp thoại thông báo lỗi với tiêu đề tùy chỉnh
-     * @param title Tiêu đề
-     * @param message Nội dung lỗi
-     */
     public void showErrorMessage(String title, String message) {
-        JOptionPane.showMessageDialog(
-            this, 
-            message, 
-            title, 
-            JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
     }
     
     public void showInfoMessage(String message) {
-        JOptionPane.showMessageDialog(
-            this, 
-            message, 
-            "Thông báo", 
-            JOptionPane.INFORMATION_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
     
     @Override
     public void showMessage(String message, String title, int messageType) {
-        JOptionPane.showMessageDialog(
-            this, 
-            message, 
-            title, 
-            messageType
-        );
+        JOptionPane.showMessageDialog(this, message, title, messageType);
     }
+
     @Override
     public void showSuccessToast(String message) {
         showNotification(message, NotificationType.SUCCESS);
     }
+
     private void xemChiTietNhaCungCap() {
         int selectedRow = nhaCungCapTable.getSelectedRow();
         if (selectedRow != -1) {
             selectedRow = nhaCungCapTable.convertRowIndexToModel(selectedRow);
             String maNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 0));
-            String tenNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 1));
-            String ngayDangKy = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 2));
-            String loaiHang = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 3));
-            String soDienThoai = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 4));
-            String maSoThue = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 5));
-            String diaChi = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 6));
             
-            // Create a styled panel for details
-            JPanel detailsPanel = new JPanel();
-            detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
-            detailsPanel.setBackground(panelColor);
-            detailsPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-            
-            // Add styled fields to panel
-            addDetailField(detailsPanel, "Mã NCC:", maNCC);
-            addDetailField(detailsPanel, "Tên NCC:", tenNCC);
-            addDetailField(detailsPanel, "Ngày đăng ký:", ngayDangKy);
-            addDetailField(detailsPanel, "Loại hàng:", loaiHang);
-            addDetailField(detailsPanel, "Số điện thoại:", soDienThoai);
-            addDetailField(detailsPanel, "Mã số thuế:", maSoThue);
-            addDetailField(detailsPanel, "Địa chỉ:", diaChi);
-            
-            // Create and show dialog with custom styling
-            JDialog detailDialog = new JDialog(getParentFrame(), "Chi tiết nhà cung cấp", true);
-            detailDialog.setLayout(new BorderLayout());
-            
-            // Add a header
-            JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            headerPanel.setBackground(primaryColor);
-            headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-            
-            JLabel headerLabel = new JLabel("Chi tiết nhà cung cấp");
-            headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-            headerLabel.setForeground(Color.WHITE);
-            headerPanel.add(headerLabel);
-            
-            // Add a close button panel
-            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-            buttonPanel.setBackground(panelColor);
-            buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 15, 15));
-            
-            JButton closeButton = createRoundedButton("Đóng", primaryColor, Color.WHITE, 8);
-            closeButton.addActionListener(e -> detailDialog.dispose());
-            buttonPanel.add(closeButton);
-            
-            // Add components to dialog
-            detailDialog.add(headerPanel, BorderLayout.NORTH);
-            detailDialog.add(detailsPanel, BorderLayout.CENTER);
-            detailDialog.add(buttonPanel, BorderLayout.SOUTH);
-            
-            // Configure and show dialog
-            detailDialog.setSize(450, 400);
-            detailDialog.setLocationRelativeTo(this);
-            detailDialog.setResizable(false);
-            detailDialog.setVisible(true);
+            NhaCungCap ncc = getNhaCungCapController().getNhaCungCapById(maNCC);
+
+            if (ncc != null) {
+                JPanel detailsPanel = new JPanel();
+                detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
+                detailsPanel.setBackground(panelColor);
+                detailsPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+                
+                // Hiển thị TẤT CẢ các trường chi tiết
+                addDetailField(detailsPanel, "Mã NCC:", ncc.getMaNCC());
+                addDetailField(detailsPanel, "Tên NCC:", ncc.getTenNCC());
+                addDetailField(detailsPanel, "Địa chỉ:", ncc.getDiaChi());
+                addDetailField(detailsPanel, "Số điện thoại:", ncc.getSoDienThoai());
+                addDetailField(detailsPanel, "Mã số thuế:", ncc.getMaSoThue() != null ? ncc.getMaSoThue() : "N/A"); // Hiển thị mã số thuế
+                addDetailField(detailsPanel, "Ngày đăng ký:", ncc.getNgayDangKy() != null ? ncc.getNgayDangKy().format(DateTimeFormatter.ISO_LOCAL_DATE) : "N/A"); // Hiển thị ngày đăng ký
+                
+                JDialog detailDialog = new JDialog(getParentFrame(), "Chi tiết nhà cung cấp", true);
+                detailDialog.setLayout(new BorderLayout());
+                
+                JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+                headerPanel.setBackground(primaryColor);
+                headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+                
+                JLabel headerLabel = new JLabel("Chi tiết nhà cung cấp");
+                headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+                headerLabel.setForeground(Color.WHITE);
+                headerPanel.add(headerLabel);
+                
+                JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+                buttonPanel.setBackground(panelColor);
+                buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 15, 15));
+                
+                JButton closeButton = createRoundedButton("Đóng", primaryColor, Color.WHITE, 8);
+                closeButton.addActionListener(e -> detailDialog.dispose());
+                buttonPanel.add(closeButton);
+                
+                detailDialog.add(headerPanel, BorderLayout.NORTH);
+                detailDialog.add(detailsPanel, BorderLayout.CENTER);
+                detailDialog.add(buttonPanel, BorderLayout.SOUTH);
+                
+                detailDialog.setSize(450, 380); // Điều chỉnh kích thước phù hợp với số lượng trường
+                detailDialog.setLocationRelativeTo(this);
+                detailDialog.setResizable(false);
+                detailDialog.setVisible(true);
+            } else {
+                showErrorMessage("Không tìm thấy thông tin nhà cung cấp này trong CSDL.");
+            }
+        } else {
+            showErrorMessage("Vui lòng chọn một nhà cung cấp để xem chi tiết.");
         }
     }
+    
     private void addDetailField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(15, 0));
         fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -581,7 +501,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         fieldPanel.add(labelComponent, BorderLayout.WEST);
         fieldPanel.add(valueComponent, BorderLayout.CENTER);
         
-        // Add separator
         JSeparator separator = new JSeparator();
         separator.setForeground(new Color(230, 230, 230));
         separator.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -590,6 +509,7 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         panel.add(fieldPanel);
         panel.add(separator);
     }
+    
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
         JButton button = new JButton(text) {
             @Override
@@ -637,7 +557,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
     }
 
-    // Getter cho parentFrame
     private JFrame getParentFrame() {
         if (parentFrame == null) {
             parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
@@ -645,7 +564,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         return parentFrame;
     }
 
-    // Getter cho nhaCungCapController
     private NhaCungCapController getNhaCungCapController() {
         if (nhaCungCapController == null) {
             nhaCungCapController = new NhaCungCapController();
@@ -658,22 +576,24 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         nhaCungCapTableModel.setRowCount(0);
         List<NhaCungCap> danhSachNCC = getNhaCungCapController().layDanhSachNhaCungCap();
 
+        // Cập nhật filter để tìm kiếm trên các trường mới
         List<NhaCungCap> danhSachDaLoc = danhSachNCC.stream()
                 .filter(ncc -> String.valueOf(ncc.getMaNCC()).toLowerCase().contains(searchText) ||
                                String.valueOf(ncc.getTenNCC()).toLowerCase().contains(searchText) ||
                                String.valueOf(ncc.getDiaChi()).toLowerCase().contains(searchText) ||
-                               String.valueOf(ncc.getSoDienThoai()).toLowerCase().contains(searchText))
+                               String.valueOf(ncc.getSoDienThoai()).toLowerCase().contains(searchText) ||
+                               (ncc.getMaSoThue() != null && ncc.getMaSoThue().toLowerCase().contains(searchText)) || // Tìm kiếm theo Mã số thuế
+                               (ncc.getNgayDangKy() != null && ncc.getNgayDangKy().format(DateTimeFormatter.ISO_LOCAL_DATE).toLowerCase().contains(searchText))) // Tìm kiếm theo Ngày đăng ký
                 .collect(Collectors.toList());
 
         for (NhaCungCap ncc : danhSachDaLoc) {
             Object[] rowData = {
                 ncc.getMaNCC(), 
                 ncc.getTenNCC(), 
-                "2023-04-10", // Placeholder for ngày đăng ký
-                "Thiết bị",   // Placeholder for loại hàng
-                ncc.getSoDienThoai(), 
-                "MST" + ncc.getMaNCC(), // Placeholder for mã số thuế
-                ncc.getDiaChi()
+                ncc.getDiaChi(),
+                ncc.getSoDienThoai(),
+                ncc.getMaSoThue(), // Thêm Mã số thuế vào hàng
+                ncc.getNgayDangKy() != null ? ncc.getNgayDangKy().format(DateTimeFormatter.ISO_LOCAL_DATE) : "N/A" // Thêm Ngày đăng ký vào hàng
             };
             nhaCungCapTableModel.addRow(rowData);
         }
@@ -685,7 +605,6 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         updateTableAppearance();
     }
 
-    // Add method to update the table appearance
     private void updateTableAppearance() {
         SwingUtilities.invokeLater(() -> {
             nhaCungCapTable.repaint();
@@ -695,14 +614,17 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
     private void suaNhaCungCapTuPopup() {
         int selectedRow = nhaCungCapTable.getSelectedRow();
         if (selectedRow != -1) {
+            selectedRow = nhaCungCapTable.convertRowIndexToModel(selectedRow);
             String maNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 0));
-            String tenNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 1));
-            String soDienThoai = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 4));
-            String diaChi = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 6));
+            
+            NhaCungCap nccToEdit = getNhaCungCapController().getNhaCungCapById(maNCC);
 
-            NhaCungCap nccToEdit = new NhaCungCap(maNCC, tenNCC, diaChi, soDienThoai);
-            NhaCungCapDialog dialog = new NhaCungCapDialog(getParentFrame(), getNhaCungCapController(), nccToEdit, NhaCungCapUI.this);
-            dialog.setVisible(true);
+            if (nccToEdit != null) {
+                NhaCungCapDialog dialog = new NhaCungCapDialog(getParentFrame(), getNhaCungCapController(), nccToEdit, this);
+                dialog.setVisible(true);
+            } else {
+                showErrorMessage("Không thể tải thông tin nhà cung cấp để chỉnh sửa. Vui lòng thử lại.");
+            }
         } else {
             showErrorMessage("Vui lòng chọn một nhà cung cấp để sửa.");
         }
@@ -716,10 +638,11 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         }
 
         String maNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 0));
+        String tenNCC = String.valueOf(nhaCungCapTableModel.getValueAt(selectedRow, 1));
 
         int option = JOptionPane.showConfirmDialog(
             this, 
-            "Bạn có chắc chắn muốn xóa nhà cung cấp này?", 
+            "Bạn có chắc chắn muốn xóa nhà cung cấp '" + tenNCC + "' (Mã: " + maNCC + ")?", 
             "Xác nhận xóa", 
             JOptionPane.YES_NO_OPTION,
             JOptionPane.QUESTION_MESSAGE
@@ -727,40 +650,30 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         
         if (option == JOptionPane.YES_OPTION) {
             if (getNhaCungCapController().xoaNhaCungCap(maNCC)) {
-                showInfoMessage("Xóa nhà cung cấp thành công.");
+                showInfoMessage("Thao tác xóa/đánh dấu ngừng cung cấp thành công.");
                 lamMoiDanhSach();
             } else {
-                showErrorMessage("Xóa nhà cung cấp thất bại.");
+                showErrorMessage("Không thể xóa nhà cung cấp. Có thể nhà cung cấp này có dữ liệu liên quan hoặc có lỗi xảy ra.");
             }
         }
     }
+
     public void lamMoiDanhSach() {
         nhaCungCapTableModel.setRowCount(0);
         List<NhaCungCap> danhSachNCC = getNhaCungCapController().layDanhSachNhaCungCap();
-        // Thêm dữ liệu mẫu nếu danh sách trống
+        
+        // Chỉ hiển thị dữ liệu từ CSDL, không thêm dữ liệu mẫu bằng code
         if (danhSachNCC.isEmpty()) {
-            // Thêm dữ liệu mẫu
-            Object[][] sampleData = {
-                {"1", "Công ty TNHH ABC", "2023-01-15", "Thiết bị y tế", "0978123456", "123456789012", "Đà Nẵng"},
-                {"2", "Công ty CP XYZ", "2022-12-30", "Dược phẩm", "0967543210", "345678901234", "Hải Phòng"},
-                {"3", "Công ty TNHH LMN", "2023-04-18", "Vật tư y tế", "0987654321", "456789012345", "Cần Thơ"},
-                {"4", "Công ty CP EFG", "2022-11-25", "Dược phẩm", "0934567890", "567890123456", "Bình Dương"},
-                {"5", "Công ty TNHH RST", "2023-06-10", "Thiết bị y tế", "0923456789", "678901234567", "Huế"}
-            };
-            
-            for (Object[] row : sampleData) {
-                nhaCungCapTableModel.addRow(row);
-            }
+            showNotification("Chưa có nhà cung cấp nào trong hệ thống. Vui lòng thêm mới.", NotificationType.WARNING);
         } else {
             for (NhaCungCap ncc : danhSachNCC) {
                 Object[] rowData = {
                     ncc.getMaNCC(), 
                     ncc.getTenNCC(), 
-                    "2023-04-10", // Placeholder for ngày đăng ký
-                    "Thiết bị",   // Placeholder for loại hàng
-                    ncc.getSoDienThoai(), 
-                    "MST" + ncc.getMaNCC(), 
-                    ncc.getDiaChi()
+                    ncc.getDiaChi(),
+                    ncc.getSoDienThoai(),
+                    ncc.getMaSoThue(), // Thêm Mã số thuế vào hàng
+                    ncc.getNgayDangKy() != null ? ncc.getNgayDangKy().format(DateTimeFormatter.ISO_LOCAL_DATE) : "N/A" // Thêm Ngày đăng ký vào hàng
                 };
                 nhaCungCapTableModel.addRow(rowData);
             }
@@ -774,9 +687,8 @@ public class NhaCungCapUI extends JPanel implements MessageCallback, DataChangeL
         }
     }
 
-	@Override
-	public void onDataChanged() {
-		lamMoiDanhSach();
-		
-	}
+    @Override
+    public void onDataChanged() {
+        lamMoiDanhSach();
+    }
 }

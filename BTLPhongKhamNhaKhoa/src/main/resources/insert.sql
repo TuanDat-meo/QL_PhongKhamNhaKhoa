@@ -112,17 +112,17 @@ INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangTha
 (19, 6, '2025-06-25', 2, '13:30:00', N'Chờ xác nhận', N'Khám định kỳ nha khoa pháp y'),
 (20, 9, '2025-06-28', 3, '08:30:00', N'Chờ xác nhận', N'Tư vấn phẫu thuật hàm mặt');
 -- Thêm dữ liệu mẫu vào bảng NhaCungCap
-INSERT INTO NhaCungCap (tenNCC, diaChi, soDienThoai) VALUES
-(N'Công ty Dược phẩm ABC', N'10 Nguyễn Huệ, Quận 1, TP.HCM', N'02812345678'),
-(N'Thiết bị Y tế XYZ', N'25 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội', N'02498765432'),
-(N'Vật tư Tiêu hao Minh Anh', N'5 Lê Duẩn, Quận Hải Châu, Đà Nẵng', N'02365432109'),
-(N'Dụng cụ Y khoa Bình An', N'30 Hoàng Diệu, Quận Ngô Quyền, Hải Phòng', N'02251122334'),
-(N'Hóa chất Xét nghiệm Sài Gòn', N'78 Võ Văn Tần, Quận 3, TP.HCM', N'02855667788'),
-(N'Công ty TNHH Trang Thiết Bị Y Tế Đức Minh', N'Khu Công Nghiệp Biên Hòa, Đồng Nai', N'02519988776'),
-(N'Dược phẩm Toàn Cầu', N'Lô B7 Khu Đô Thị Mới, Hà Đông, Hà Nội', N'02433445566'),
-(N'Vật tư Y tế Thanh Xuân', N'15 Nguyễn Trãi, Quận Thanh Xuân, Hà Nội', N'0909112233'),
-(N'Thiết bị Nha Khoa Phương Nam', N'42 Đường 3 Tháng 2, Quận 10, TP.HCM', N'0933445566'),
-(N'Bông Băng Việt', N'Khu Công Nghiệp Sóng Thần, TP Dĩ An, Bình Dương', N'02748899001');
+INSERT INTO NhaCungCap (tenNCC, diaChi, soDienThoai, MaSoThue, NgayDangKy) VALUES
+(N'Công ty Dược phẩm ABC', N'10 Nguyễn Huệ, Quận 1, TP.HCM', N'02812345678', N'123456789012', '2023-01-15'),
+(N'Thiết bị Y tế XYZ', N'25 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội', N'02498765432', N'345678901234', '2022-12-30'),
+(N'Vật tư Tiêu hao Minh Anh', N'5 Lê Duẩn, Quận Hải Châu, Đà Nẵng', N'02365432109', N'456789012345', '2023-04-18'),
+(N'Dụng cụ Y khoa Bình An', N'30 Hoàng Diệu, Quận Ngô Quyền, Hải Phòng', N'02251122334', N'567890123456', '2022-11-25'),
+(N'Hóa chất Xét nghiệm Sài Gòn', N'78 Võ Văn Tần, Quận 3, TP.HCM', N'02855667788', N'678901234567', '2023-06-10'),
+(N'Công ty TNHH Trang Thiết Bị Y Tế Đức Minh', N'Khu Công Nghiệp Biên Hòa, Đồng Nai', N'02519988776', N'789012345678', '2023-02-20'),
+(N'Dược phẩm Toàn Cầu', N'Lô B7 Khu Đô Thị Mới, Hà Đông, Hà Nội', N'02433445566', N'890123456789', '2022-09-01'),
+(N'Vật tư Y tế Thanh Xuân', N'15 Nguyễn Trãi, Quận Thanh Xuân, Hà Nội', N'0909112233', N'901234567890', '2023-03-05'),
+(N'Thiết bị Nha Khoa Phương Nam', N'42 Đường 3 Tháng 2, Quận 10, TP.HCM', N'0933445566', N'012345678901', '2023-07-22'),
+(N'Bông Băng Việt', N'Khu Công Nghiệp Sóng Thần, TP Dĩ An, Bình Dương', N'02748899001', N'112233445566', '2022-08-11');
 
 -- Thêm dữ liệu mẫu vào bảng KhoVatTu
 INSERT INTO KhoVatTu (tenVatTu, soLuong, donViTinh, idNCC, phanLoai) VALUES
