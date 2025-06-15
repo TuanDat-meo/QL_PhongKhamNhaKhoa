@@ -36,7 +36,7 @@ public class LichHen {
         this.moTa = moTa;
     }
 
-    // Enum cho trạng thái lịch hẹn
+ // Enum cho trạng thái lịch hẹn - thêm mapping cho các giá trị không dấu
     public enum TrangThaiLichHen {
         CHO_XAC_NHAN("Chờ xác nhận"),
         DA_XAC_NHAN("Đã xác nhận"),
@@ -53,16 +53,31 @@ public class LichHen {
             return value;
         }
 
-        // Phương thức từ String sang enum
+        // Phương thức từ String sang enum - xử lý cả có dấu và không dấu
         public static TrangThaiLichHen fromString(String text) {
             if (text == null || text.trim().isEmpty()) {
                 throw new IllegalArgumentException("Trạng thái không được để trống");
             }
             
+            String normalizedText = text.trim();
+            
+            // So sánh trực tiếp với các giá trị có dấu
             for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
-                if (t.value.equalsIgnoreCase(text.trim())) {
+                if (t.value.equalsIgnoreCase(normalizedText)) {
                     return t;
                 }
+            }
+            
+            // Xử lý các trường hợp đặc biệt không dấu
+            switch (normalizedText.toLowerCase()) {
+                case "cho xac nhan":
+                    return CHO_XAC_NHAN;
+                case "da xac nhan":
+                    return DA_XAC_NHAN;
+                case "da hoan thanh":
+                    return DA_HOAN_THANH;
+                case "da huy":
+                    return DA_HUY;
             }
             
             // Log lỗi để debug
