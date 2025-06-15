@@ -20,7 +20,7 @@ public class BacSiController {
                      "FROM BacSi bs " +
                      "JOIN PhongKham pk ON bs.idPhongKham = pk.idPhongKham " +
                      "JOIN NguoiDung nd ON bs.idNguoiDung = nd.idNguoiDung " +
-                     "ORDER BY bs.idBacSi DESC";
+                     "ORDER BY bs.idBacSi";
         
         try (Connection conn = connectMySQL.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
