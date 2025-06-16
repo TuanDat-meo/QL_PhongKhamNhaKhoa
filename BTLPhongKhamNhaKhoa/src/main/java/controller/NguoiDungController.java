@@ -317,8 +317,6 @@ public class NguoiDungController {
             
             // Commit if everything is successful
             connection.commit();
-            JOptionPane.showMessageDialog(null, "Đã xóa người dùng thành công");
-            
         } catch (SQLException e) {
             if (connection != null) {
                 try {

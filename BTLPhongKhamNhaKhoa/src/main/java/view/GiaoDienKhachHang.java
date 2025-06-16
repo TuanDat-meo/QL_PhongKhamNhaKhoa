@@ -25,6 +25,16 @@ public class GiaoDienKhachHang extends JFrame {
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private final Font MENU_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Segoe UI", Font.PLAIN, 13);
+    
+    // New constants for dialog styling
+    private final Font BUTTON_FONT_DIALOG = new Font("Segoe UI", Font.BOLD, 14);
+    private final Color LOGOUT_ACCENT_COLOR = new Color(192, 80, 77); // Refined red for logout
+    private final Color LOGOUT_CANCEL_COLOR = new Color(158, 158, 158); // Grey for cancel
+    private final Color DIALOG_BACKGROUND_COLOR = new Color(248, 249, 250); // Extremely light gray background
+    private final Color DIALOG_TEXT_COLOR = new Color(33, 37, 41); // Near-black text
+    private final Color DIALOG_PANEL_COLOR = Color.WHITE; // White panels
+    private final Color DIALOG_BUTTON_TEXT_COLOR = Color.WHITE;
+    private final Color BORDER_COLOR_DIALOG = new Color(222, 226, 230); // Light gray borders
 
     // Menu items for customers
     private String[] menuItems = {
@@ -442,33 +452,112 @@ public class GiaoDienKhachHang extends JFrame {
     }
 
     private void logout() {
-        int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Bạn có chắc muốn đăng xuất?",
-            "Xác nhận đăng xuất",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE
-        );
+        showLogoutConfirmationDialog();
+    }
 
-        if (confirm == JOptionPane.YES_OPTION) {
+    private void showLogoutConfirmationDialog() {
+        JDialog confirmDialog = new JDialog(this, "Xác nhận đăng xuất", true);
+        confirmDialog.setSize(400, 200);
+        confirmDialog.setLocationRelativeTo(this);
+        confirmDialog.setResizable(false);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 15));
+        panel.setBackground(DIALOG_PANEL_COLOR);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+        messagePanel.setBackground(DIALOG_PANEL_COLOR);
+
+        JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn đăng xuất?</html>");
+        messageLabel.setFont(MENU_FONT);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+
+        panel.add(messagePanel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(DIALOG_PANEL_COLOR);
+
+        JButton cancelButton = createRoundedButton("Hủy", LOGOUT_CANCEL_COLOR, DIALOG_BUTTON_TEXT_COLOR, 8, false);
+        cancelButton.addActionListener(e -> confirmDialog.dispose());
+
+        JButton logoutButton = createRoundedButton("Đăng Xuất", LOGOUT_ACCENT_COLOR, DIALOG_BUTTON_TEXT_COLOR, 8, false);
+        logoutButton.addActionListener(e -> {
+            confirmDialog.dispose();
             this.dispose();
 
-            // Create and show LoginFrame on the Event Dispatch Thread
             SwingUtilities.invokeLater(() -> {
                 try {
                     new LoginFrame().setVisible(true);
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                     JOptionPane.showMessageDialog(
                         null,
-                        "Lỗi khởi tạo LoginFrame: " + e.getMessage(),
+                        "Lỗi khởi tạo LoginFrame: " + ex.getMessage(),
                         "Lỗi",
                         JOptionPane.ERROR_MESSAGE
                     );
                 }
             });
-        }
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(logoutButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        confirmDialog.setContentPane(panel);
+        confirmDialog.setVisible(true);
     }
+
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(BUTTON_FONT_DIALOG);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        }
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
+    }
+
 //
 //    public static void main(String[] args) {
 //        SwingUtilities.invokeLater(() -> {
