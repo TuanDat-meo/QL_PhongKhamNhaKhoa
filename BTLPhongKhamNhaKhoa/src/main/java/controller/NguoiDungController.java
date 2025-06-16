@@ -3,10 +3,13 @@ package controller;
 import model.BacSi;
 import model.NguoiDung;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Base64;
 import java.util.List;
 
 import javax.swing.JOptionPane;
@@ -26,6 +29,20 @@ public class NguoiDungController {
             e.printStackTrace();
         }
     }
+
+    public static String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashedBytes = md.digest(password.getBytes());
+            System.out.println("Mật khẩu nhập: " + Base64.getEncoder().encodeToString(hashedBytes));
+            return Base64.getEncoder().encodeToString(hashedBytes);
+        } catch (NoSuchAlgorithmException e) {
+            System.err.println("Lỗi thuật toán mã hóa mật khẩu: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String password) {
         Connection connection = null;
         PreparedStatement statement = null;
@@ -38,7 +55,7 @@ public class NguoiDungController {
             statement = connection.prepareStatement(query);
             statement.setString(1, emailOrPhone);
             statement.setString(2, emailOrPhone);
-            statement.setString(3, password);
+            statement.setString(3, hashPassword(password));
             
             resultSet = statement.executeQuery();
             
@@ -140,7 +157,7 @@ public class NguoiDungController {
             statement.setString(1, nguoiDung.getHoTen());
             statement.setString(2, nguoiDung.getEmail());
             statement.setString(3, nguoiDung.getSoDienThoai());
-            statement.setString(4, nguoiDung.getMatKhau());
+            statement.setString(4, hashPassword(nguoiDung.getMatKhau()));
             statement.setDate(5, nguoiDung.getNgaySinh());
             statement.setString(6, nguoiDung.getGioiTinh());
             statement.setString(7, nguoiDung.getVaiTro() != null ? nguoiDung.getVaiTro() : null); // Mặc định là USER
@@ -173,7 +190,7 @@ public class NguoiDungController {
                 statement.setString(1, user.getHoTen());
                 statement.setString(2, user.getEmail());
                 statement.setString(3, user.getSoDienThoai());
-                statement.setString(4, user.getMatKhau());
+                statement.setString(4, hashPassword(user.getMatKhau()));
                 statement.setString(5, user.getVaiTro());
                 statement.setInt(6, user.getIdNguoiDung());
             } else {
@@ -513,7 +530,7 @@ public class NguoiDungController {
             statement.setString(1, user.getHoTen());
             statement.setString(2, user.getEmail());
             statement.setString(3, user.getSoDienThoai());
-            statement.setString(4, user.getMatKhau());
+            statement.setString(4, hashPassword(user.getMatKhau()));
             statement.setDate(5, user.getNgaySinh());
             statement.setString(6, user.getGioiTinh());
             statement.setString(7, user.getVaiTro());
@@ -545,7 +562,7 @@ public class NguoiDungController {
             statement.setString(1, name);
             statement.setString(2, email);
             statement.setString(3, phone);
-            statement.setString(4, password);
+            statement.setString(4, hashPassword(password));
             statement.setDate(5, birthDate);
             statement.setString(6, gender);
             statement.setString(7, role);
