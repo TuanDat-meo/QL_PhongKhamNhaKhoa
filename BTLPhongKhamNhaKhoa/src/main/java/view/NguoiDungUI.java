@@ -566,6 +566,15 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                     
                     String newPassword = new String(matKhauField.getPassword());
                     if (!newPassword.isEmpty()) {
+                        // Thêm kiểm tra mật khẩu mới nếu người dùng nhập
+                        if (!isValidPassword(newPassword)) {
+                            showErrorMessage("Mật khẩu mới không hợp lệ. Mật khẩu phải có ít nhất 8 ký tự, bao gồm:\n" +
+                                           "- Ít nhất 1 chữ hoa\n" +
+                                           "- Ít nhất 1 chữ thường\n" +
+                                           "- Ít nhất 1 số\n" +
+                                           "- Ít nhất 1 ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?) ");
+                            return;
+                        }
                         user.setMatKhau(newPassword);
                     }
                     
@@ -838,6 +847,10 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         }
         
         String[] roles = availableRoles.toArray(new String[0]);
+        // Create a new array with "Lựa chọn" at the beginning
+        String[] rolesWithDefault = new String[roles.length + 1];
+        rolesWithDefault[0] = "Lựa chọn";
+        System.arraycopy(roles, 0, rolesWithDefault, 1, roles.length);
         
         JDialog dialog = createStyledDialog("Thêm Người Dùng Mới", 450, 500);
         
@@ -866,8 +879,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPasswordField matKhauField = createStyledPasswordField();
         JPasswordField xacNhanMatKhauField = createStyledPasswordField();
         
-        String defaultRole = availableRoles.contains("Khách hàng") ? "Khách hàng" : (roles.length > 0 ? roles[0] : "");
-        JComboBox<String> vaiTroBox = createStyledComboBox(roles, defaultRole);
+        JComboBox<String> vaiTroBox = createStyledComboBox(rolesWithDefault, "Lựa chọn");
         
         formPanel.add(createFormRow("Họ tên:", hoTenField));
         formPanel.add(Box.createVerticalStrut(15));
@@ -897,11 +909,18 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             String phone = soDienThoaiField.getText().trim();
             String password = new String(matKhauField.getPassword());
             String confirmPassword = new String(xacNhanMatKhauField.getPassword());
+            String selectedRole = (String) vaiTroBox.getSelectedItem();
 
             // Kiểm tra các trường bắt buộc
             if (hoTen.isEmpty() || email.isEmpty() || phone.isEmpty() || 
                 password.isEmpty() || confirmPassword.isEmpty()) {
                 showWarningMessage("Vui lòng điền đầy đủ thông tin.");
+                return;
+            }
+
+            // Kiểm tra ràng buộc cho vai trò
+            if ("Lựa chọn".equals(selectedRole)) {
+                showWarningMessage("Vui lòng chọn một vai trò hợp lệ.");
                 return;
             }
 
@@ -945,7 +964,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 newUser.setEmail(email);
                 newUser.setSoDienThoai(phone);
                 newUser.setMatKhau(password);
-                newUser.setVaiTro((String) vaiTroBox.getSelectedItem());
+                newUser.setVaiTro(selectedRole);
 
                 // Thêm người dùng vào database
                 controller.addUser(newUser);
