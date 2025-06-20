@@ -14,6 +14,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AppointmentsDialog extends JDialog {
@@ -25,8 +26,9 @@ public class AppointmentsDialog extends JDialog {
     private JPopupMenu popupMenu;
     private JMenuItem menuItemXemChiTiet;
     private JMenuItem menuItemCapNhat;
+    
+    private JDialog currentChildDialog = null;    
     private Color primaryColor = new Color(79, 129, 189); 
-    private Color secondaryColor = new Color(141, 180, 226);
     private Color accentColor = new Color(192, 80, 77);
     private Color successColor = new Color(86, 156, 104);
     private Color warningColor = new Color(237, 187, 85);
@@ -66,6 +68,94 @@ public class AppointmentsDialog extends JDialog {
         
         // Set focus back to normal after initialization
         SwingUtilities.invokeLater(() -> setFocusableWindowState(true));
+    }
+    
+    // Phương thức để đóng dialog con hiện tại
+    private void closeCurrentChildDialog() {
+        if (currentChildDialog != null && currentChildDialog.isDisplayable()) {
+            currentChildDialog.dispose();
+            currentChildDialog = null;
+        }
+    }
+    
+    // Phương thức để hiển thị dialog con mới
+    private void showChildDialog(JDialog dialog) {
+        closeCurrentChildDialog(); // Đóng dialog con hiện tại trước
+        currentChildDialog = dialog;
+        dialog.setVisible(true);
+    }
+    
+    // Override dispose để đảm bảo đóng tất cả dialog con
+    @Override
+    public void dispose() {
+        closeCurrentChildDialog();
+        super.dispose();
+    }
+
+    // Custom message dialog method
+    private void showCustomMessageDialog(String title, String message, int messageType) {
+        JDialog messageDialog = new JDialog(this, title, true);
+        messageDialog.setSize(400, 180);
+        messageDialog.setLocationRelativeTo(this);
+        messageDialog.setResizable(false);
+        
+        JPanel panel = new JPanel(new BorderLayout(10, 15));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+        messagePanel.setBackground(Color.WHITE);
+        
+        // Add icon based on message type
+        JLabel iconLabel = new JLabel();
+        switch (messageType) {
+            case JOptionPane.INFORMATION_MESSAGE:
+                iconLabel.setIcon(UIManager.getIcon("OptionPane.informationIcon"));
+                break;
+            case JOptionPane.WARNING_MESSAGE:
+                iconLabel.setIcon(UIManager.getIcon("OptionPane.warningIcon"));
+                break;
+            case JOptionPane.ERROR_MESSAGE:
+                iconLabel.setIcon(UIManager.getIcon("OptionPane.errorIcon"));
+                break;
+            default:
+                iconLabel.setIcon(UIManager.getIcon("OptionPane.informationIcon"));
+        }
+        iconLabel.setVerticalAlignment(SwingConstants.TOP);
+        messagePanel.add(iconLabel, BorderLayout.WEST);
+        
+        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
+        messageLabel.setFont(regularFont);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+        
+        panel.add(messagePanel, BorderLayout.CENTER);
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        
+        Color buttonColor;
+        switch (messageType) {
+            case JOptionPane.INFORMATION_MESSAGE:
+                buttonColor = successColor;
+                break;
+            case JOptionPane.WARNING_MESSAGE:
+                buttonColor = warningColor;
+                break;
+            case JOptionPane.ERROR_MESSAGE:
+                buttonColor = accentColor;
+                break;
+            default:
+                buttonColor = primaryColor;
+        }
+        
+        JButton okButton = createRoundedButton("OK", buttonColor, Color.WHITE, 8, false);
+        okButton.addActionListener(e -> messageDialog.dispose());
+        
+        buttonPanel.add(okButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        messageDialog.setContentPane(panel);
+        messageDialog.setVisible(true);
     }
     
     // New rounded button method
@@ -294,13 +384,11 @@ public class AppointmentsDialog extends JDialog {
         
         return menuItem;
     }
-    
     private void updateAppointmentStatus() {
         int selectedRow = appointmentsTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this,
+            showCustomMessageDialog("Thông báo",
                 "Vui lòng chọn một lịch hẹn để cập nhật trạng thái!",
-                "Thông báo",
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -445,20 +533,38 @@ public class AppointmentsDialog extends JDialog {
             String newStatus = (String) statusCombo.getSelectedItem();
             
             if (newStatus != null && !newStatus.equals(currentStatus)) {
-                // Show confirmation
-                int confirm = JOptionPane.showConfirmDialog(
-                    dialog,
-                    String.format("Bạn có chắc chắn muốn thay đổi trạng thái từ\n'%s' thành '%s'?", 
-                        currentStatus, newStatus),
-                    "Xác nhận cập nhật",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-                );
+                // Create confirmation dialog similar to xoaBenhNhan method
+                JDialog confirmDialog = new JDialog();
+                confirmDialog.setTitle("Xác nhận cập nhật");
+                confirmDialog.setModal(true);
+                confirmDialog.setSize(400, 200);
+                confirmDialog.setLocationRelativeTo(dialog);
                 
-                if (confirm == JOptionPane.YES_OPTION) {
-                    dialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-                    updateButton.setEnabled(false);
-                    updateButton.setText("Đang cập nhật...");
+                JPanel panel = new JPanel(new BorderLayout(10, 15));
+                panel.setBackground(Color.WHITE);
+                panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                
+                JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+                messagePanel.setBackground(Color.WHITE);
+                
+                JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn thay đổi trạng thái từ<br><b>" + 
+                    currentStatus + "</b> thành <b>" + newStatus + "</b>?</html>");
+                messageLabel.setFont(regularFont);
+                messagePanel.add(messageLabel, BorderLayout.CENTER);
+                
+                panel.add(messagePanel, BorderLayout.CENTER);
+                
+                JPanel confirmButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+                confirmButtonPanel.setBackground(Color.WHITE);
+                
+                JButton confirmCancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
+                confirmCancelButton.addActionListener(cancelEvent -> confirmDialog.dispose());
+                
+                JButton confirmUpdateButton = createRoundedButton("Cập Nhật", warningColor, Color.WHITE, 8, false);
+                confirmUpdateButton.addActionListener(confirmEvent -> {
+                    confirmDialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                    confirmUpdateButton.setEnabled(false);
+                    confirmUpdateButton.setText("Đang cập nhật...");
                     
                     try {
                         boolean success = lichHenController.capNhatTrangThaiLichHen(appointmentId, newStatus);
@@ -475,37 +581,43 @@ public class AppointmentsDialog extends JDialog {
                                 }
                             }
                             
-                            // Show success message
-                            JOptionPane.showMessageDialog(dialog,
-                                "Trạng thái lịch hẹn đã được cập nhật thành công!",
-                                "Cập nhật thành công",
-                                JOptionPane.INFORMATION_MESSAGE);
-                            
-                            appointmentsTable.repaint();
+                            confirmDialog.dispose();
                             dialog.dispose();
                             
+                            appointmentsTable.repaint();
+                            
+                            // Show success message with custom dialog
+                            showCustomMessageDialog("Cập nhật thành công",
+                                "Trạng thái lịch hẹn đã được cập nhật thành công!",
+                                JOptionPane.INFORMATION_MESSAGE);
+                            
                         } else {
-                            JOptionPane.showMessageDialog(dialog,
+                            showCustomMessageDialog("Lỗi cập nhật",
                                 "Không thể cập nhật trạng thái lịch hẹn.\nVui lòng thử lại sau.",
-                                "Lỗi cập nhật",
                                 JOptionPane.ERROR_MESSAGE);
                         }
                     } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(dialog,
+                        showCustomMessageDialog("Lỗi hệ thống",
                             "Đã xảy ra lỗi khi cập nhật trạng thái:\n" + ex.getMessage(),
-                            "Lỗi hệ thống",
                             JOptionPane.ERROR_MESSAGE);
                         ex.printStackTrace();
                     } finally {
-                        dialog.setCursor(Cursor.getDefaultCursor());
-                        updateButton.setEnabled(true);
-                        updateButton.setText("Cập Nhật");
+                        confirmDialog.setCursor(Cursor.getDefaultCursor());
+                        confirmUpdateButton.setEnabled(true);
+                        confirmUpdateButton.setText("Cập Nhật");
                     }
-                }
+                });
+                
+                confirmButtonPanel.add(confirmCancelButton);
+                confirmButtonPanel.add(confirmUpdateButton);
+                panel.add(confirmButtonPanel, BorderLayout.SOUTH);
+                
+                confirmDialog.setContentPane(panel);
+                confirmDialog.setVisible(true);
+                
             } else {
-                JOptionPane.showMessageDialog(dialog,
+                showCustomMessageDialog("Thông báo",
                     "Vui lòng chọn trạng thái khác với trạng thái hiện tại.",
-                    "Thông báo",
                     JOptionPane.INFORMATION_MESSAGE);
             }
         });
@@ -513,9 +625,9 @@ public class AppointmentsDialog extends JDialog {
         // Set focus back to normal after showing
         SwingUtilities.invokeLater(() -> dialog.setFocusableWindowState(true));
         
-        dialog.setVisible(true);
+        // Sử dụng phương thức showChildDialog để quản lý dialog
+        showChildDialog(dialog);
     }
-    
     private Color getStatusColor(String status) {
         switch (status) {
             case "Đã xác nhận":
@@ -530,7 +642,6 @@ public class AppointmentsDialog extends JDialog {
                 return new Color(33, 37, 41);
         }
     }  
-    
     private void styleTable() {
         appointmentsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         appointmentsTable.setRowHeight(35);
@@ -707,7 +818,6 @@ public class AppointmentsDialog extends JDialog {
         }
     }
 }
-// Separate dialog for showing appointment and medical record details with updated colors
 class AppointmentDetailsDialog extends JDialog {
     private HoSoBenhAnController hoSoController;
     private LichHen appointment;    
@@ -722,6 +832,10 @@ class AppointmentDetailsDialog extends JDialog {
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
+    
+    // Biến để theo dõi các dialog con đang mở
+    private List<JDialog> activeChildDialogs = new ArrayList<>();
+    private JPopupMenu activePopupMenu = null;
     
     public AppointmentDetailsDialog(Dialog parent, LichHen appointment, 
             HoSoBenhAnController hoSoController) {
@@ -791,7 +905,36 @@ class AppointmentDetailsDialog extends JDialog {
         JPanel medicalRecordsPanel = createMedicalRecordsPanel();
         tabbedPane.addTab("Hồ Sơ Bệnh Án", medicalRecordsPanel);
         
+        // Thêm ChangeListener để đóng các dialog con khi chuyển tab
+        tabbedPane.addChangeListener(e -> {
+            closeAllActiveElements();
+        });
+        
         return tabbedPane;
+    }
+    
+    // Phương thức đóng tất cả dialog con và popup menu đang active
+    private void closeAllActiveElements() {
+        // Đóng tất cả dialog con
+        for (JDialog dialog : activeChildDialogs) {
+            if (dialog != null && dialog.isDisplayable()) {
+                dialog.dispose();
+            }
+        }
+        activeChildDialogs.clear();
+        
+        // Đóng popup menu nếu đang hiển thị
+        if (activePopupMenu != null && activePopupMenu.isVisible()) {
+            activePopupMenu.setVisible(false);
+        }
+        activePopupMenu = null;
+    }
+    
+    // Override dispose để đảm bảo đóng tất cả dialog con khi đóng dialog chính
+    @Override
+    public void dispose() {
+        closeAllActiveElements();
+        super.dispose();
     }
     
     private JPanel createCloseButtonPanel() {
@@ -999,8 +1142,14 @@ class AppointmentDetailsDialog extends JDialog {
         
         return tablePanel;
     }    
- // Thay thế phương thức showMedicalRecordPopup hiện tại
+ 
+    // Cải tiến phương thức showMedicalRecordPopup để quản lý popup menu
     private void showMedicalRecordPopup(MouseEvent e, JTable medicalTable, DefaultTableModel medicalTableModel) {
+        // Đóng popup menu cũ nếu có
+        if (activePopupMenu != null && activePopupMenu.isVisible()) {
+            activePopupMenu.setVisible(false);
+        }
+        
         int row = medicalTable.rowAtPoint(e.getPoint());
         if (row >= 0 && row < medicalTable.getRowCount()) {
             medicalTable.setRowSelectionInterval(row, row);
@@ -1017,14 +1166,18 @@ class AppointmentDetailsDialog extends JDialog {
             JMenuItem viewDetailsItem = createMenuItem("Xem Chi Tiết Hồ Sơ");
             viewDetailsItem.addActionListener(actionEvent -> {
                 showMedicalRecordDetails(recordId);
+                medicalPopup.setVisible(false); // Đóng popup sau khi chọn
             });
             medicalPopup.add(viewDetailsItem);
+            
+            // Lưu reference để có thể đóng sau này
+            activePopupMenu = medicalPopup;
             
             // Hiển thị popup menu
             medicalPopup.show(e.getComponent(), e.getX(), e.getY());
         }
     }
-
+    
     // Phương thức tạo menu item với style thống nhất
     private JMenuItem createMenuItem(String text) {
         JMenuItem menuItem = new JMenuItem(text);
@@ -1077,8 +1230,7 @@ class AppointmentDetailsDialog extends JDialog {
         bottomPanel.add(infoPanel, BorderLayout.CENTER);
         
         return bottomPanel;
-    }
-        
+    }        
     private void styleMedicalTable(JTable table) {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setRowHeight(40);
@@ -1117,18 +1269,20 @@ class AppointmentDetailsDialog extends JDialog {
                 return c;
             }
         });
-    }
-    
+    }        
     private void showMedicalRecordDetails(int recordId) {
         HoSoBenhAn record = hoSoController.timKiemHoSoBenhAnTheoId(recordId);
         if (record != null) {
+            // Ẩn dialog hiện tại trước khi hiển thị dialog chi tiết
+            this.setVisible(false);
+            
             // Create a modern details dialog
-            JDialog detailsDialog = new JDialog(this, "Chi Tiết Hồ Sơ Bệnh Án", true);
+            JDialog detailsDialog = new JDialog((Dialog)this.getOwner(), "Chi Tiết Hồ Sơ Bệnh Án", true);
             detailsDialog.setSize(600, 500);
             detailsDialog.setLocationRelativeTo(this);
             
             JPanel mainPanel = new JPanel(new BorderLayout());
-            mainPanel.setBackground(new Color(250, 251, 252));
+            mainPanel.setBackground(new Color(250, 251, 252));            
             
             // Header
             JPanel headerPanel = new JPanel();
@@ -1137,7 +1291,7 @@ class AppointmentDetailsDialog extends JDialog {
             headerPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 232, 236)),
                 BorderFactory.createEmptyBorder(25, 30, 25, 30)
-            ));
+            ));            
             
             JLabel titleLabel = new JLabel("Chi Tiết Hồ Sơ Bệnh Án");
             titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
@@ -1151,7 +1305,7 @@ class AppointmentDetailsDialog extends JDialog {
             
             headerPanel.add(titleLabel);
             headerPanel.add(Box.createVerticalStrut(8));
-            headerPanel.add(subtitleLabel);
+            headerPanel.add(subtitleLabel);            
             
             // Content panel
             JPanel contentPanel = new JPanel(new GridBagLayout());
@@ -1160,7 +1314,7 @@ class AppointmentDetailsDialog extends JDialog {
             
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(12, 0, 12, 20);
+            gbc.insets = new Insets(12, 0, 12, 20);            
             
             // Add record details
             addDetailRow(contentPanel, "ID Hồ Sơ:", String.valueOf(record.getIdHoSo()), gbc, 0);
@@ -1176,12 +1330,16 @@ class AppointmentDetailsDialog extends JDialog {
             buttonPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(230, 232, 236)),
                 BorderFactory.createEmptyBorder(20, 30, 20, 30)
-            ));
+            ));            
             
-            // Sử dụng rounded button
+            // Tạo button đóng với logic quay lại dialog trước
             JButton closeDetailButton = createRoundedButton("Đóng", primaryColor, Color.WHITE, 8, false);
             closeDetailButton.setPreferredSize(new Dimension(100, 38));
-            closeDetailButton.addActionListener(e -> detailsDialog.dispose());
+            closeDetailButton.addActionListener(e -> {
+                detailsDialog.dispose();
+                // Hiển thị lại dialog chính sau khi đóng dialog chi tiết
+                this.setVisible(true);
+            });
             
             buttonPanel.add(closeDetailButton);
             
@@ -1190,6 +1348,18 @@ class AppointmentDetailsDialog extends JDialog {
             mainPanel.add(buttonPanel, BorderLayout.SOUTH);
             
             detailsDialog.setContentPane(mainPanel);
+            
+            // Đặt hành động khi đóng dialog bằng nút X
+            detailsDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+            detailsDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                    detailsDialog.dispose();
+                    // Hiển thị lại dialog chính
+                    AppointmentDetailsDialog.this.setVisible(true);
+                }
+            });
+            
             detailsDialog.setVisible(true);
         } else {
             JOptionPane.showMessageDialog(this, 
@@ -1198,21 +1368,17 @@ class AppointmentDetailsDialog extends JDialog {
                 JOptionPane.ERROR_MESSAGE);
         }
     }
-    
     private void addDetailRow(JPanel panel, String label, String value, GridBagConstraints gbc, int row) {
         gbc.gridx = 0;
         gbc.gridy = row;
-        gbc.weightx = 0;
-        
+        gbc.weightx = 0;        
         JLabel labelComponent = new JLabel(label);
         labelComponent.setFont(new Font("Segoe UI", Font.BOLD, 14));
         labelComponent.setForeground(new Color(73, 80, 87));
         labelComponent.setPreferredSize(new Dimension(120, 25));
-        panel.add(labelComponent, gbc);
-        
+        panel.add(labelComponent, gbc);        
         gbc.gridx = 1;
-        gbc.weightx = 1;
-        
+        gbc.weightx = 1;        
         // Handle long text with text area for better display
         if (value != null && value.length() > 50) {
             JTextArea valueArea = new JTextArea(value);
@@ -1236,8 +1402,6 @@ class AppointmentDetailsDialog extends JDialog {
             panel.add(valueComponent, gbc);
         }
     }
-    
-    // Phương thức tạo rounded button
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
         JButton button = new JButton(text) {
             @Override
@@ -1254,8 +1418,7 @@ class AppointmentDetailsDialog extends JDialog {
             public boolean isOpaque() {
                 return false;
             }
-        };
-        
+        };        
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -1264,14 +1427,11 @@ class AppointmentDetailsDialog extends JDialog {
         button.setContentAreaFilled(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Sử dụng padding khác nhau tùy theo button
         if (reducedPadding) {
             button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12)); // Padding nhỏ hơn
         } else {
             button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường
-        }
-        
-        // Add hover effect
+        }        
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -1286,8 +1446,6 @@ class AppointmentDetailsDialog extends JDialog {
         
         return button;
     }
-    
-    // Phương thức tạo màu tối hơn cho hover effect
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));

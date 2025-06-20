@@ -6,7 +6,6 @@ import util.CustomBorder;
 import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
-import view.BenhNhanUI.NotificationType;
 import util.RoundedPanel;
 
 import javax.swing.*;
@@ -18,17 +17,18 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class BacSiUI extends JPanel implements MessageCallback, DataChangeListener {
     // Color scheme based on BenhNhanUI
@@ -44,15 +44,17 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
     private Color tableHeaderColor = new Color(79, 129, 189); // Match primary color
     private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private Color borderColor = new Color(222, 226, 230);     // Light gray borders
-    
+    private Timer highlightTimer;
+    private int highlightedRowId = -1;
+    private Color highlightColor = new Color(237, 187, 85);
+    private MouseWheelListener scrollListener;
     // Font settings
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
-    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
-    
+    private JLabel lblSoBacSi;
     private BacSiController bacSiController;
     private JTable bacSiTable;
     private DefaultTableModel tableModel;
@@ -73,6 +75,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         setBorder(new EmptyBorder(20, 20, 20, 20));
         
         initComponents();
+        setupScrollListener();
         loadBacSiData();
     }
     
@@ -131,7 +134,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
         headerPanel.add(searchPanel, BorderLayout.EAST);
-        
+        setupScrollListener();
         // Table panel
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -153,15 +156,33 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         };
         
         bacSiTable = new JTable(tableModel) {
-            @Override
-            public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
-                Component comp = super.prepareRenderer(renderer, row, column);
-                // Add alternating row colors
-                if (!comp.getBackground().equals(getSelectionBackground())) {
-                    comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
-                }
-                return comp;
-            }
+        	@Override
+        	public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
+        	    Component comp = super.prepareRenderer(renderer, row, column);                
+        	    if (comp instanceof JLabel) {
+        	        ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
+        	    }                
+        	    
+        	    // Kiểm tra xem có phải hàng cần highlight không
+        	    int modelRow = convertRowIndexToModel(row);
+        	    int rowId = (Integer) tableModel.getValueAt(modelRow, 0);
+        	    
+        	    // ƯU TIÊN HIGHLIGHT HơN SELECTION - đây là fix chính
+        	    if (highlightedRowId > 0 && rowId == highlightedRowId) {
+        	        comp.setBackground(highlightColor); // Màu highlight luôn được ưu tiên
+        	        comp.setForeground(textColor); // Đảm bảo text color rõ ràng
+        	    } else if (comp.getBackground().equals(getSelectionBackground())) {
+        	        // Giữ màu selection cho những hàng không được highlight
+        	        comp.setBackground(getSelectionBackground());
+        	        comp.setForeground(getSelectionForeground());
+        	    } else {
+        	        // Màu thông thường cho những hàng khác
+        	        comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+        	        comp.setForeground(textColor);
+        	    }
+        	    
+        	    return comp;
+        	}
         };
         
         bacSiTable.setFont(tableFont);
@@ -245,16 +266,24 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
                 }
             }
         });
-        
         JScrollPane scrollPane = new JScrollPane(bacSiTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.addMouseWheelListener(scrollListener); // Thêm dòng này
         tablePanel.add(scrollPane, BorderLayout.CENTER);
-        
         // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JPanel buttonPanel = new JPanel(new BorderLayout());
         buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        buttonPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.setBackground(backgroundColor);
         
+        lblSoBacSi = new JLabel("Tổng số bác sĩ: 0");
+        lblSoBacSi.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblSoBacSi.setForeground(primaryColor);
+        leftPanel.add(lblSoBacSi);
+        
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightPanel.setBackground(backgroundColor);
         exportButton = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10, false);
         exportButton.setPreferredSize(new Dimension(100, 45));
         exportButton.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));
@@ -262,15 +291,29 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         addButton = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10,false);
         addButton.setPreferredSize(new Dimension(100, 45));
         addButton.addActionListener(e -> showAddBacSiDialog());
-        
-        buttonPanel.add(exportButton);
-        buttonPanel.add(addButton);
+
+        rightPanel.add(exportButton);
+        rightPanel.add(addButton);
         
         // Add everything to main panel
         add(headerPanel, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
+        buttonPanel.add(leftPanel, BorderLayout.WEST);
+        buttonPanel.add(rightPanel, BorderLayout.EAST);
         add(buttonPanel, BorderLayout.SOUTH);
+        setupScrollListener();
     }   
+    private void capNhatSoBacSi() {
+        int soBacSi = tableModel.getRowCount();
+        lblSoBacSi.setText("Tổng số bác sĩ: " + soBacSi);
+    }
+    private void resetHighlightState() {
+        if (highlightTimer != null && highlightTimer.isRunning()) {
+            highlightTimer.stop();
+        }
+        highlightedRowId = -1;
+        bacSiTable.repaint();
+    }
     private void showRowPopupMenu(int x, int y) {
         JPopupMenu popupMenu = new JPopupMenu();
         popupMenu.setBorder(new LineBorder(borderColor, 1));
@@ -470,26 +513,272 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         panel.add(fieldPanel);
         panel.add(separator);
     }
-    public void loadBacSiData() {
-        tableModel.setRowCount(0);
-        List<BacSi> bacSiList = bacSiController.getAllBacSi();
-        
-        for (BacSi bacSi : bacSiList) {
-            Object[] rowData = {
-                bacSi.getIdBacSi(),
-                bacSi.getHoTenBacSi(),
-                bacSi.getChuyenKhoa(),
-                bacSi.getKinhNghiem() + " năm",
-                bacSi.getTenPhong(),
-                bacSi.getEmailNguoiDung(),
-                bacSi.getSoDienThoaiNguoiDung()
-            };
-            tableModel.addRow(rowData);
-        }
-        
-        currentBacSiId = -1;
+    private void loadBacSiData(int highlightId) {
+        try {
+            // Dừng timer cũ trước khi bắt đầu
+            if (highlightTimer != null && highlightTimer.isRunning()) {
+                highlightTimer.stop();
+            }
+            
+            // Reset highlight state trước
+            highlightedRowId = -1;
+            
+            List<BacSi> danhSach = bacSiController.getAllBacSi();
+            tableModel.setRowCount(0); // Clear table trước
+            
+            BacSi highlightedBacSi = null;
+            List<BacSi> otherBacSi = new ArrayList<>();
+            
+            // Tách bác sĩ cần highlight và các bác sĩ khác
+            if (highlightId > 0) {
+                for (BacSi bacSi : danhSach) {
+                    if (bacSi.getIdBacSi() == highlightId) {
+                        highlightedBacSi = bacSi;
+                    } else {
+                        otherBacSi.add(bacSi);
+                    }
+                }
+            }
+            
+            // Load dữ liệu vào table
+            if (highlightId > 0 && highlightedBacSi != null) {
+                // Thêm bác sĩ được highlight vào đầu bảng
+                Object[] rowData = {
+                    highlightedBacSi.getIdBacSi(),
+                    highlightedBacSi.getHoTenBacSi(),
+                    highlightedBacSi.getChuyenKhoa(),
+                    highlightedBacSi.getKinhNghiem() + " năm",
+                    highlightedBacSi.getTenPhong(),
+                    highlightedBacSi.getEmailNguoiDung(),
+                    highlightedBacSi.getSoDienThoaiNguoiDung()
+                };
+                tableModel.addRow(rowData);
+                
+                // Thêm các bác sĩ khác
+                for (BacSi bacSi : otherBacSi) {
+                    Object[] otherRowData = {
+                        bacSi.getIdBacSi(),
+                        bacSi.getHoTenBacSi(),
+                        bacSi.getChuyenKhoa(),
+                        bacSi.getKinhNghiem() + " năm",
+                        bacSi.getTenPhong(),
+                        bacSi.getEmailNguoiDung(),
+                        bacSi.getSoDienThoaiNguoiDung()
+                    };
+                    tableModel.addRow(otherRowData);
+                }
+            } else {
+                // Load tất cả dữ liệu theo thứ tự bình thường
+                for (BacSi bacSi : danhSach) {
+                    Object[] rowData = {
+                        bacSi.getIdBacSi(),
+                        bacSi.getHoTenBacSi(),
+                        bacSi.getChuyenKhoa(),
+                        bacSi.getKinhNghiem() + " năm",
+                        bacSi.getTenPhong(),
+                        bacSi.getEmailNguoiDung(),
+                        bacSi.getSoDienThoaiNguoiDung()
+                    };
+                    tableModel.addRow(rowData);
+                }
+            }
+            capNhatSoBacSi();
+            // Đảm bảo table được update hoàn toàn
+            tableModel.fireTableDataChanged();
+            
+            // Nếu có ID cần highlight, thực hiện highlight NGAY SAU KHI DATA ĐÃ LOAD
+            if (highlightId > 0 && highlightedBacSi != null) {
+                // Set highlight ID TRƯỚC KHI thực hiện UI operations
+                highlightedRowId = highlightId;
+                
+                SwingUtilities.invokeLater(() -> {
+                    // Scroll về đầu bảng trước
+                    JScrollPane scrollPane = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, bacSiTable);
+                    if (scrollPane != null) {
+                        JViewport viewport = scrollPane.getViewport();
+                        viewport.setViewPosition(new Point(0, 0));
+                    }
+                    
+                    // SAU ĐÓ mới select hàng đầu tiên (không làm ảnh hưởng đến highlight color)
+                    if (bacSiTable.getRowCount() > 0) {
+                        bacSiTable.setRowSelectionInterval(0, 0);
+                        currentBacSiId = highlightId; // Set current ID
+                    }
+                    
+                    // Force repaint để hiển thị highlight
+                    bacSiTable.repaint();
+                    
+                    // Tạo timer để tắt highlight sau thời gian quy định
+                    highlightTimer = new Timer(10000, e -> {
+                        highlightedRowId = -1;
+                        bacSiTable.repaint();
+                        // Tự động tải lại dữ liệu theo thứ tự bình thường
+                        SwingUtilities.invokeLater(() -> loadBacSiData());
+                    });
+                    highlightTimer.setRepeats(false);
+                    highlightTimer.start();
+                });
+            } else {
+                currentBacSiId = -1;
+            }
+            capNhatSoBacSi();
+        } catch (Exception e) {
+            showErrorMessage("Lỗi khi tải dữ liệu bác sĩ", e.getMessage());
+            e.printStackTrace();
+        }        
     }
+    private void setupScrollListener() {
+        // Tạo timer chỉ để xử lý việc dừng scroll, không reset highlight
+        Timer scrollEndTimer = new Timer(500, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            	if (highlightedRowId > 0) {
+                    highlightedRowId = -1;
+                    bacSiTable.repaint();
+                    
+                    // Tải lại dữ liệu theo thứ tự bình thường
+                    SwingUtilities.invokeLater(() -> {
+                        loadBacSiData(); // Load lại dữ liệu bình thường
+                    });
+                    
+                    // Dừng timer highlight chính nếu đang chạy
+                    if (highlightTimer != null && highlightTimer.isRunning()) {
+                        highlightTimer.stop();
+                    }
+                }
+            }
+        });
+        scrollEndTimer.setRepeats(false);
+
+        scrollListener = new MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                // Chỉ restart timer, không reset highlight
+                if (scrollEndTimer.isRunning()) {
+                    scrollEndTimer.stop();
+                }
+                scrollEndTimer.start();
+            }
+        };
+    }
+    private void highlightRow(int doctorId, int durationSeconds) {
+        // Đơn giản hóa - chỉ cần gọi loadBacSiData với custom timer duration
+        loadBacSiDataWithCustomDuration(doctorId, durationSeconds);
+    }
+    private void loadBacSiDataWithCustomDuration(int highlightId, int durationSeconds) {
+        try {
+            // Dừng timer cũ
+            if (highlightTimer != null && highlightTimer.isRunning()) {
+                highlightTimer.stop();
+            }
+            
+            // Reset highlight state
+            highlightedRowId = -1;
+            
+            List<BacSi> danhSach = bacSiController.getAllBacSi();
+            tableModel.setRowCount(0);
+            
+            BacSi highlightedBacSi = null;
+            List<BacSi> otherBacSi = new ArrayList<>();
+            
+            // Tách bác sĩ cần highlight
+            if (highlightId > 0) {
+                for (BacSi bacSi : danhSach) {
+                    if (bacSi.getIdBacSi() == highlightId) {
+                        highlightedBacSi = bacSi;
+                    } else {
+                        otherBacSi.add(bacSi);
+                    }
+                }
+            }
+            
+            // Load data
+            if (highlightedBacSi != null) {
+                // Add highlighted doctor first
+                Object[] rowData = {
+                    highlightedBacSi.getIdBacSi(),
+                    highlightedBacSi.getHoTenBacSi(),
+                    highlightedBacSi.getChuyenKhoa(),
+                    highlightedBacSi.getKinhNghiem() + " năm",
+                    highlightedBacSi.getTenPhong(),
+                    highlightedBacSi.getEmailNguoiDung(),
+                    highlightedBacSi.getSoDienThoaiNguoiDung()
+                };
+                tableModel.addRow(rowData);
+                
+                // Add other doctors
+                for (BacSi bacSi : otherBacSi) {
+                    Object[] otherRowData = {
+                        bacSi.getIdBacSi(),
+                        bacSi.getHoTenBacSi(),
+                        bacSi.getChuyenKhoa(),
+                        bacSi.getKinhNghiem() + " năm",
+                        bacSi.getTenPhong(),
+                        bacSi.getEmailNguoiDung(),
+                        bacSi.getSoDienThoaiNguoiDung()
+                    };
+                    tableModel.addRow(otherRowData);
+                }
+                
+                // Set highlight
+                highlightedRowId = highlightId;
+                tableModel.fireTableDataChanged();
+                
+                SwingUtilities.invokeLater(() -> {
+                    // Scroll to top
+                    JScrollPane scrollPane = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, bacSiTable);
+                    if (scrollPane != null) {
+                        scrollPane.getViewport().setViewPosition(new Point(0, 0));
+                    }
+                    
+                    // Select first row
+                    if (bacSiTable.getRowCount() > 0) {
+                        bacSiTable.setRowSelectionInterval(0, 0);
+                        currentBacSiId = highlightId;
+                    }
+                    
+                    bacSiTable.repaint();
+                    
+                    // Custom duration timer
+                    highlightTimer = new Timer(durationSeconds * 1000, e -> {
+                        highlightedRowId = -1;
+                        bacSiTable.repaint();
+                        SwingUtilities.invokeLater(() -> loadBacSiData());
+                    });
+                    highlightTimer.setRepeats(false);
+                    highlightTimer.start();
+                });
+            }
+            
+        } catch (Exception e) {
+            showErrorMessage("Lỗi khi tải dữ liệu bác sĩ", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public void loadBacSiData() {
+        loadBacSiData(-1); // Gọi method với highlightId = -1 để không highlight
+    }
+//    public void loadBacSiData() {
+//        tableModel.setRowCount(0);
+//        List<BacSi> bacSiList = bacSiController.getAllBacSi();
+//        
+//        for (BacSi bacSi : bacSiList) {
+//            Object[] rowData = {
+//                bacSi.getIdBacSi(),
+//                bacSi.getHoTenBacSi(),
+//                bacSi.getChuyenKhoa(),
+//                bacSi.getKinhNghiem() + " năm",
+//                bacSi.getTenPhong(),
+//                bacSi.getEmailNguoiDung(),
+//                bacSi.getSoDienThoaiNguoiDung()
+//            };
+//            tableModel.addRow(rowData);
+//        }
+//        
+//        currentBacSiId = -1;
+//    }
     private void searchBacSi() {
+    	resetHighlightState();
         String searchTerm = searchField.getText().trim().toLowerCase();
         if (searchTerm.isEmpty()) {
             loadBacSiData();
@@ -571,7 +860,7 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             }
             
             currentBacSiId = -1;
-            
+            capNhatSoBacSi();
             // Hiển thị thông báo kết quả tìm kiếm
             if (matchCount == 0) {
                 showNotification("Không tìm thấy kết quả nào cho: '" + searchTerm + "'", NotificationType.WARNING);
@@ -637,11 +926,44 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
         }).start();
     }
     private void showAddBacSiDialog() {
+        // Lưu số lượng record hiện tại trước khi mở dialog
+        int recordCountBeforeAdd = tableModel.getRowCount();
+        
         BacSiDialog dialog = new BacSiDialog(parentFrame, null);
-        dialog.setVisible(true);
-        if (dialog.isConfirmed()) {
-            loadBacSiData();
-        }
+        dialog.setVisible(true); // Modal dialog - code sẽ dừng ở đây cho đến khi dialog đóng
+        
+        // Khi dialog đóng, code sẽ tiếp tục từ đây
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Force tạo mới controller để tránh cache
+                bacSiController = new BacSiController();
+                
+                // Lấy dữ liệu mới từ database
+                List<BacSi> currentData = bacSiController.getAllBacSi();
+                
+                // Kiểm tra xem có record mới không
+                if (currentData.size() > recordCountBeforeAdd) {
+                    // Có record mới - tìm ID lớn nhất (record mới nhất)
+                    int maxId = -1;
+                    for (BacSi bacSi : currentData) {
+                        if (bacSi.getIdBacSi() > maxId) {
+                            maxId = bacSi.getIdBacSi();
+                        }
+                    }
+                    
+                    // Load dữ liệu với highlight cho record mới
+                    loadBacSiData(maxId);
+                    showSuccessToast("Thêm bác sĩ thành công!");
+                } else {
+                    // Không có record mới - chỉ refresh
+                    loadBacSiData();
+                }
+                
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                loadBacSiData();
+            }
+        });
     }
     
     public void focusOnDoctor(int doctorId) {
@@ -690,7 +1012,6 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             exportButton.setEnabled(false);
         }
     }
-    
     private void showEditBacSiDialog() {
         if (currentBacSiId == -1) {
             showMessage("Vui lòng chọn một bác sĩ để chỉnh sửa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -703,20 +1024,21 @@ public class BacSiUI extends JPanel implements MessageCallback, DataChangeListen
             return;
         }
         
+        int editingDoctorId = currentBacSiId;
         BacSiDialog dialog = new BacSiDialog(parentFrame, bacSi);
         
-        // Add property change listener to capture the doctorDataChanged event
         dialog.addPropertyChangeListener("doctorDataChanged", evt -> {
             if ((boolean) evt.getNewValue()) {
-                loadBacSiData(); // Reload data when change is confirmed
+                // Tải lại dữ liệu trước
+                loadBacSiData();
+                // Sau đó highlight bác sĩ đã chỉnh sửa với thời gian dài hơn
+                SwingUtilities.invokeLater(() -> {
+                    highlightRow(editingDoctorId, 10); // Highlight 10 giây
+                    showSuccessToast("Cập nhật thông tin bác sĩ thành công!");
+                });
             }
-        });
-        
-        dialog.setVisible(true);        
-        // This check will still work as a fallback
-        if (dialog.isConfirmed()) {
-            loadBacSiData();
-        }
+        });        
+        dialog.setVisible(true);    
     }
     public void deleteBacSi() {
         if (currentBacSiId == -1) {
