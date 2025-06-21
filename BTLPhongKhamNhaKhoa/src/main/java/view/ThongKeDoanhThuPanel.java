@@ -161,13 +161,14 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
         pnlTable.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(), "Dữ liệu thống kê", 
                 TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 12)));
-        
+
         String[] columnNames = {"Thời gian", "Doanh thu"};
         tableModel = new DefaultTableModel(columnNames, 0);
         tblThongKe = new JTable(tableModel);
         tblThongKe.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblThongKe.setRowHeight(25);
         tblThongKe.getTableHeader().setReorderingAllowed(false);
+
         
         // Export button
         btnExport = new JButton("Xuất dữ liệu");
