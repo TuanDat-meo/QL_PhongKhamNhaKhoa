@@ -10,6 +10,7 @@ import util.ExportManager.MessageCallback;
 import view.DoanhThuUI.NotificationType;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -30,6 +31,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 public class LuongUI extends JPanel implements MessageCallback, DataChangeListener {
     // Color scheme
@@ -673,43 +677,105 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         ADD, EDIT, VIEW
     }
     // Method to show dialog for adding/editing/viewing salary records
+ // Inside LuongUI class
+
+ // Inside LuongUI class
+
+ // Add fields for individual error labels
+    private JLabel thangNamErrorLabel;
+    private JLabel luongCoBanErrorLabel;
+    private JLabel thuongErrorLabel;
+    private JLabel khauTruErrorLabel;
+
     private void showLuongDialog(Luong luong, DialogMode mode) {
         String title;
         switch (mode) {
             case ADD:
-                title = "Thêm mới lương";
+                title = "Thêm Mới Lương";
                 break;
             case EDIT:
-                title = "Chỉnh sửa lương";
+                title = "Chỉnh Sửa Lương";
                 break;
             case VIEW:
-                title = "Chi tiết lương";
+                title = "Chi Tiết Lương";
                 break;
             default:
-                title = "Thông tin lương";
+                title = "THÔNG TIN LƯƠNG";
         }
         
         JDialog dialog = new JDialog((Frame)SwingUtilities.getWindowAncestor(this), title, true);
         dialog.setLayout(new BorderLayout(10, 10));
-        dialog.setSize(400, 450);
+        dialog.setSize(480, 500);
         dialog.setLocationRelativeTo(this);
         
-        JPanel panelForm = new JPanel(new GridLayout(0, 2, 10, 15));
+        // Title Panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(primaryColor);
+        headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
+        
+        JLabel titleLabel = new JLabel("THÊM MỚI LƯƠNG");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setForeground(Color.WHITE);
+        
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        // Form Panel với GridBagLayout
+        JPanel panelForm = new JPanel(new GridBagLayout());
         panelForm.setBorder(new EmptyBorder(20, 20, 10, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
         
-        // No need to reinitialize txtIdLuong here, just configure it
+        // Tạo border bo góc cho các ô nhập liệu
+        Border roundedBorder = BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1, true);
+        
+        // Initialize error labels
+        thangNamErrorLabel = new JLabel("");
+        thangNamErrorLabel.setForeground(Color.RED);
+        thangNamErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        luongCoBanErrorLabel = new JLabel("");
+        luongCoBanErrorLabel.setForeground(Color.RED);
+        luongCoBanErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        thuongErrorLabel = new JLabel("");
+        thuongErrorLabel.setForeground(Color.RED);
+        thuongErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        khauTruErrorLabel = new JLabel("");
+        khauTruErrorLabel.setForeground(Color.RED);
+        khauTruErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        // Configure text fields và components với bo góc và kích thước giống hình
         txtIdLuong.setEditable(false);
+        txtIdLuong.setBorder(roundedBorder);
+        txtIdLuong.setPreferredSize(new Dimension(300, 30));
         
-        // Configure dateThangNam which was already initialized
         dateThangNam.setDateFormatString("MM/yyyy");
+        dateThangNam.setBorder(roundedBorder);
+        dateThangNam.setPreferredSize(new Dimension(300, 30));
         
         Calendar calendar = Calendar.getInstance();
         int lastDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
         calendar.set(Calendar.DAY_OF_MONTH, lastDay);
         dateThangNam.setDate(calendar.getTime());
         
-        // No need to reinitialize these text fields
         txtTongLuong.setEditable(false);
+        txtTongLuong.setBorder(roundedBorder);
+        txtTongLuong.setPreferredSize(new Dimension(300, 30));
+        
+        txtLuongCoBan.setBorder(roundedBorder);
+        txtLuongCoBan.setPreferredSize(new Dimension(300, 30));
+        
+        txtThuong.setBorder(roundedBorder);
+        txtThuong.setPreferredSize(new Dimension(300, 30));
+        
+        txtKhauTru.setBorder(roundedBorder);
+        txtKhauTru.setPreferredSize(new Dimension(300, 30));
+        
+        cmbNhanVien.setBorder(roundedBorder);
+        cmbNhanVien.setPreferredSize(new Dimension(300, 30));
         
         // Set fields editable based on mode
         boolean editable = mode != DialogMode.VIEW;
@@ -719,46 +785,271 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         txtThuong.setEditable(editable);
         txtKhauTru.setEditable(editable);
         
-        panelForm.add(new JLabel("ID:"));
-        panelForm.add(txtIdLuong);
-        panelForm.add(new JLabel("Nhân viên:"));
-        panelForm.add(cmbNhanVien);
-        panelForm.add(new JLabel("Tháng/Năm:"));
-        panelForm.add(dateThangNam);
-        panelForm.add(new JLabel("Lương cơ bản:"));
-        panelForm.add(txtLuongCoBan);
-        panelForm.add(new JLabel("Thưởng:"));
-        panelForm.add(txtThuong);
-        panelForm.add(new JLabel("Khấu trừ:"));
-        panelForm.add(txtKhauTru);
-        panelForm.add(new JLabel("Tổng lương:"));
-        panelForm.add(txtTongLuong);
+        // THÊM PHẦN VALIDATION THỜI GIAN THỰC CHỈ KHI Ở CHẾ ĐỘ CHỈNH SỬA
+        if (editable) {
+            // Validation cho trường Lương cơ bản
+            txtLuongCoBan.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    validateLuongCoBan();
+                }
+                
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    validateLuongCoBan();
+                }
+                
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    validateLuongCoBan();
+                }
+                
+                private void validateLuongCoBan() {
+                    String text = txtLuongCoBan.getText().trim();
+                    if (text.isEmpty()) {
+                        luongCoBanErrorLabel.setText("Lương cơ bản không được trống!");
+                    } else if (!text.matches("\\d+(\\.\\d+)?")) {
+                        luongCoBanErrorLabel.setText("Số không hợp lệ!");
+                    } else {
+                        luongCoBanErrorLabel.setText(""); // Xóa lỗi khi hợp lệ
+                    }
+                }
+            });
+            
+            // Validation cho trường Thưởng
+            txtThuong.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    validateThuong();
+                }
+                
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    validateThuong();
+                }
+                
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    validateThuong();
+                }
+                
+                private void validateThuong() {
+                    String text = txtThuong.getText().trim();
+                    if (text.isEmpty()) {
+                        thuongErrorLabel.setText("Lương thưởng không được trống!");
+                    } else if (!text.matches("\\d+(\\.\\d+)?")) {
+                        thuongErrorLabel.setText("Số không hợp lệ!");
+                    } else {
+                        thuongErrorLabel.setText(""); // Xóa lỗi khi hợp lệ
+                    }
+                }
+            });
+            
+            // Validation cho trường Khấu trừ
+            txtKhauTru.getDocument().addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    validateKhauTru();
+                }
+                
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    validateKhauTru();
+                }
+                
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    validateKhauTru();
+                }
+                
+                private void validateKhauTru() {
+                    String text = txtKhauTru.getText().trim();
+                    if (text.isEmpty()) {
+                        khauTruErrorLabel.setText("Tiền khấu trừ không được trống!");
+                    } else if (!text.matches("\\d+(\\.\\d+)?")) {
+                        khauTruErrorLabel.setText("Số không hợp lệ!");
+                    } else {
+                        khauTruErrorLabel.setText(""); // Xóa lỗi khi hợp lệ
+                    }
+                }
+            });
+        }
         
+        // Add components to panelForm
+        int row = 0;
+        
+        // ID (không hiển thị trong hình, nhưng giữ lại trong mã)
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel idLabel = new JLabel("ID:");
+        idLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        panelForm.add(idLabel, gbc);
+        gbc.gridx = 1;
+        panelForm.add(txtIdLuong, gbc);
+        row++;
+        
+        // Nhân viên
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel nhanVienLabel = new JLabel("Nhân viên:");
+        nhanVienLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        if (editable) {
+            JLabel asterisk = new JLabel("*");
+            asterisk.setForeground(Color.RED);
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            labelPanel.add(nhanVienLabel);
+            labelPanel.add(asterisk);
+            panelForm.add(labelPanel, gbc);
+        } else {
+            panelForm.add(nhanVienLabel, gbc);
+        }
+        gbc.gridx = 1;
+        panelForm.add(cmbNhanVien, gbc);
+        row++;
+        
+        // Tháng/Năm with red asterisk
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel thangNamLabel = new JLabel("Tháng/Năm:");
+        thangNamLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        if (editable) {
+            JLabel asterisk = new JLabel("*");
+            asterisk.setForeground(Color.RED);
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            labelPanel.add(thangNamLabel);
+            labelPanel.add(asterisk);
+            panelForm.add(labelPanel, gbc);
+        } else {
+            panelForm.add(thangNamLabel, gbc);
+        }
+        gbc.gridx = 1;
+        panelForm.add(dateThangNam, gbc);
+        row++;
+        
+        // Tháng/Năm error label
+        gbc.gridx = 1;
+        gbc.gridy = row;
+        panelForm.add(thangNamErrorLabel, gbc);
+        row++;
+        
+        // Lương cơ bản with red asterisk
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel luongCoBanLabel = new JLabel("Lương cơ bản:");
+        luongCoBanLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        if (editable) {
+            JLabel asterisk = new JLabel("*");
+            asterisk.setForeground(Color.RED);
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            labelPanel.add(luongCoBanLabel);
+            labelPanel.add(asterisk);
+            panelForm.add(labelPanel, gbc);
+        } else {
+            panelForm.add(luongCoBanLabel, gbc);
+        }
+        gbc.gridx = 1;
+        panelForm.add(txtLuongCoBan, gbc);
+        row++;
+        
+        // Lương cơ bản error label
+        gbc.gridx = 1;
+        gbc.gridy = row;
+        panelForm.add(luongCoBanErrorLabel, gbc);
+        row++;
+        
+        // Thưởng with red asterisk
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel thuongLabel = new JLabel("Thưởng:");
+        thuongLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        if (editable) {
+            JLabel asterisk = new JLabel("*");
+            asterisk.setForeground(Color.RED);
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            labelPanel.add(thuongLabel);
+            labelPanel.add(asterisk);
+            panelForm.add(labelPanel, gbc);
+        } else {
+            panelForm.add(thuongLabel, gbc);
+        }
+        gbc.gridx = 1;
+        panelForm.add(txtThuong, gbc);
+        row++;
+        
+        // Thưởng error label
+        gbc.gridx = 1;
+        gbc.gridy = row;
+        panelForm.add(thuongErrorLabel, gbc);
+        row++;
+        
+        // Khấu trừ with red asterisk
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel khauTruLabel = new JLabel("Khấu trừ:");
+        khauTruLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        if (editable) {
+            JLabel asterisk = new JLabel("*");
+            asterisk.setForeground(Color.RED);
+            JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            labelPanel.add(khauTruLabel);
+            labelPanel.add(asterisk);
+            panelForm.add(labelPanel, gbc);
+        } else {
+            panelForm.add(khauTruLabel, gbc);
+        }
+        gbc.gridx = 1;
+        panelForm.add(txtKhauTru, gbc);
+        row++;
+        
+        // Khấu trừ error label
+        gbc.gridx = 1;
+        gbc.gridy = row;
+        panelForm.add(khauTruErrorLabel, gbc);
+        row++;
+        
+        // Tổng lương (không có trong hình, nhưng giữ lại trong mã)
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        JLabel tongLuongLabel = new JLabel("Tổng lương:");
+        tongLuongLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        panelForm.add(tongLuongLabel, gbc);
+        gbc.gridx = 1;
+        panelForm.add(txtTongLuong, gbc);
+        
+        // Button Panel
         JPanel panelButtons = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         
         switch (mode) {
             case ADD:
                 // Add mode
-                // Reset form fields
                 txtIdLuong.setText("");
                 txtLuongCoBan.setText("");
                 txtThuong.setText("");
                 txtKhauTru.setText("");
                 txtTongLuong.setText("");
+                thangNamErrorLabel.setText("");
+                luongCoBanErrorLabel.setText("");
+                thuongErrorLabel.setText("");
+                khauTruErrorLabel.setText("");
                 
-                JButton btnAdd = new JButton("Thêm");
+                JButton btnAdd = new JButton("Lưu");
                 btnAdd.setBackground(new Color(100, 180, 100));
                 btnAdd.setForeground(Color.WHITE);
+                btnAdd.setPreferredSize(new Dimension(80, 30));
                 btnAdd.addActionListener(e -> {
-                    themLuong();
-                    dialog.dispose();
+                    if (themLuong()) {
+                        dialog.dispose();
+                    }
                 });
                 
                 JButton btnCancelAdd = new JButton("Hủy");
+                btnCancelAdd.setBackground(Color.LIGHT_GRAY);
+                btnCancelAdd.setForeground(Color.BLACK);
+                btnCancelAdd.setPreferredSize(new Dimension(80, 30));
                 btnCancelAdd.addActionListener(e -> dialog.dispose());
                 
-                panelButtons.add(btnAdd);
                 panelButtons.add(btnCancelAdd);
+                panelButtons.add(btnAdd);
                 break;
                 
             case EDIT:
@@ -766,18 +1057,22 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
                 displayLuongDetails(luong);
                 
                 JButton btnSave = new JButton("Lưu");
-                btnSave.setBackground(new Color(70, 130, 180));
+                btnSave.setBackground(new Color(100, 180, 100));
                 btnSave.setForeground(Color.WHITE);
+                btnSave.setPreferredSize(new Dimension(80, 30));
                 btnSave.addActionListener(e -> {
                     suaLuong();
                     dialog.dispose();
                 });
                 
                 JButton btnCancelEdit = new JButton("Hủy");
+                btnCancelEdit.setBackground(Color.LIGHT_GRAY);
+                btnCancelEdit.setForeground(Color.BLACK);
+                btnCancelEdit.setPreferredSize(new Dimension(80, 30));
                 btnCancelEdit.addActionListener(e -> dialog.dispose());
                 
-                panelButtons.add(btnSave);
                 panelButtons.add(btnCancelEdit);
+                panelButtons.add(btnSave);
                 break;
                 
             case VIEW:
@@ -787,6 +1082,7 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
                 JButton btnEdit = new JButton("Chỉnh sửa");
                 btnEdit.setBackground(new Color(70, 130, 180));
                 btnEdit.setForeground(Color.WHITE);
+                btnEdit.setPreferredSize(new Dimension(80, 30));
                 btnEdit.addActionListener(e -> {
                     dialog.dispose();
                     showLuongDialog(luong, DialogMode.EDIT);
@@ -795,6 +1091,7 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
                 JButton btnDelete = new JButton("Xóa");
                 btnDelete.setBackground(new Color(220, 80, 80));
                 btnDelete.setForeground(Color.WHITE);
+                btnDelete.setPreferredSize(new Dimension(80, 30));
                 btnDelete.addActionListener(e -> {
                     int confirm = JOptionPane.showConfirmDialog(
                         dialog,
@@ -810,6 +1107,9 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
                 });
                 
                 JButton btnClose = new JButton("Đóng");
+                btnClose.setBackground(Color.LIGHT_GRAY);
+                btnClose.setForeground(Color.BLACK);
+                btnClose.setPreferredSize(new Dimension(80, 30));
                 btnClose.addActionListener(e -> dialog.dispose());
                 
                 panelButtons.add(btnEdit);
@@ -822,9 +1122,83 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
         buttonPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
         buttonPanel.add(panelButtons, BorderLayout.CENTER);
         
+        dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(panelForm, BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
         dialog.setVisible(true);
+    }
+
+    private boolean themLuong() {
+        try {
+            // Xóa thông báo lỗi trước đó
+            thangNamErrorLabel.setText("");
+            luongCoBanErrorLabel.setText("");
+            thuongErrorLabel.setText("");
+            khauTruErrorLabel.setText("");
+
+            // Lấy dữ liệu từ các trường nhập liệu
+            String selectedNhanVien = (String) cmbNhanVien.getSelectedItem();
+            java.util.Date selectedDate = dateThangNam.getDate();
+            String luongCoBanText = txtLuongCoBan.getText().trim();
+            String thuongText = txtThuong.getText().trim();
+            String khauTruText = txtKhauTru.getText().trim();
+
+            boolean hasError = false;
+
+            // 1. Kiểm tra các trường bắt buộc có bị trống không
+            if (selectedDate == null) {
+                thangNamErrorLabel.setText("Tháng/Năm chưa được chọn!");
+                hasError = true;
+            }
+            if (luongCoBanText.isEmpty()) {
+                luongCoBanErrorLabel.setText("Lương cơ bản không được trống!");
+                hasError = true;
+            }
+            if (thuongText.isEmpty()) {
+                thuongErrorLabel.setText("Lương thưởng không được trống!");
+                hasError = true;
+            }
+            if (khauTruText.isEmpty()) {
+                khauTruErrorLabel.setText("Tiền khấu trừ không được trống!");
+                hasError = true;
+            }
+
+            // 2. Kiểm tra định dạng số (chỉ khi trường đó không trống)
+            if (!luongCoBanText.isEmpty() && !luongCoBanText.matches("\\d+(\\.\\d+)?")) {
+                luongCoBanErrorLabel.setText("Số không hợp lệ!");
+                hasError = true;
+            }
+            if (!thuongText.isEmpty() && !thuongText.matches("\\d+(\\.\\d+)?")) {
+                thuongErrorLabel.setText("Số không hợp lệ!");
+                hasError = true;
+            }
+            if (!khauTruText.isEmpty() && !khauTruText.matches("\\d+(\\.\\d+)?")) {
+                khauTruErrorLabel.setText("Số không hợp lệ!");
+                hasError = true;
+            }
+
+            // Nếu có bất kỳ lỗi nào, trả về false
+            if (hasError) {
+                return false;
+            }
+
+            // Nếu tất cả các kiểm tra đều thành công, tiến hành thêm bản ghi lương
+            int idNguoiDung = controller.getIdNguoiDungByHoTen(selectedNhanVien);
+            Date thangNam = new Date(selectedDate.getTime());
+            double luongCoBan = Double.parseDouble(luongCoBanText);
+            double thuong = Double.parseDouble(thuongText);
+            double khauTru = Double.parseDouble(khauTruText);
+
+            controller.themLuong(idNguoiDung, thangNam, luongCoBan, thuong, khauTru);
+            lamMoi();
+            return true; // Thêm thành công
+        } catch (NumberFormatException e) {
+            System.err.println("Lỗi định dạng số không mong muốn: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            thangNamErrorLabel.setText("Lỗi: " + e.getMessage());
+            return false;
+        }
     }
     
     private void displayLuongDetails(Luong luong) {
@@ -854,31 +1228,7 @@ public class LuongUI extends JPanel implements MessageCallback, DataChangeListen
     }    
     public List<Object[]> getOriginalData() {
         return originalData;
-    }    
-    private void themLuong() {
-        try {
-            String selectedNhanVien = cmbNhanVien.getSelectedItem().toString();
-            int idNguoiDung = controller.getIdNguoiDungByHoTen(selectedNhanVien);
-            
-            java.util.Date selectedDate = dateThangNam.getDate();
-            if (selectedDate == null) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn tháng năm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            Date thangNam = new Date(selectedDate.getTime());
-            
-            double luongCoBan = Double.parseDouble(txtLuongCoBan.getText().trim());
-            double thuong = Double.parseDouble(txtThuong.getText().trim());
-            double khauTru = Double.parseDouble(txtKhauTru.getText().trim());
-            
-            controller.themLuong(idNguoiDung, thangNam, luongCoBan, thuong, khauTru);
-            lamMoi();
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập số hợp lệ cho các trường lương!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
+    }   
     
     private void xoaLuong() {
         try {

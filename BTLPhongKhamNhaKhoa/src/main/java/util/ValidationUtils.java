@@ -18,7 +18,10 @@ import java.awt.event.FocusListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import javax.swing.event.DocumentListener;
+import com.toedter.calendar.JDateChooser;
 import javax.swing.event.DocumentEvent;
 import java.awt.FlowLayout;
 import javax.swing.JPanel;
@@ -53,62 +56,53 @@ public class ValidationUtils {
     private static final String EMAIL_EMPTY_ERROR = "Email không được để trống";
     private static final String PHONE_ERROR = "Số điện thoại không hợp lệ";
     private static final String PHONE_EMPTY_ERROR = "Số điện thoại không được để trống";
+    private static final String ID_HOA_DON_EMPTY_ERROR = "ID hóa đơn không được để trống";
+    private static final String ID_HOA_DON_INVALID_ERROR = "ID hóa đơn không hợp lệ";
+    private static final String THANG_NAM_EMPTY_ERROR = "Tháng/Năm chưa được chọn";
+    private static final String THANG_NAM_INVALID_ERROR = "Tháng/Năm không hợp lệ";
     
-    // Icons for validation state - These should be added to your project resources
+    // Icons for validation state
     private static ImageIcon successIcon;
     private static ImageIcon errorIcon;
     
     static {
         try {
-            // Initialize icons - replace with actual paths to your icons
-            // These could be replaced with actual paths to icons in your project
             successIcon = new ImageIcon(ValidationUtils.class.getResource("/resources/icons/check.png"));
             errorIcon = new ImageIcon(ValidationUtils.class.getResource("/resources/icons/error.png"));
-            
-            // If icons can't be loaded, they will be null and won't be displayed
         } catch (Exception e) {
-            // Handle icon loading errors silently
             successIcon = null;
             errorIcon = null;
         }
     }
     
-    // New method to create validation feedback components
+    
     public static JPanel createValidationPanel(JComponent inputComponent, String fieldName, boolean required) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         panel.setBackground(Color.WHITE);
         
-        // Create label for field name
         JLabel nameLabel = new JLabel(fieldName + (required ? " *" : ""));
-        nameLabel.setForeground(new Color(33, 37, 41)); // Dark text color
+        nameLabel.setForeground(new Color(33, 37, 41));
         nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         
-        // Create label for validation state
         JLabel validationLabel = new JLabel();
         validationLabel.setPreferredSize(new Dimension(20, 20));
         
-        // Add document listener to input component
         if (inputComponent instanceof JTextField) {
             JTextField textField = (JTextField) inputComponent;
             textField.getDocument().addDocumentListener(new DocumentListener() {
                 @Override
                 public void insertUpdate(DocumentEvent e) {
-                    updateValidationState();
+                    validationLabel.setIcon(null);
                 }
                 
                 @Override
                 public void removeUpdate(DocumentEvent e) {
-                    updateValidationState();
+                    validationLabel.setIcon(null);
                 }
                 
                 @Override
                 public void changedUpdate(DocumentEvent e) {
-                    updateValidationState();  
-                }
-                
-                private void updateValidationState() {
-                    // This will be implemented based on specific field validation
-                    validationLabel.setIcon(null); // Reset icon during typing
+                    validationLabel.setIcon(null);
                 }
             });
         }
@@ -153,16 +147,11 @@ public class ValidationUtils {
         }
     }
     
-    // Method to attach real-time validation listeners
     public static void attachValidationListeners(JTextField textField, JLabel validationLabel, 
                                                ValidationFunction validationFunction, String fieldName) {
-        
-        // Add focus listener for validation on focus lost
         textField.addFocusListener(new FocusListener() {
             @Override
-            public void focusGained(FocusEvent e) {
-                // Optional: Clear error styling on focus gain
-            }
+            public void focusGained(FocusEvent e) {}
             
             @Override
             public void focusLost(FocusEvent e) {
@@ -172,7 +161,6 @@ public class ValidationUtils {
             }
         });
         
-        // Add document listener for real-time validation feedback
         textField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -197,7 +185,6 @@ public class ValidationUtils {
         });
     }
     
-    // Functional interface for validation functions
     @FunctionalInterface
     public interface ValidationFunction {
         boolean validate(String input);
@@ -226,7 +213,6 @@ public class ValidationUtils {
     private static boolean validateLoginField(String value, JComponent component, 
                                              String pattern, String emptyErrorMessage, 
                                              String invalidErrorMessage, JComponent errorLabel) {
-        
         if (value == null || value.isEmpty()) {
             component.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(ERROR_COLOR, 1, true),
@@ -449,18 +435,6 @@ public class ValidationUtils {
         component.setToolTipText(null);
     }
     
-    public static void clearValidationError(JComponent component, JComponent errorLabel) {
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
-        }
-    }
-    
     public static void clearLoginValidationError(JComponent component, JComponent errorLabel) {
         component.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(BORDER_COLOR, 1, true),
@@ -478,18 +452,106 @@ public class ValidationUtils {
             clearValidationError(component);
         }
     }
-    // New methods for creating styled validation labels
+    
     public static JLabel createValidationStatusLabel() {
         JLabel label = new JLabel();
         label.setPreferredSize(new Dimension(24, 24));
         return label;
     }
     
-    // New methods for creating error message labels
     public static JLabel createErrorMessageLabel() {
         JLabel label = new JLabel();
         label.setForeground(ERROR_COLOR);
         label.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         return label;
+    }
+    
+    public static boolean validateIdHoaDon(String idText, JComponent component, JComponent errorLabel) {
+        if (idText == null || idText.trim().isEmpty()) {
+            showValidationError(component, errorLabel, ID_HOA_DON_EMPTY_ERROR);
+            return false;
+        }
+
+        try {
+            Integer.parseInt(idText.trim());
+        } catch (NumberFormatException e) {
+            showValidationError(component, errorLabel, ID_HOA_DON_INVALID_ERROR);
+            return false;
+        }
+
+        clearValidationError(component, errorLabel);
+        return true;
+    }
+
+    public static boolean validateThangNam(Date date, JDateChooser dateChooser, JComponent errorLabel) {
+        JTextField dateField = (JTextField) dateChooser.getDateEditor().getUiComponent();
+        if (date == null || dateField.getText().trim().isEmpty()) {
+            showValidationError(dateChooser, errorLabel, THANG_NAM_EMPTY_ERROR);
+            dateField.setForeground(ERROR_COLOR);
+            return false;
+        }
+
+        try {
+            String dateText = dateField.getText().trim();
+            SimpleDateFormat sdf = new SimpleDateFormat("MM/yyyy");
+            sdf.setLenient(false);
+            sdf.parse(dateText);
+            clearValidationError(dateChooser, errorLabel);
+            dateField.setForeground(Color.BLACK);
+            return true;
+        } catch (ParseException e) {
+            showValidationError(dateChooser, errorLabel, THANG_NAM_INVALID_ERROR);
+            dateField.setForeground(ERROR_COLOR);
+            return false;
+        }
+    }
+
+    public static void showValidationError(JComponent component, JComponent errorLabel, String message) {
+        if (component instanceof JDateChooser) {
+            // Áp dụng viền đỏ cho toàn bộ JDateChooser
+            component.setBorder(new LineBorder(ERROR_COLOR, 1, true));
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
+            dateField.setForeground(ERROR_COLOR);
+        } else {
+            component.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(ERROR_COLOR, 1, true),
+                new EmptyBorder(10, 15, 10, 15)
+            ));
+            if (component instanceof JTextField) {
+                ((JTextField) component).setForeground(ERROR_COLOR);
+            }
+        }
+        if (errorLabel instanceof JTextField) {
+            ((JTextField) errorLabel).setText(message);
+        } else if (errorLabel instanceof JLabel) {
+            ((JLabel) errorLabel).setText("<html><div style='width: 245px;'>" + message + "</div></html>");
+        }
+        component.revalidate();
+        component.repaint();
+    }
+
+    public static void clearValidationError(JComponent component, JComponent errorLabel) {
+        if (component instanceof JDateChooser) {
+            component.setBorder(new util.CustomBorder(8, BORDER_COLOR));
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
+            dateField.setForeground(Color.BLACK);
+        } else {
+            component.setBorder(BorderFactory.createCompoundBorder(
+                new util.CustomBorder(8, BORDER_COLOR),
+                new EmptyBorder(10, 15, 10, 15)
+            ));
+            if (component instanceof JTextField) {
+                ((JTextField) component).setForeground(Color.BLACK);
+            }
+        }
+        if (errorLabel instanceof JTextField) {
+            ((JTextField) errorLabel).setText("");
+        } else if (errorLabel instanceof JLabel) {
+            ((JLabel) errorLabel).setText(" ");
+        }
+        component.revalidate();
+        component.repaint();
     }
 }

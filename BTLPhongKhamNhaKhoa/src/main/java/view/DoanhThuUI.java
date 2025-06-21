@@ -5,6 +5,8 @@ import util.DataChangeListener;
 import util.ExportManager;
 import util.ExportManager.MessageCallback;
 import util.RoundedPanel;
+import util.ValidationUtils;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -21,6 +23,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -54,7 +59,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private JTable tableDoanhThu;
     private JTable tableTotalRow;
     private DefaultTableModel modelTotalRow;
-    private JButton btnXuatFile; // Thêm biến này
+    private JButton btnXuatFile;
     private JButton btnThemMoiDoanhThu;
     private JTextField txtTimKiemDoanhThu;
     private JButton btnTimKiemDoanhThu;
@@ -71,21 +76,22 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private NumberFormat currencyFormat;
     private ExportManager exportManager;
     
+    private int highlightedRowId = -1; // ID của bản ghi đang được highlight
+    private Color highlightColor = new Color(237, 187, 85); // Màu highlight
+    private Timer highlightTimer; // Timer để tắt highlight
+    
     public DoanhThuUI() {
         initializePanel();
         initializeFormatters();
-        // Khởi tạo bảng trước để đảm bảo modelDoanhThu không null
         buildTablePanel();
         initializeController();
         buildHeaderPanel();
         buildButtonPanel();
         setupEventListeners();
         setupPopupMenu();
-        // Vô hiệu hóa nút Xuất file ban đầu
         btnXuatFile.setEnabled(false);
         SwingUtilities.invokeLater(() -> {
             doanhThuController.loadDoanhThuData();
-            // Kích hoạt nút Xuất file sau khi dữ liệu được tải
             btnXuatFile.setEnabled(modelDoanhThu.getRowCount() > 0);
         });
     }
@@ -93,7 +99,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private void initializePanel() {
         setLayout(new BorderLayout(0, 0));
         setBackground(backgroundColor);
-        setBorder(new EmptyBorder(20,20, 20, 20));
+        setBorder(new EmptyBorder(20, 20, 20, 20));
     }
 
     private void initializeFormatters() {
@@ -184,17 +190,17 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         modelDoanhThu = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Make table read-only
+                return false;
             }
             
             @Override
             public Class<?> getColumnClass(int columnIndex) {
                 if (columnIndex == 0 || columnIndex == 1) {
-                    return Integer.class; // ID columns are integers
+                    return Integer.class;
                 } else if (columnIndex == 4) {
-                    return Double.class; // Total column is double
+                    return Double.class;
                 }
-                return String.class; // Default to String
+                return String.class;
             }
         };
         
@@ -202,7 +208,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
                 Component comp = super.prepareRenderer(renderer, row, column);
-                // Add alternating row colors
                 if (!comp.getBackground().equals(getSelectionBackground())) {
                     comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
                 }
@@ -234,7 +239,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         styleMainTable(tableTotalRow);
         tableTotalRow.setFont(totalRowFont);
         tableTotalRow.setRowHeight(45);
-        tableTotalRow.setTableHeader(null); 
+        tableTotalRow.setTableHeader(null);
         tableTotalRow.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -288,12 +293,12 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             header.setReorderingAllowed(false);
             ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
         }
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);   // ID
-        table.getColumnModel().getColumn(1).setPreferredWidth(80);   // ID Hóa Đơn
-        table.getColumnModel().getColumn(2).setPreferredWidth(200);  // Tên Bệnh Nhân
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);  // Tháng/Năm
-        table.getColumnModel().getColumn(4).setPreferredWidth(150);  // Tổng Thu
-        table.getColumnModel().getColumn(5).setPreferredWidth(120);  // Trạng Thái
+        table.getColumnModel().getColumn(0).setPreferredWidth(50);
+        table.getColumnModel().getColumn(1).setPreferredWidth(80);
+        table.getColumnModel().getColumn(2).setPreferredWidth(200);
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(150);
+        table.getColumnModel().getColumn(5).setPreferredWidth(120);
         
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
@@ -301,19 +306,25 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 
+                int modelRow = table.convertRowIndexToModel(row);
+                int rowId = (Integer) modelDoanhThu.getValueAt(modelRow, 0);
+                
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    if (highlightedRowId > 0 && rowId == highlightedRowId) {
+                        c.setBackground(highlightColor);
+                    } else {
+                        c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    }
+                } else {
+                    c.setBackground(table.getSelectionBackground());
                 }
                 
-                // Set horizontal alignment to CENTER for all cells
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                 
-                // Format currency for column 4 (Tổng Thu)
                 if (column == 4 && value instanceof Double) {
                     ((JLabel) c).setText(currencyFormat.format((Double) value) + " VND");
                 }
                 
-                // Keep some padding
                 ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
                 return c;
             }
@@ -325,7 +336,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
         
-        // Create Export Button
         btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> {
@@ -336,28 +346,20 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
         });
 
-        // Create Add Button
         btnThemMoiDoanhThu = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThemMoiDoanhThu.setPreferredSize(new Dimension(100, 45));
         btnThemMoiDoanhThu.addActionListener(e -> showThemMoiDialog());
         
-        // Add buttons to panel
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThemMoiDoanhThu);
         
         add(buttonPanel, BorderLayout.SOUTH);
     }
     
-    /**
-     * Creates a styled button with hover effects
-     */
     private JButton createStyledButton(String text) {
         return createRoundedButton(text, primaryColor, buttonTextColor, 10);
     }
 
-    /**
-     * Creates a rounded button with hover effects
-     */
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
         JButton button = new JButton(text) {
             @Override
@@ -383,9 +385,11 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        button.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(bgColor.darker(), 1),
+            BorderFactory.createEmptyBorder(8, 15, 8, 15)
+        ));
 
-        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -401,42 +405,29 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         return button;
     }
 
-    /**
-     * Darkens a color for hover effects
-     */
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
 
-    /**
-     * Sets up event listeners for table and controls
-     */
     private void setupEventListeners() {
-        // Setup search button action
         btnTimKiemDoanhThu.addActionListener(e -> {
-            // Check if search field is empty
             if (txtTimKiemDoanhThu.getText().trim().isEmpty()) {
-                // If empty, refresh the data
                 refreshData();
                 showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
             } else {
-                // If not empty, filter the data
                 filterDoanhThu();
             }
         });
         
-        // Setup enter key on search field
         txtTimKiemDoanhThu.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (txtTimKiemDoanhThu.getText().trim().isEmpty()) {
-                        // If empty, refresh the data
                         refreshData();
                         showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
                     } else {
-                        // If not empty, filter the data
                         filterDoanhThu();
                     }
                 }
@@ -467,11 +458,50 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 }
             }
         });
+
+        JScrollPane scrollPane = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, tableDoanhThu);
+        if (scrollPane != null) {
+            scrollPane.addMouseWheelListener(e -> {
+                if (highlightedRowId > 0) {
+                    resetHighlightState();
+                }
+            });
+
+            scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
+                if (highlightedRowId > 0 && e.getValueIsAdjusting()) {
+                    resetHighlightState();
+                }
+            });
+        }
+
+        tableDoanhThu.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (highlightedRowId > 0 && isNavigationKey(e.getKeyCode())) {
+                    resetHighlightState();
+                }
+            }
+
+            private boolean isNavigationKey(int keyCode) {
+                return keyCode == KeyEvent.VK_UP ||
+                       keyCode == KeyEvent.VK_DOWN ||
+                       keyCode == KeyEvent.VK_PAGE_UP ||
+                       keyCode == KeyEvent.VK_PAGE_DOWN ||
+                       keyCode == KeyEvent.VK_HOME ||
+                       keyCode == KeyEvent.VK_END;
+            }
+        });
+
+        tableDoanhThu.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (highlightedRowId > 0) {
+                    resetHighlightState();
+                }
+            }
+        });
     }
     
-    /**
-     * Sets up the popup menu for table row actions
-     */
     private void setupPopupMenu() {
         popupMenuDoanhThu = new JPopupMenu();
         popupMenuDoanhThu.setBorder(new LineBorder(borderColor, 1));
@@ -507,9 +537,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         });
     }
 
-    /**
-     * Creates a styled menu item with hover effects
-     */
     private JMenuItem createStyledMenuItem(String text) {
         JMenuItem menuItem = new JMenuItem(text);
         menuItem.setFont(regularFont);
@@ -533,30 +560,22 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         return menuItem;
     }
     
-    /**
-     * Shows the popup menu at the specified location
-     */
     private void showPopupMenu(MouseEvent e) {
         if (tableDoanhThu.getSelectedRow() >= 0) {
             popupMenuDoanhThu.show(e.getComponent(), e.getX(), e.getY());
         }
     }
     
-    /**
-     * Handles the view details action
-     */
     private void xemChiTietDoanhThuAction() {
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
             int modelRow = tableDoanhThu.convertRowIndexToModel(selectedRow);
             
-            // Get values with proper type handling
             int idDoanhThu = (int) modelDoanhThu.getValueAt(modelRow, 0);
             int idHoaDon = (int) modelDoanhThu.getValueAt(modelRow, 1);
             String tenBenhNhan = modelDoanhThu.getValueAt(modelRow, 2).toString();
             String thangNam = modelDoanhThu.getValueAt(modelRow, 3).toString();
             
-            // Handle possible Double value for tongThu
             Object tongThuObj = modelDoanhThu.getValueAt(modelRow, 4);
             String tongThu;
             if (tongThuObj instanceof Double) {
@@ -578,289 +597,468 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
     }
 
+    private JTextField createStyledTextField() {
+        JTextField textField = new JTextField();
+        textField.setFont(regularFont);
+        textField.setPreferredSize(new Dimension(230, 38));
+        textField.setMinimumSize(new Dimension(230, 38));
+        textField.setMaximumSize(new Dimension(230, 38));
+        textField.setBorder(BorderFactory.createCompoundBorder(
+            new util.CustomBorder(8, borderColor),
+            BorderFactory.createEmptyBorder(5, 12, 5, 12)
+        ));
+        textField.setBackground(Color.WHITE);
+        textField.setOpaque(true);
+        textField.setHorizontalAlignment(JTextField.LEFT);
+        return textField;
+    }
+
     private void showThemMoiDialog() {
         JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (topFrame == null) {
             showNotification("Không tìm thấy cửa sổ cha!", NotificationType.ERROR);
             return;
         }
-        
-        // Tạo dialog
+
         JDialog dialog = new JDialog(topFrame, "Thêm Mới Doanh Thu", true);
-        dialog.setSize(500, 400);
-        dialog.setLayout(new BorderLayout());
+        dialog.setSize(480, 380);
+        dialog.setLocationRelativeTo(null);
         dialog.setResizable(false);
-        
-        // Panel tiêu đề
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+
+        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
-        headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
-        
+        headerPanel.setPreferredSize(new Dimension(0, 70));
+        headerPanel.setBorder(new EmptyBorder(18, 25, 18, 25));
         JLabel titleLabel = new JLabel("THÊM MỚI DOANH THU");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(Color.WHITE);
-        
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
-        
-        // Panel form
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+
+        // Form panel
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(Color.WHITE);
-        
-        // Tạo các trường nhập liệu
-        JTextField txtIdHoaDon = new JTextField(20);
-        txtIdHoaDon.setForeground(Color.BLACK); // Màu mặc định
-        JDateChooser dateChooser = new JDateChooser();
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 4, 0, 4);
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        gbc.anchor = GridBagConstraints.LINE_START;
+
+        Color requiredFieldColor = new Color(255, 0, 0);
+
+        // ID Hóa Đơn field
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        JLabel lblId = new JLabel("ID Hóa Đơn: ");
+        lblId.setFont(regularFont);
+        JPanel idLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        idLabelPanel.setBackground(Color.WHITE);
+        idLabelPanel.add(lblId);
+        JLabel starId = new JLabel("*");
+        starId.setForeground(requiredFieldColor);
+        starId.setFont(regularFont);
+        idLabelPanel.add(starId);
+        formPanel.add(idLabelPanel, gbc);
+
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JTextField txtIdHoaDon = createStyledTextField();
+        txtIdHoaDon.setPreferredSize(new Dimension(230, 38));
+        formPanel.add(txtIdHoaDon, gbc);
+
+        // Error label for ID Hóa Đơn
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 8, 4);
+        JLabel idErrorLabel = createErrorLabel();
+        formPanel.add(idErrorLabel, gbc);
+
+        // Tháng/Năm field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(8, 4, 0, 4);
+        JLabel lblDate = new JLabel("Tháng/Năm: ");
+        lblDate.setFont(regularFont);
+        JPanel dateLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        dateLabelPanel.setBackground(Color.WHITE);
+        dateLabelPanel.add(lblDate);
+        JLabel starDate = new JLabel("*");
+        starDate.setForeground(requiredFieldColor);
+        starDate.setFont(regularFont);
+        dateLabelPanel.add(starDate);
+        formPanel.add(dateLabelPanel, gbc);
+
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JDateChooser dateChooser = createStyledDateChooser();
+        dateChooser.setPreferredSize(new Dimension(230, 38));
         dateChooser.setDateFormatString("MM/yyyy");
-        dateChooser.setPreferredSize(new Dimension(200, 30)); // Đồng bộ kích thước
-        
-        // Trường chỉ đọc cho tổng thu
-        JTextField txtTongThu = new JTextField(20);
+        JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
+        dateTextField.setFont(regularFont);
+        dateTextField.setHorizontalAlignment(JTextField.LEFT);
+        formPanel.add(dateChooser, gbc);
+
+        // Error label for Tháng/Năm
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 8, 4);
+        JLabel dateErrorLabel = createErrorLabel();
+        formPanel.add(dateErrorLabel, gbc);
+
+        // Tổng Thu field
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.insets = new Insets(8, 4, 0, 4);
+        JLabel lblTongThu = new JLabel("Tổng Thu: ");
+        lblTongThu.setFont(regularFont);
+        JPanel tongThuLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        tongThuLabelPanel.setBackground(Color.WHITE);
+        tongThuLabelPanel.add(lblTongThu);
+        formPanel.add(tongThuLabelPanel, gbc);
+
+        gbc.gridx = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JTextField txtTongThu = createStyledTextField();
+        txtTongThu.setPreferredSize(new Dimension(230, 38));
         txtTongThu.setEditable(false);
-        txtTongThu.setBackground(new Color(240, 240, 240));
-        
-        // Nhãn lỗi cho validation
-        JLabel idErrorLabel = new JLabel(" ");
-        idErrorLabel.setForeground(Color.RED);
-        idErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        
-        JLabel dateErrorLabel = new JLabel(" ");
-        dateErrorLabel.setForeground(Color.RED);
-        dateErrorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        
-        // Thêm các trường vào panel với dấu * màu đỏ
-        addFormField(formPanel, "ID Hóa Đơn:", txtIdHoaDon, idErrorLabel, true);
-        addFormField(formPanel, "Tháng/Năm:", dateChooser, dateErrorLabel, true);
-        addFormField(formPanel, "Tổng Thu:", txtTongThu);
-        
-        // Thêm action listener để tự động lấy số tiền hóa đơn và kiểm tra ID
+        txtTongThu.setBackground(new Color(220, 220, 220));
+        txtTongThu.setHorizontalAlignment(JTextField.LEFT);
+        formPanel.add(txtTongThu, gbc);
+
+        // Add strut for consistent spacing
+        gbc.gridx = 1;
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 4, 8, 4);
+        formPanel.add(Box.createVerticalStrut(10), gbc);
+
+        // Push remaining space to bottom
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 2;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        formPanel.add(Box.createVerticalGlue(), gbc);
+
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
+        Dimension buttonSize = new Dimension(90, 36);
+
+        JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
+        saveButton.setPreferredSize(buttonSize);
+        saveButton.setMinimumSize(buttonSize);
+        saveButton.setMaximumSize(buttonSize);
+        saveButton.setFocusPainted(false);
+        saveButton.setBorderPainted(false);
+        saveButton.addActionListener(e ->
+            luuDoanhThu(txtIdHoaDon, dateChooser, txtTongThu, idErrorLabel, dateErrorLabel, dialog)
+        );
+
+        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10);
+        cancelButton.setBorder(new LineBorder(borderColor, 1));
+        cancelButton.setPreferredSize(buttonSize);
+        cancelButton.setMinimumSize(buttonSize);
+        cancelButton.setMaximumSize(buttonSize);
+        cancelButton.setFocusPainted(false);
+        cancelButton.setBorderPainted(false);
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
+
+        // Assemble main panel
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setContentPane(mainPanel);
+
+        // Enter key navigation
+        txtIdHoaDon.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    dateTextField.requestFocus();
+                }
+            }
+        });
+
+        dateTextField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    saveButton.requestFocus();
+                }
+            }
+        });
+
+        // Set default button
+        dialog.getRootPane().setDefaultButton(saveButton);
+
+        // ID Hóa Đơn validation
         txtIdHoaDon.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                try {
-                    idErrorLabel.setText(" ");
-                    txtIdHoaDon.setForeground(Color.BLACK); // Khôi phục màu mặc định
-                    if (!txtIdHoaDon.getText().trim().isEmpty()) {
-                        int idHoaDon = Integer.parseInt(txtIdHoaDon.getText().trim());
-                        // Gọi controller để lấy số tiền hóa đơn
-                        double invoiceAmount = doanhThuController.getHoaDonAmount(idHoaDon);
-                        if (invoiceAmount > 0) {
-                            txtTongThu.setText(currencyFormat.format(invoiceAmount) + " VND");
+                ValidationUtils.clearValidationError(txtIdHoaDon, idErrorLabel);
+                String idText = txtIdHoaDon.getText().trim();
+                if (!idText.isEmpty()) {
+                    try {
+                        int id = Integer.parseInt(idText);
+                        double amt = doanhThuController.getHoaDonAmount(id);
+                        if (amt > 0) {
+                            txtTongThu.setText(currencyFormat.format(amt) + " VND");
                             txtTongThu.setCaretPosition(0);
+                            txtIdHoaDon.setForeground(Color.BLACK);
+                            txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                                new util.CustomBorder(8, successColor),
+                                BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                            ));
                         } else {
                             txtTongThu.setText("Không tìm thấy hóa đơn");
-                            idErrorLabel.setText("Không tìm thấy hóa đơn");
                             txtIdHoaDon.setForeground(Color.RED);
+                            txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                                new util.CustomBorder(8, new Color(220, 53, 69)),
+                                BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                            ));
                         }
-                    } else {
-                        txtTongThu.setText("");
-                    }
-                } catch (NumberFormatException ex) {
-                    txtTongThu.setText("ID không hợp lệ");
-                    idErrorLabel.setText("ID không hợp lệ");
-                    txtIdHoaDon.setForeground(Color.RED); // Tô màu đỏ khi ID sai
-                }
-            }
-        });
-        
-        // Kiểm tra định dạng Tháng/Năm ngay khi nhập
-        JTextField dateField = (JTextField) dateChooser.getDateEditor().getUiComponent();
-        dateField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                String dateText = dateField.getText().trim();
-                if (!dateText.isEmpty()) {
-                    try {
-                        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/yyyy");
-                        sdf.setLenient(false); // Kiểm tra định dạng nghiêm ngặt
-                        sdf.parse(dateText);
-                        dateErrorLabel.setText(" "); // Định dạng đúng, xóa lỗi
-                    } catch (java.text.ParseException ex) {
-                        dateErrorLabel.setText("Tháng/Năm không hợp lệ");
+                    } catch (NumberFormatException ex) {
+                        txtTongThu.setText("ID không hợp lệ");
+                        txtIdHoaDon.setForeground(Color.RED);
+                        txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                            new util.CustomBorder(8, new Color(220, 53, 69)),
+                            BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                        ));
                     }
                 } else {
-                    dateErrorLabel.setText(" "); // Trống, xóa lỗi
+                    txtTongThu.setText("");
+                    txtIdHoaDon.setForeground(Color.BLACK);
+                    txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                        new util.CustomBorder(8, borderColor),
+                        BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                    ));
                 }
             }
         });
-        
-        // Xóa lỗi khi chọn ngày hợp lệ từ lịch
+
+        // Tháng/Năm validation
+        dateTextField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                ValidationUtils.clearValidationError(dateChooser, dateErrorLabel);
+                String text = dateTextField.getText().trim();
+                if (!text.isEmpty()) {
+                    try {
+                        new SimpleDateFormat("MM/yyyy").parse(text);
+                        dateTextField.setForeground(Color.BLACK);
+                    } catch (ParseException ex) {
+                        dateTextField.setForeground(Color.RED);
+                    }
+                } else {
+                    dateTextField.setForeground(Color.BLACK);
+                }
+            }
+        });
+
         dateChooser.getDateEditor().addPropertyChangeListener("date", evt -> {
-            if (dateChooser.getDate() != null) {
+            ValidationUtils.clearValidationError(dateChooser, dateErrorLabel);
+            if (evt.getNewValue() != null) {
                 try {
-                    String dateText = dateField.getText();
-                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/yyyy");
-                    sdf.setLenient(false);
-                    sdf.parse(dateText);
-                    dateErrorLabel.setText(" "); // Ngày hợp lệ, xóa lỗi
-                } catch (java.text.ParseException ex) {
-                    dateErrorLabel.setText("Tháng/Năm không hợp lệ");
+                    String text = dateTextField.getText();
+                    new SimpleDateFormat("MM/yyyy").parse(text);
+                    dateTextField.setForeground(Color.BLACK);
+                } catch (ParseException ex) {
+                    dateTextField.setForeground(Color.RED);
                 }
             } else {
-                dateErrorLabel.setText(" "); // Chưa chọn, xóa lỗi
+                dateTextField.setForeground(Color.BLACK);
             }
         });
-        
-        formPanel.add(Box.createVerticalGlue());
-        
-        // Panel nút
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
-        
-        JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10);
-        saveButton.addActionListener(e -> {
-            // Xóa thông báo lỗi
-            idErrorLabel.setText(" ");
-            dateErrorLabel.setText(" ");
-            boolean hasError = false;
-            
-            // Kiểm tra đầu vào
-            if (txtIdHoaDon.getText().trim().isEmpty()) {
-                idErrorLabel.setText("ID không được trống");
-                txtIdHoaDon.setForeground(Color.RED);
-                hasError = true;
-            } else {
-                try {
-                    Integer.parseInt(txtIdHoaDon.getText().trim());
-                    txtIdHoaDon.setForeground(Color.BLACK); // Khôi phục màu nếu ID hợp lệ
-                } catch (NumberFormatException ex) {
-                    idErrorLabel.setText("ID không hợp lệ");
-                    txtTongThu.setText("ID không hợp lệ");
-                    txtIdHoaDon.setForeground(Color.RED);
-                    hasError = true;
-                }
-            }
-            
-            if (dateChooser.getDate() == null) {
-                dateErrorLabel.setText("Tháng/Năm chưa được chọn");
-                hasError = true;
-            } else {
-                try {
-                    String dateText = dateField.getText().trim();
-                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/yyyy");
-                    sdf.setLenient(false);
-                    sdf.parse(dateText); // Kiểm tra định dạng
-                } catch (java.text.ParseException ex) {
-                    dateErrorLabel.setText("Tháng/Năm không hợp lệ");
-                    hasError = true;
-                }
-            }
-            
-            if (hasError) {
-                return;
-            }
-            
-            try {
-                int idHoaDon = Integer.parseInt(txtIdHoaDon.getText().trim());
-                Date thangNam = dateChooser.getDate();
-                
-                // Lấy số tiền hóa đơn từ controller
-                double tongThu = doanhThuController.getHoaDonAmount(idHoaDon);
-                
-                if (tongThu <= 0) {
-                    idErrorLabel.setText("Không tìm thấy hóa đơn");
-                    txtTongThu.setText("Không tìm thấy hóa đơn");
-                    txtIdHoaDon.setForeground(Color.RED);
-                    showNotification("Không tìm thấy hóa đơn hoặc hóa đơn không hợp lệ!", NotificationType.ERROR);
-                    return;
-                }
-                
-                // Gọi controller với các tham số đã cập nhật
-                boolean success = doanhThuController.themDoanhThu(thangNam, tongThu, idHoaDon);
-                
-                if (success) {
-                    dialog.dispose();
-                    showNotification("Thêm doanh thu thành công!", NotificationType.SUCCESS);
-                }
-            } catch (NumberFormatException ex) {
-                idErrorLabel.setText("ID không hợp lệ");
-                txtTongThu.setText("ID không hợp lệ");
-                txtIdHoaDon.setForeground(Color.RED);
-                showNotification("ID hóa đơn không hợp lệ! Vui lòng kiểm tra lại.", NotificationType.ERROR);
-            }
-        });
-        
-        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10);
-        cancelButton.setBorder(new LineBorder(borderColor, 1));
-        cancelButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-        
-        // Thêm các thành phần vào dialog
-        dialog.add(headerPanel, BorderLayout.NORTH);
-        dialog.add(new JScrollPane(formPanel), BorderLayout.CENTER);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setLocationRelativeTo(topFrame);
+
         dialog.setVisible(true);
     }
-
-    // Phương thức addFormField từ code bạn cung cấp
-    private void addFormField(JPanel panel, String labelText, JComponent field) {
-        JPanel fieldPanel = new JPanel(new BorderLayout(10, 0));
-        fieldPanel.setBackground(Color.WHITE);
-        fieldPanel.setMaximumSize(new Dimension(450, 60));
-        fieldPanel.setBorder(new EmptyBorder(5, 0, 5, 0));
-        
-        JLabel label = new JLabel(labelText);
-        label.setFont(regularFont);
-        label.setPreferredSize(new Dimension(180, 30));
-        
-        fieldPanel.add(label, BorderLayout.WEST);
-        fieldPanel.add(field, BorderLayout.CENTER);
-        
-        panel.add(fieldPanel);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+    
+    private JDateChooser createStyledDateChooser() {
+        JDateChooser dateChooser = new JDateChooser();
+        dateChooser.setFont(regularFont);
+        dateChooser.setPreferredSize(new Dimension(300, 35));
+        dateChooser.setBorder(new util.CustomBorder(8, borderColor));
+        JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
+        dateTextField.setFont(regularFont);
+        dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));
+        dateTextField.setBackground(Color.WHITE);
+        dateTextField.setOpaque(true);
+        return dateChooser;
     }
 
-    // Phương thức addFormField mới để hỗ trợ nhãn lỗi và dấu * màu đỏ
-    private void addFormField(JPanel panel, String labelText, JComponent field, JLabel errorLabel, boolean showAsterisk) {
-        JPanel fieldPanel = new JPanel(new BorderLayout(10, 0));
-        fieldPanel.setBackground(Color.WHITE);
-        fieldPanel.setMaximumSize(new Dimension(450, 60));
-        fieldPanel.setBorder(new EmptyBorder(5, 0, 5, 0));
-        
-        // Tạo panel cho nhãn và dấu *
-        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        labelPanel.setBackground(Color.WHITE);
-        
-        JLabel label = new JLabel(labelText);
-        label.setFont(regularFont);
-        label.setPreferredSize(new Dimension(160, 30)); // Giảm chiều rộng để chừa chỗ cho dấu *
-        labelPanel.add(label);
-        
-        if (showAsterisk) {
-            JLabel asteriskLabel = new JLabel("*");
-            asteriskLabel.setForeground(Color.RED);
-            asteriskLabel.setFont(regularFont);
-            labelPanel.add(asteriskLabel);
+    private JLabel createErrorLabel() {
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        errorLabel.setForeground(new Color(220, 53, 69));
+        errorLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+        errorLabel.setVisible(true);
+        errorLabel.setPreferredSize(new Dimension(300, 16));
+        errorLabel.setMinimumSize(new Dimension(300, 16));
+        return errorLabel;
+    }
+    
+    private void luuDoanhThu(JTextField txtIdHoaDon, JDateChooser dateChooser, JTextField txtTongThu,
+            JLabel idErrorLabel, JLabel dateErrorLabel, JDialog dialog) {
+        ValidationUtils.clearValidationError(txtIdHoaDon, idErrorLabel);
+        ValidationUtils.clearValidationError(dateChooser, dateErrorLabel);
+
+        String idText = txtIdHoaDon.getText().trim();
+        String dateText = ((JTextField) dateChooser.getDateEditor().getUiComponent()).getText().trim();
+        Date thangNam = dateChooser.getDate();
+        boolean isValid = true;
+
+        txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+            new util.CustomBorder(8, borderColor),
+            BorderFactory.createEmptyBorder(5, 12, 5, 12)
+        ));
+
+        if (idText.isEmpty()) {
+            ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID Hóa Đơn không được để trống");
+            txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                new util.CustomBorder(8, new Color(220, 53, 69)),
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)
+            ));
+            txtIdHoaDon.requestFocus();
+            isValid = false;
+        } else {
+            try {
+                int idHoaDon = Integer.parseInt(idText);
+                double tongThu = doanhThuController.getHoaDonAmount(idHoaDon);
+                if (tongThu <= 0) {
+                    ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "Không tìm thấy hóa đơn");
+                    txtTongThu.setText("Không tìm thấy hóa đơn");
+                    txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                        new util.CustomBorder(8, new Color(220, 53, 69)),
+                        BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                    ));
+                    txtIdHoaDon.requestFocus();
+                    isValid = false;
+                } else {
+                    txtTongThu.setText(currencyFormat.format(tongThu) + " VND");
+                    txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                        new util.CustomBorder(8, successColor),
+                        BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                    ));
+                }
+            } catch (NumberFormatException ex) {
+                ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID không hợp lệ");
+                txtTongThu.setText("ID không hợp lệ");
+                txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                ));
+                txtIdHoaDon.requestFocus();
+                isValid = false;
+            }
         }
-        
-        // Tạo panel cho trường nhập và nhãn lỗi
-        JPanel inputPanel = new JPanel(new BorderLayout(0, 5));
-        inputPanel.setBackground(Color.WHITE);
-        field.setPreferredSize(new Dimension(200, 30)); // Đồng bộ kích thước
-        inputPanel.add(field, BorderLayout.NORTH);
-        inputPanel.add(errorLabel, BorderLayout.SOUTH);
-        
-        fieldPanel.add(labelPanel, BorderLayout.WEST);
-        fieldPanel.add(inputPanel, BorderLayout.CENTER);
-        
-        panel.add(fieldPanel);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
+        dateTextField.setBorder(BorderFactory.createCompoundBorder(
+            new util.CustomBorder(8, borderColor),
+            BorderFactory.createEmptyBorder(5, 12, 5, 12)
+        ));
+
+        if (dateText.isEmpty()) {
+            ValidationUtils.showValidationError(dateChooser, dateErrorLabel, "Tháng/Năm không được để trống");
+            dateTextField.setBorder(BorderFactory.createCompoundBorder(
+                new util.CustomBorder(8, new Color(220, 53, 69)),
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)
+            ));
+            if (isValid) {
+                dateChooser.requestFocus();
+                isValid = false;
+            }
+        } else {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("MM/yyyy");
+                sdf.setLenient(false);
+                thangNam = sdf.parse(dateText);
+                dateTextField.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, successColor),
+                    BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                ));
+            } catch (ParseException ex) {
+                ValidationUtils.showValidationError(dateChooser, dateErrorLabel, "Tháng/Năm không hợp lệ");
+                dateTextField.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                ));
+                if (isValid) {
+                    dateChooser.requestFocus();
+                    isValid = false;
+                }
+            }
+        }
+
+        if (!isValid) {
+            String tongThuText = txtTongThu.getText().trim();
+            if (idText.isEmpty()) {
+                showNotification("ID Hóa Đơn không được để trống!", NotificationType.ERROR);
+            } else if (tongThuText.equals("Không tìm thấy hóa đơn") || tongThuText.equals("ID không hợp lệ")) {
+                showNotification("ID không hợp lệ hoặc không tìm thấy hóa đơn!", NotificationType.ERROR);
+            }
+            if (dateText.isEmpty()) {
+                showNotification("Tháng/Năm không được để trống!", NotificationType.ERROR);
+            } else {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("MM/yyyy");
+                    sdf.setLenient(false);
+                    sdf.parse(dateText);
+                } catch (ParseException ex) {
+                    showNotification("Tháng/Năm không hợp lệ!", NotificationType.ERROR);
+                }
+            }
+            return;
+        }
+
+        try {
+            int idHoaDon = Integer.parseInt(idText);
+            double tongThu = doanhThuController.getHoaDonAmount(idHoaDon);
+            int newId = doanhThuController.themDoanhThu(thangNam, tongThu, idHoaDon);
+            if (newId > 0) {
+                txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, successColor),
+                    BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                ));
+                dialog.dispose();
+            } else {
+                txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    BorderFactory.createEmptyBorder(5, 12, 5, 12)
+                ));
+                showNotification("Thêm doanh thu thất bại!", NotificationType.ERROR);
+            }
+        } catch (NumberFormatException ex) {
+            ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID không hợp lệ");
+            txtTongThu.setText("ID không hợp lệ");
+            txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
+                new util.CustomBorder(8, new Color(220, 53, 69)),
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)
+            ));
+            txtIdHoaDon.requestFocus();
+            showNotification("ID hóa đơn không hợp lệ! Vui lòng kiểm tra lại.", NotificationType.ERROR);
+        }
     }
 
     private void showChiTietDoanhThuDialog(JFrame parent, int idDoanhThu, int idHoaDon, 
             String tenBenhNhan, String thangNam, String tongThu, String trangThai) {
         JDialog dialog = new JDialog(parent, "Chi Tiết Doanh Thu", true);
-        dialog.setSize(500, 450);
+        dialog.setSize(500, 485);
         dialog.setLayout(new BorderLayout());
         dialog.setResizable(false);
         
-        // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -880,7 +1078,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         headerPanel.add(titlePanelWrapper, BorderLayout.CENTER);
         
-        // Details panel
         JPanel detailsPanel = new JPanel();
         detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
         detailsPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -895,25 +1092,53 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         detailsPanel.add(Box.createVerticalGlue());
         
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
-        
+        Dimension buttonSize = new Dimension(115, 36); // Tăng chiều rộng từ 90 lên 100
+
+        JButton deleteButton = createRoundedButton("Xóa", accentColor, buttonTextColor, 10);
+        deleteButton.setPreferredSize(buttonSize);
+        deleteButton.setMinimumSize(buttonSize);
+        deleteButton.setMaximumSize(buttonSize);
+        deleteButton.addActionListener(e -> {
+            int choice = JOptionPane.showConfirmDialog(
+                dialog,
+                "Bạn có chắc chắn muốn xóa doanh thu này?",
+                "Xác nhận xóa",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            if (choice == JOptionPane.YES_OPTION) {
+                doanhThuController.xoaDoanhThu(idDoanhThu);
+                dialog.dispose();
+                showNotification("Đã xóa doanh thu thành công!", NotificationType.SUCCESS);
+            } else {
+                showNotification("Hủy xóa thành công.", NotificationType.SUCCESS);
+            }
+        });
+
         JButton editButton = createRoundedButton("Chỉnh Sửa", warningColor, buttonTextColor, 10);
+        editButton.setPreferredSize(buttonSize);
+        editButton.setMinimumSize(buttonSize);
+        editButton.setMaximumSize(buttonSize);
         editButton.addActionListener(e -> {
             dialog.dispose();
-            suaDoanhThuAction();
+            Object[] data = { idDoanhThu, idHoaDon, tenBenhNhan, thangNam, tongThu, trangThai };
+            SuaDoanhThuDialog suaDoanhThuDialog = new SuaDoanhThuDialog(parent, data, this);
+            suaDoanhThuDialog.setVisible(true);
         });
         
-        JButton closeButton = createRoundedButton("Đóng", Color.WHITE, textColor, 10);
-        closeButton.setBorder(new LineBorder(borderColor, 1));
+        JButton closeButton = createRoundedButton("Đóng", primaryColor, buttonTextColor, 10);
+        closeButton.setPreferredSize(buttonSize);
+        closeButton.setMinimumSize(buttonSize);
+        closeButton.setMaximumSize(buttonSize);
         closeButton.addActionListener(e -> dialog.dispose());
         
+        buttonPanel.add(deleteButton);
         buttonPanel.add(editButton);
         buttonPanel.add(closeButton);
         
-        // Add components to dialog
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(new JScrollPane(detailsPanel), BorderLayout.CENTER);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
@@ -921,7 +1146,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
     }
-    
+
     private void addDetailField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(15, 0));
         fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -941,7 +1166,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         fieldPanel.add(labelComponent, BorderLayout.WEST);
         fieldPanel.add(valueComponent, BorderLayout.CENTER);
         
-        // Add separator
         JSeparator separator = new JSeparator();
         separator.setForeground(new Color(230, 230, 230));
         separator.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -955,11 +1179,16 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
             int modelRow = tableDoanhThu.convertRowIndexToModel(selectedRow);
-            Object[] data = new Object[modelDoanhThu.getColumnCount()];
-            for (int i = 0; i < data.length; i++) {
-                data[i] = modelDoanhThu.getValueAt(modelRow, i);
-            }
-            
+
+            int idDoanhThu = (int) modelDoanhThu.getValueAt(modelRow, 0);
+            int idHoaDon = (int) modelDoanhThu.getValueAt(modelRow, 1);
+            String tenBenhNhan = (String) modelDoanhThu.getValueAt(modelRow, 2);
+            String thangNam = (String) modelDoanhThu.getValueAt(modelRow, 3);
+            String tongThu = modelDoanhThu.getValueAt(modelRow, 4).toString();
+            String trangThai = (String) modelDoanhThu.getValueAt(modelRow, 5);
+
+            Object[] data = { idDoanhThu, idHoaDon, tenBenhNhan, thangNam, tongThu, trangThai };
+
             JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
             if (topFrame != null) {
                 SuaDoanhThuDialog suaDoanhThuDialog = new SuaDoanhThuDialog(topFrame, data, this);
@@ -971,7 +1200,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             showNotification("Vui lòng chọn một dòng để sửa!", NotificationType.WARNING);
         }
     }
-    
+
     private void xoaDoanhThuAction() {
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
@@ -1001,24 +1230,19 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private void filterDoanhThu() {
         String searchText = txtTimKiemDoanhThu.getText().trim().toLowerCase();
         
-        // If search text is empty, restore all original data
         if (searchText.isEmpty()) {
             restoreOriginalData();
             return;
         }
         
-        // Clear the current table data but keep the columns
         modelDoanhThu.setRowCount(0);
         
-        // Counter for matching rows
         int matchCount = 0;
         double totalAmount = 0.0;
         
-        // Loop through the original data and add only matching rows
         for (Object[] row : originalData) {
             boolean match = false;
             
-            // Check each column for a match
             for (int col = 0; col < row.length; col++) {
                 if (row[col] != null) {
                     String stringValue;
@@ -1035,48 +1259,38 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 }
             }
             
-            // If a match is found, add the row to the table
             if (match) {
                 modelDoanhThu.addRow(row);
                 matchCount++;
                 
-                // Add to total for "Tổng Thu" column (index 4)
                 if (row[4] instanceof Double) {
                     totalAmount += (Double) row[4];
                 }
             }
         }
         
-        // Update the total row
         updateTotalRow(totalAmount);
         
-        // Force repaint
         tableDoanhThu.repaint();
-        // Show notification if no results found
         if (matchCount == 0) {
             showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
         }
     }
 
     private void restoreOriginalData() {
-        // Clear the current table
         modelDoanhThu.setRowCount(0);
         
-        // Add back all the original data
         double totalAmount = 0.0;
         for (Object[] row : originalData) {
             modelDoanhThu.addRow(row);
             
-            // Add to total for "Tổng Thu" column (index 4)
             if (row[4] instanceof Double) {
                 totalAmount += (Double) row[4];
             }
         }
         
-        // Update the total row
         updateTotalRow(totalAmount);
         
-        // Force repaint
         tableDoanhThu.repaint();
     }
 
@@ -1102,7 +1316,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
         toastDialog.setAlwaysOnTop(true);
-
         JPanel toastPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1115,30 +1328,22 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         };
         toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
         toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
-
         JLabel titleLabel = new JLabel(type.title);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         titleLabel.setForeground(Color.WHITE);
-        toastPanel.add(titleLabel);
-        
+        toastPanel.add(titleLabel);        
         JLabel messageLabel = new JLabel(message);
         messageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         messageLabel.setForeground(Color.WHITE);
         toastPanel.add(messageLabel);
-
         toastDialog.add(toastPanel);
         toastDialog.pack();
-
-        // Position at bottom right
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         toastDialog.setLocation(
             screenSize.width - toastDialog.getWidth() - 20,
             screenSize.height - toastDialog.getHeight() - 60
         );
-
         toastDialog.setVisible(true);
-
-        // Auto-hide after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
@@ -1149,6 +1354,50 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }).start();
     }
 
+    @Override
+    public void showSuccessToast(String message) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);        
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));               
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);        
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+            screenSize.width - toastDialog.getWidth() - 20,
+            screenSize.height - toastDialog.getHeight() - 60
+        );        
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    @Override
+    public void showErrorMessage(String title, String message) {
+        showNotification(message, NotificationType.ERROR);
+    }
+
     public DoanhThuController getDoanhThuController() {
         return doanhThuController;
     }
@@ -1157,11 +1406,40 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         return modelDoanhThu;
     }
 
+    public void loadDoanhThuData(Object[] rowData, int highlightId) {
+        if (highlightId > 0 && rowData[0].equals(highlightId)) {
+            modelDoanhThu.insertRow(0, rowData);
+            originalData.add(0, Arrays.copyOf(rowData, rowData.length));
+            
+            highlightedRowId = highlightId;
+            tableDoanhThu.setRowSelectionInterval(0, 0);
+            tableDoanhThu.scrollRectToVisible(tableDoanhThu.getCellRect(0, 0, true));
+            
+            if (highlightTimer != null && highlightTimer.isRunning()) {
+                highlightTimer.stop();
+            }
+            highlightTimer = new Timer(10000, e -> resetHighlightState());
+            highlightTimer.setRepeats(false);
+            highlightTimer.start();
+            
+            tableDoanhThu.repaint();
+        } else {
+            modelDoanhThu.addRow(rowData);
+            originalData.add(Arrays.copyOf(rowData, rowData.length));
+        }
+        
+        double totalAmount = 0.0;
+        for (int i = 0; i < modelDoanhThu.getRowCount(); i++) {
+            Object value = modelDoanhThu.getValueAt(i, 4);
+            if (value instanceof Double) {
+                totalAmount += (Double) value;
+            }
+        }
+        updateTotalRow(totalAmount);
+    }
+
     public void loadDoanhThuData(Object[] rowData) {
-        modelDoanhThu.addRow(rowData);
-        // Make a copy of the row data and store it
-        Object[] dataCopy = Arrays.copyOf(rowData, rowData.length);
-        originalData.add(dataCopy);
+        loadDoanhThuData(rowData, -1);
     }
 
     public void updateDoanhThuRow(int row, Object[] rowData) {
@@ -1171,15 +1449,12 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     }
 
     public void removeDoanhThuRow(int row) {
-        // Remove from model
         modelDoanhThu.removeRow(row);
         
-        // Also remove from original data if it exists
         if (row < originalData.size()) {
             originalData.remove(row);
         }
         
-        // Recalculate total
         double totalAmount = 0.0;
         for (int i = 0; i < modelDoanhThu.getRowCount(); i++) {
             Object value = modelDoanhThu.getValueAt(i, 4);
@@ -1194,42 +1469,43 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         return currencyFormat;
     }
 
-    @Override
-    public void showSuccessToast(String message) {
-        showNotification(message, NotificationType.SUCCESS);
-    }
-
-    @Override
-    public void showErrorMessage(String title, String message) {
-        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
-    }
-
     public void refreshData() {
-        // Clear the current table data
         modelDoanhThu.setRowCount(0);
-        
-        // Clear original data collection
         clearOriginalData();
-        
-        // Recalculate total
         totalRevenue = 0.0;
         updateTotalRow(totalRevenue);
-        
-        // Force table to repaint
         tableDoanhThu.repaint();
-        
-        // Reload data from controller
         doanhThuController.loadDoanhThuData();
+    }
+
+    private void resetHighlightState() {
+        if (highlightTimer != null && highlightTimer.isRunning()) {
+            highlightTimer.stop();
+        }
+        highlightedRowId = -1;
+        tableDoanhThu.repaint();
+        refreshData();
     }
 
     @Override
     public void onDataChanged() {
-        // Khi nhận được thông báo, tải lại dữ liệu
         refreshData();
     }
 
     @Override
     public void showMessage(String message, String title, int messageType) {
-        // TODO Auto-generated method stub
+        NotificationType type;
+        switch (messageType) {
+            case JOptionPane.ERROR_MESSAGE:
+                type = NotificationType.ERROR;
+                break;
+            case JOptionPane.WARNING_MESSAGE:
+                type = NotificationType.WARNING;
+                break;
+            default:
+                type = NotificationType.SUCCESS;
+                break;
+        }
+        showNotification(message, type);
     }
 }
