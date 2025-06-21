@@ -15,7 +15,7 @@ public class QLUser {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, email);
-            pstmt.setString(2, password);
+            pstmt.setString(2, NguoiDungController.hashPassword(password));
             ResultSet rs = pstmt.executeQuery();
 
             return rs.next(); // Nếu có kết quả, trả về true (đăng nhập thành công)
