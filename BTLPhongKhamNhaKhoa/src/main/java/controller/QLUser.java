@@ -25,4 +25,42 @@ public class QLUser {
         }
         return false;
     }
+    
+    public static boolean isEmailExists(String email) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE email = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public static boolean isPhoneExists(String phone) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE soDienThoai = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, phone);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

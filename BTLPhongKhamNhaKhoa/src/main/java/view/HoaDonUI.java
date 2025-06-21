@@ -356,16 +356,15 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+
         JButton btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> {
-             if (exportManager == null) {
-                exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
-            } else {
-                 exportManager.setTableModel(tableModel);
-            }
+            // Tạo lại ExportManager với tableModel hiện tại thay vì gọi setTableModel
+            exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
             exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
         });
+
         btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> {
@@ -376,8 +375,10 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 showNotification("Lỗi khi hiển thị form thêm hóa đơn: " + ex.getMessage(), NotificationType.ERROR);
             }
         });
+
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThem);
+
         add(buttonPanel, BorderLayout.SOUTH);
     }
     private void setupEventListeners() {

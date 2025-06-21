@@ -508,8 +508,8 @@ public class RegisterFrame extends JFrame {
     private void validateNameField() {
         String name = nameField.getText().trim();
         if (!name.equals(NAME_PLACEHOLDER) && !name.isEmpty()) {
-            if (name.length() < 2) {
-                setError(nameField, nameErrorLabel, "Name must be at least 2 characters");
+            if (name.length() < 2 || name.length() > 50) {
+                setError(nameField, nameErrorLabel, "Name must be between 2 and 50 characters");
                 return;
             }
             
@@ -556,13 +556,9 @@ public class RegisterFrame extends JFrame {
         String password = String.valueOf(passwordField.getPassword());
         
         if (!confirmPassword.equals(CONFIRM_PASSWORD_PLACEHOLDER) && !confirmPassword.isEmpty()) {
-            if (!password.equals(PASSWORD_PLACEHOLDER) && !password.equals(confirmPassword)) {
-                setError(confirmPasswordField, confirmPasswordErrorLabel, "Passwords do not match");
-                return;
-            }
-            clearError(confirmPasswordField, confirmPasswordErrorLabel);
+            ValidationUtils.validateConfirmPassword(password, confirmPassword, confirmPasswordField, confirmPasswordErrorLabel);
         } else {
-            clearError(confirmPasswordField, confirmPasswordErrorLabel);
+            ValidationUtils.clearValidationError(confirmPasswordField, confirmPasswordErrorLabel);
         }
     }
     

@@ -1,51 +1,105 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.toedter</groupId>
-  <artifactId>jcalendar</artifactId>
-  <version>1.4</version>
-  <name>JCalendar</name>
-  <url>http://www.toedter.com/en/jcalendar/</url>
-  <description>
-    JCalendar is a Java date chooser bean for graphically picking a
-    date. JCalendar is composed of several other Java beans, a
-    JDayChooser, a JMonthChooser and a JYearChooser. All these beans
-    have a locale property, provide several icons (Color 16x16, Color
-    32x32, Mono 16x16 and Mono 32x32) and their own locale property
-    editor. So they can easily be used in GUI builders. Also part of the
-    package is a JDateChooser, a bean composed of an IDateEditor (for
-    direct date editing) and a button for opening a JCalendar for
-    selecting the date.
-  </description>
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-  <licenses>
-    <license>
-      <name>GNU LESSER GENERAL PUBLIC LICENSE</name>
-      <url>http://www.gnu.org/licenses/lgpl.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
+	<groupId>com.PhongKhamNhaKhoa</groupId>
+	<artifactId>Maven</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
 
-  <scm>
-    <url>http://www.toedter.com/en/jcalendar/</url>
-  </scm>
+	<properties>
+		<maven.compiler.source>11</maven.compiler.source>
+		<maven.compiler.target>11</maven.compiler.target>
+	</properties>
 
-  <developers>
-    <developer>
-      <id>KaiTödter</id>
-      <name>Kai Tödter</name>
-      <email>kai@toedter.com</email>
-    </developer>
-  </developers>
-  
-  <dependencies>
-    <dependency>
-      <groupId>com.jgoodies</groupId>
-      <artifactId>jgoodies-looks</artifactId>
-      <version>2.5.2</version>
-      <optional>true</optional>
-    </dependency>
-  </dependencies>
+
+	<dependencies>
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.33</version>
+		</dependency>
+
+		<dependency>
+		    <groupId>com.toedter</groupId>
+		    <artifactId>jcalendar</artifactId>
+		    <version>1.4</version>
+		</dependency>
+
+		
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.2.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.3</version>
+		</dependency>
+
+		<!-- For PDF support -->
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itextpdf</artifactId>
+			<version>5.5.13.3</version>
+		</dependency>
+
+		<!-- Optional: Commons Logging (used by Apache POI) -->
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.2</version>
+		</dependency>
+
+		<!-- Optional: XML APIs (may be required for certain POI features) -->
+		<dependency>
+			<groupId>xml-apis</groupId>
+			<artifactId>xml-apis</artifactId>
+			<version>1.4.01</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.2.4</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.3.0</version>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<archive>
+						<manifest>
+							<mainClass>view.LoginFrame</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>

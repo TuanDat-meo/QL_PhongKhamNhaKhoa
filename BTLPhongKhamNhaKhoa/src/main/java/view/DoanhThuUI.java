@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeListener {
-	private Color primaryColor = new Color(79, 129, 189);     // Professional blue
+    private Color primaryColor = new Color(79, 129, 189);     // Professional blue
     private Color secondaryColor = new Color(141, 180, 226);  // Lighter blue
     private Color accentColor = new Color(192, 80, 77);       // Refined red for delete
     private Color successColor = new Color(86, 156, 104);     // Elegant green for add
@@ -54,6 +54,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private JTable tableDoanhThu;
     private JTable tableTotalRow;
     private DefaultTableModel modelTotalRow;
+    private JButton btnXuatFile; // Thêm biến này
     private JButton btnThemMoiDoanhThu;
     private JTextField txtTimKiemDoanhThu;
     private JButton btnTimKiemDoanhThu;
@@ -73,31 +74,43 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     public DoanhThuUI() {
         initializePanel();
         initializeFormatters();
+        // Khởi tạo bảng trước để đảm bảo modelDoanhThu không null
+        buildTablePanel();
         initializeController();
         buildHeaderPanel();
-        buildTablePanel();
         buildButtonPanel();
         setupEventListeners();
         setupPopupMenu();
+        // Vô hiệu hóa nút Xuất file ban đầu
+        btnXuatFile.setEnabled(false);
         SwingUtilities.invokeLater(() -> {
             doanhThuController.loadDoanhThuData();
+            // Kích hoạt nút Xuất file sau khi dữ liệu được tải
+            btnXuatFile.setEnabled(modelDoanhThu.getRowCount() > 0);
         });
     }
+
     private void initializePanel() {
         setLayout(new BorderLayout(0, 0));
         setBackground(backgroundColor);
-        setBorder(new EmptyBorder(20, 20, 20, 20));
+        setBorder(new EmptyBorder(20,20, 20, 20));
     }
+
     private void initializeFormatters() {
         Locale localeVN = new Locale("vi", "VN");
         currencyFormat = NumberFormat.getInstance(localeVN);
         currencyFormat.setMinimumFractionDigits(0);
         currencyFormat.setGroupingUsed(true);
     }
+
     private void initializeController() {
         doanhThuController = new DoanhThuController(this);
-        exportManager = new ExportManager(this, modelDoanhThu, this); // Pass 'this' as the callback
+        if (modelDoanhThu == null) {
+            throw new IllegalStateException("modelDoanhThu chưa được khởi tạo!");
+        }
+        exportManager = new ExportManager(this, modelDoanhThu, this);
     }
+
     private void buildHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
@@ -136,6 +149,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         add(headerPanel, BorderLayout.NORTH);
     }
+
     private void buildTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -163,6 +177,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
     }
+
     private void initializeTable() {
         String[] columns = {"ID", "ID Hóa Đơn", "Tên Bệnh Nhân", "Tháng/Năm", "Tổng Thu", "Trạng Thái"};
         
@@ -213,6 +228,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         };
         modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", 0.0, null});
     }
+
     private void styleTable() {
         styleMainTable(tableDoanhThu);
         styleMainTable(tableTotalRow);
@@ -241,6 +257,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
     }
+
     public void updateTotalRow(double totalAmount) {
         if (modelTotalRow.getRowCount() == 0) {
             modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", totalAmount, null});
@@ -250,6 +267,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
         tableTotalRow.repaint();
     }
+
     private void styleMainTable(JTable table) {
         table.setFont(tableFont);
         table.setRowHeight(40);
@@ -301,15 +319,24 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
     }
+
     private void buildButtonPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
         
-     // Create Export Button
-        JButton btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
+        // Create Export Button
+        btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
-        btnXuatFile.addActionListener(e -> exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor));// Create Add Button
+        btnXuatFile.addActionListener(e -> {
+            if (modelDoanhThu == null || modelDoanhThu.getRowCount() == 0) {
+                showNotification("Không có dữ liệu để xuất!", NotificationType.WARNING);
+                return;
+            }
+            exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
+        });
+
+        // Create Add Button
         btnThemMoiDoanhThu = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThemMoiDoanhThu.setPreferredSize(new Dimension(100, 45));
         btnThemMoiDoanhThu.addActionListener(e -> showThemMoiDialog());
@@ -327,6 +354,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private JButton createStyledButton(String text) {
         return createRoundedButton(text, primaryColor, buttonTextColor, 10);
     }
+
     /**
      * Creates a rounded button with hover effects
      */
@@ -380,6 +408,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
+
     /**
      * Sets up event listeners for table and controls
      */
@@ -414,7 +443,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
         
-        // Keep the rest of the event listeners unchanged
         tableDoanhThu.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -549,6 +577,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             showNotification("Vui lòng chọn một dòng để xem chi tiết!", NotificationType.WARNING);
         }
     }
+
     private void showThemMoiDialog() {
         JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (topFrame == null) {
@@ -689,9 +718,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         panel.add(fieldPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
     }
-    /**
-     * Shows detail dialog for a revenue entry
-     */
+
     private void showChiTietDoanhThuDialog(JFrame parent, int idDoanhThu, int idHoaDon, 
             String tenBenhNhan, String thangNam, String tongThu, String trangThai) {
         JDialog dialog = new JDialog(parent, "Chi Tiết Doanh Thu", true);
@@ -761,9 +788,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         dialog.setVisible(true);
     }
     
-    /**
-     * Adds a field to the details panel
-     */
     private void addDetailField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(15, 0));
         fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -793,9 +817,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         panel.add(separator);
     }
     
-    /**
-     * Handles the edit action
-     */
     private void suaDoanhThuAction() {
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
@@ -817,9 +838,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
     }
     
-    /**
-     * Handles the delete action
-     */
     private void xoaDoanhThuAction() {
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
@@ -845,6 +863,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             showNotification("Vui lòng chọn một dòng để xóa!", NotificationType.WARNING);
         }
     }
+
     private void filterDoanhThu() {
         String searchText = txtTimKiemDoanhThu.getText().trim().toLowerCase();
         
@@ -904,6 +923,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             showNotification("Không tìm thấy kết quả nào cho: '" + searchText + "'", NotificationType.WARNING);
         }
     }
+
     private void restoreOriginalData() {
         // Clear the current table
         modelDoanhThu.setRowCount(0);
@@ -925,12 +945,11 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         // Force repaint
         tableDoanhThu.repaint();
     }
+
     public void clearOriginalData() {
         originalData.clear();
     }
-    /**
-     * Notification types with associated colors
-     */
+
     public enum NotificationType {
         SUCCESS(new Color(86, 156, 104), "Thành công"),
         WARNING(new Color(237, 187, 85), "Cảnh báo"),
@@ -944,6 +963,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             this.title = title;
         }
     }
+
     private void showNotification(String message, NotificationType type) {
         JDialog toastDialog = new JDialog();
         toastDialog.setUndecorated(true);
@@ -994,23 +1014,28 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         }).start();
     }
+
     public DoanhThuController getDoanhThuController() {
         return doanhThuController;
     }
+
     public DefaultTableModel getModelDoanhThu() {
         return modelDoanhThu;
     }
+
     public void loadDoanhThuData(Object[] rowData) {
-    	modelDoanhThu.addRow(rowData);
+        modelDoanhThu.addRow(rowData);
         // Make a copy of the row data and store it
         Object[] dataCopy = Arrays.copyOf(rowData, rowData.length);
         originalData.add(dataCopy);
     }
+
     public void updateDoanhThuRow(int row, Object[] rowData) {
         for (int i = 0; i < rowData.length; i++) {
             modelDoanhThu.setValueAt(rowData[i], row, i);
         }
     }
+
     public void removeDoanhThuRow(int row) {
         // Remove from model
         modelDoanhThu.removeRow(row);
@@ -1030,47 +1055,47 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
         updateTotalRow(totalAmount);
     }
+
     public NumberFormat getCurrencyFormat() {
         return currencyFormat;
     }
 
-	@Override
-	public void showSuccessToast(String message) {
-		showNotification(message, NotificationType.SUCCESS);
-		
-	}
+    @Override
+    public void showSuccessToast(String message) {
+        showNotification(message, NotificationType.SUCCESS);
+    }
 
-	@Override
-	public void showErrorMessage(String title, String message) {
-		JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
-		
-	}
-	public void refreshData() {
-	    // Clear the current table data
-	    modelDoanhThu.setRowCount(0);
-	    
-	    // Clear original data collection
-	    clearOriginalData();
-	    
-	    // Recalculate total
-	    totalRevenue = 0.0;
-	    updateTotalRow(totalRevenue);
-	    
-	    // Force table to repaint
-	    tableDoanhThu.repaint();
-	    
-	    // Reload data from controller
-	    doanhThuController.loadDoanhThuData();
-	}
-	@Override
+    @Override
+    public void showErrorMessage(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    public void refreshData() {
+        // Clear the current table data
+        modelDoanhThu.setRowCount(0);
+        
+        // Clear original data collection
+        clearOriginalData();
+        
+        // Recalculate total
+        totalRevenue = 0.0;
+        updateTotalRow(totalRevenue);
+        
+        // Force table to repaint
+        tableDoanhThu.repaint();
+        
+        // Reload data from controller
+        doanhThuController.loadDoanhThuData();
+    }
+
+    @Override
     public void onDataChanged() {
         // Khi nhận được thông báo, tải lại dữ liệu
         refreshData();
     }
 
-	@Override
-	public void showMessage(String message, String title, int messageType) {
-		// TODO Auto-generated method stub
-		
-	}
+    @Override
+    public void showMessage(String message, String title, int messageType) {
+        // TODO Auto-generated method stub
+    }
 }
