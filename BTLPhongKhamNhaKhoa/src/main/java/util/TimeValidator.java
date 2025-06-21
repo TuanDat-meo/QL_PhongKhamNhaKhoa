@@ -68,13 +68,14 @@ public class TimeValidator {
     
     /**
      * Kiểm tra xem ngày đặt lịch có phải là ngày nghỉ hay không
+     * Làm việc từ thứ 2 đến thứ 7, nghỉ chủ nhật và các ngày lễ
      * @param date Ngày cần kiểm tra
      * @return true nếu là ngày nghỉ, false nếu không
      */
     public static boolean isHoliday(LocalDate date) {
-        // Kiểm tra ngày cuối tuần (thứ 7, chủ nhật)
+        // Kiểm tra chủ nhật (nghỉ chủ nhật, làm việc thứ 7)
         DayOfWeek dayOfWeek = date.getDayOfWeek();
-        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+        if (dayOfWeek == DayOfWeek.SUNDAY) {
             return true;
         }
         
@@ -104,7 +105,7 @@ public class TimeValidator {
         
         // Kiểm tra ngày nghỉ
         if (isHoliday(date)) {
-            return "Ngày hẹn không được nằm trong ngày nghỉ hoặc cuối tuần";
+            return "Ngày hẹn không được nằm trong chủ nhật hoặc ngày lễ";
         }
         
         // Kiểm tra giờ làm việc
