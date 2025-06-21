@@ -36,10 +36,11 @@ public class LichHen {
         this.moTa = moTa;
     }
 
-    // Enum cho trạng thái lịch hẹn
+ // Enum cho trạng thái lịch hẹn - thêm mapping cho các giá trị không dấu
     public enum TrangThaiLichHen {
         CHO_XAC_NHAN("Chờ xác nhận"),
         DA_XAC_NHAN("Đã xác nhận"),
+        DA_HOAN_THANH("Đã hoàn thành"),
         DA_HUY("Đã hủy");
 
         private final String value;
@@ -52,24 +53,45 @@ public class LichHen {
             return value;
         }
 
-        // Phương thức từ String sang enum
+        // Phương thức từ String sang enum - xử lý cả có dấu và không dấu
         public static TrangThaiLichHen fromString(String text) {
+            if (text == null || text.trim().isEmpty()) {
+                throw new IllegalArgumentException("Trạng thái không được để trống");
+            }
+            
+            String normalizedText = text.trim();
+            
+            // So sánh trực tiếp với các giá trị có dấu
             for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
-                if (t.value.equalsIgnoreCase(text)) {
+                if (t.value.equalsIgnoreCase(normalizedText)) {
                     return t;
                 }
             }
-            throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng");
-        }
-    }
-    public static TrangThaiLichHen fromString(String text) {
-        for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
-            if (t.value.equalsIgnoreCase(text)) {
-                return t;
+            
+            // Xử lý các trường hợp đặc biệt không dấu
+            switch (normalizedText.toLowerCase()) {
+                case "cho xac nhan":
+                    return CHO_XAC_NHAN;
+                case "da xac nhan":
+                    return DA_XAC_NHAN;
+                case "da hoan thanh":
+                    return DA_HOAN_THANH;
+                case "da huy":
+                    return DA_HUY;
             }
+            
+            // Log lỗi để debug
+            System.err.println("Không tìm thấy trạng thái: '" + text + "'. Các trạng thái hợp lệ:");
+            for (TrangThaiLichHen t : TrangThaiLichHen.values()) {
+                System.err.println("- " + t.value);
+            }
+            
+            throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng: " + text);
         }
-        throw new IllegalArgumentException("Không tìm thấy trạng thái tương ứng");
     }
+
+    // ĐÃ XÓA phương thức fromString() trùng lặp ở đây
+
     // Getters & Setters
     public int getIdLichHen() {
         return idLichHen;
@@ -145,12 +167,17 @@ public class LichHen {
 
     // Lấy giá trị trạng thái dưới dạng String
     public String getTrangThai() {
-        return trangThai.getValue();
+        return trangThai != null ? trangThai.getValue() : null;
     }
 
     // Set trạng thái từ String
     public void setTrangThai(String trangThai) {
         this.trangThai = TrangThaiLichHen.fromString(trangThai);
+    }
+
+    // Thêm setter cho enum trực tiếp
+    public void setTrangThai(TrangThaiLichHen trangThai) {
+        this.trangThai = trangThai;
     }
 
     public String getMoTa() {
@@ -171,7 +198,7 @@ public class LichHen {
           .append(", Ngày hẹn: ").append(ngayHen)
           .append(", Phòng: ").append(tenPhong)
           .append(", Giờ hẹn: ").append(gioHen)
-          .append(", Trạng thái: ").append(trangThai.getValue())  // Trạng thái là giá trị của enum
+          .append(", Trạng thái: ").append(trangThai != null ? trangThai.getValue() : "null")
           .append(", Mô tả: ").append(moTa)
           .append("]");
         return sb.toString();

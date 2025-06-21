@@ -101,7 +101,7 @@ public class NguoiDungController {
         java.util.List<NguoiDung> userList = new java.util.ArrayList<>();
 
         try {
-            String query = "SELECT * FROM NguoiDung ORDER BY IdNguoiDung DESC";
+            String query = "SELECT * FROM NguoiDung ORDER BY IdNguoiDung";
             statement = connection.prepareStatement(query);
             resultSet = statement.executeQuery();
             
@@ -537,9 +537,9 @@ public class NguoiDungController {
             connection = connectMySQL.getConnection();
             
             // Default values for new user
-            String gender = "Nam"; // Default gender to "Nam"
+            String gender = "Unknown"; // Default gender
             Date birthDate = null;     // Default birth date (null)
-            String role = "Lễ tân";      // Default role to 'Lễ tân' (matches database)
+            String role = null;      // Default role
             
             String query = "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, NgaySinh, GioiTinh, VaiTro) " +
                            "VALUES (?, ?, ?, ?, ?, ?, ?)";
