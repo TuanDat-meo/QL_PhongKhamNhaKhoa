@@ -688,4 +688,9 @@ public class ExportManager {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         return "export_data_" + sdf.format(new Date());
     }
+
+	public void setTableModel(DefaultTableModel tableModel2) {
+		// TODO Auto-generated method stub
+		
+	}
 }
