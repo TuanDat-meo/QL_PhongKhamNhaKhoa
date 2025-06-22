@@ -16,6 +16,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
@@ -30,12 +31,13 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Calendar;
-
+import java.util.Map;
+import java.util.HashMap;
 
 public class HoaDonUI extends JPanel implements MessageCallback {
     private Color primaryColor = new Color(79, 129, 189);
     private Color secondaryColor = new Color(141, 180, 226);
-    private Color accentColor = new Color(192, 80, 77);
+    private Color accentColor = new Color(192, 80, 77); // Red color for errors
     private Color successColor = new Color(86, 156, 104);
     private Color warningColor = new Color(237, 187, 85);
     private Color backgroundColor = new Color(248, 249, 250);
@@ -72,6 +74,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private ExportManager exportManager;
     private java.text.SimpleDateFormat dateFormatter = new java.text.SimpleDateFormat("dd/MM/yyyy");
 
+    // Maps to manage error labels and main labels for validation
+    private Map<JComponent, JLabel> errorLabelMap;
+    private Map<JComponent, JLabel> mainLabelMap;
+
+
     public HoaDonUI() {
         initializeControllers();
         initializePanel();
@@ -83,7 +90,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         setupPopupMenu();
         loadTableData();
     }
-    
+
     private void initializeControllers() {
         hoaDonController = new HoaDonController();
         benhNhanController = new BenhNhanController();
@@ -327,7 +334,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
                     if (isSelected) {
                         c.setBackground(table.getSelectionBackground());
-                        c.setForeground(table.getSelectionForeground()); 
+                        c.setForeground(table.getSelectionForeground());
                     } else {
                         c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
                         c.setForeground(textColor);
@@ -356,15 +363,16 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
-
         JButton btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
         btnXuatFile.addActionListener(e -> {
-            // Tạo lại ExportManager với tableModel hiện tại thay vì gọi setTableModel
-            exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
+             if (exportManager == null) {
+                exportManager = new ExportManager(HoaDonUI.this, tableModel, HoaDonUI.this);
+            } else {
+                 exportManager.setTableModel(tableModel);
+            }
             exportManager.showExportOptions(primaryColor, secondaryColor, buttonTextColor);
         });
-
         btnThem = createRoundedButton("Thêm mới", successColor, buttonTextColor, 10);
         btnThem.setPreferredSize(new Dimension(100, 45));
         btnThem.addActionListener(e -> {
@@ -375,10 +383,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 showNotification("Lỗi khi hiển thị form thêm hóa đơn: " + ex.getMessage(), NotificationType.ERROR);
             }
         });
-
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThem);
-
         add(buttonPanel, BorderLayout.SOUTH);
     }
     private void setupEventListeners() {
@@ -666,12 +672,17 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         }
     }
 
+    // =================================================================================
+    // === BẮT ĐẦU VÙNG CODE ĐƯỢC CẬP NHẬT THEO YÊU CẦU ===============================
+    // =================================================================================
+
     private void hienThiFormThemHoaDon() throws SQLException {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Thêm Hóa Đơn Mới", true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(500, 400);
         dialog.setResizable(false);
-        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
+
+        errorLabelMap = new HashMap<>();
+        mainLabelMap = new HashMap<>();
 
         dialog.addWindowListener(new WindowAdapter() {
             @Override
@@ -688,11 +699,26 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         titleLabelDialog.setForeground(Color.WHITE);
         headerPanel.add(titleLabelDialog, BorderLayout.CENTER);
 
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         formPanel.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 2, 10);
 
+        // --- Row 0: Bệnh nhân ---
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        JLabel lblBenhNhan = new JLabel("Bệnh Nhân:");
+        lblBenhNhan.setFont(regularFont);
+        lblBenhNhan.setPreferredSize(new Dimension(120, 30));
+        formPanel.add(lblBenhNhan, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
         DefaultComboBoxModel<String> benhNhanComboBoxModel = new DefaultComboBoxModel<>();
         for (BenhNhan bn : danhSachBenhNhan) {
@@ -701,32 +727,96 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         JComboBox<String> cmbTenBenhNhan = new JComboBox<>(benhNhanComboBoxModel);
         styleComboBox(cmbTenBenhNhan, "Chọn bệnh nhân...");
         cmbTenBenhNhan.setSelectedIndex(-1);
-        cmbTenBenhNhan.setName("cmbBenhNhan");
+        formPanel.add(cmbTenBenhNhan, gbc);
+        mainLabelMap.put(cmbTenBenhNhan, lblBenhNhan);
 
+        // --- Row 1: Error Bệnh nhân ---
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errBenhNhan = new JLabel(" ");
+        errBenhNhan.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errBenhNhan, gbc);
+        errorLabelMap.put(cmbTenBenhNhan, errBenhNhan);
+
+        // --- Row 2: Ngày Tạo ---
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.insets = new Insets(0, 0, 2, 10);
+        JLabel lblNgayTao = new JLabel("Ngày Tạo:");
+        lblNgayTao.setFont(regularFont);
+        lblNgayTao.setPreferredSize(new Dimension(120, 30));
+        formPanel.add(lblNgayTao, gbc);
+
+        gbc.gridx = 1;
         JDateChooser dateChooserNgayTao = new JDateChooser();
         dateChooserNgayTao.setDate(new Date());
         styleDateChooser(dateChooserNgayTao);
+        formPanel.add(dateChooserNgayTao, gbc);
+        mainLabelMap.put(dateChooserNgayTao, lblNgayTao);
 
+        // --- Row 3: Error Ngày Tạo ---
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errNgayTao = new JLabel(" ");
+        errNgayTao.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errNgayTao, gbc);
+        errorLabelMap.put(dateChooserNgayTao, errNgayTao);
+
+        // --- Row 4: Tổng Tiền ---
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.insets = new Insets(0, 0, 2, 10);
+        JLabel lblTongTien = new JLabel("Tổng Tiền (VND):");
+        lblTongTien.setFont(regularFont);
+        lblTongTien.setPreferredSize(new Dimension(120, 30));
+        formPanel.add(lblTongTien, gbc);
+
+        gbc.gridx = 1;
         JTextField txtTongTien = new JTextField();
         styleTextField(txtTongTien);
         txtTongTien.setHorizontalAlignment(JTextField.RIGHT);
+        formPanel.add(txtTongTien, gbc);
+        mainLabelMap.put(txtTongTien, lblTongTien);
 
+        // --- Row 5: Error Tổng Tiền ---
+        gbc.gridx = 1;
+        gbc.gridy = 5;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errTongTien = new JLabel(" ");
+        errTongTien.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errTongTien, gbc);
+        errorLabelMap.put(txtTongTien, errTongTien);
+
+        // --- Row 6: Trạng Thái ---
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.insets = new Insets(0, 0, 2, 10);
+        JLabel lblTrangThai = new JLabel("Trạng Thái:");
+        lblTrangThai.setFont(regularFont);
+        lblTrangThai.setPreferredSize(new Dimension(120, 30));
+        formPanel.add(lblTrangThai, gbc);
+
+        gbc.gridx = 1;
         String[] trangThaiOptions = {"Chưa thanh toán", "Đã thanh toán", "Đang xử lý", "Đã hủy"};
         JComboBox<String> cmbTrangThai = new JComboBox<>(trangThaiOptions);
         styleComboBox(cmbTrangThai, "Chọn trạng thái...");
         cmbTrangThai.setSelectedIndex(-1);
-        cmbTrangThai.setName("cmbTrangThai");
+        formPanel.add(cmbTrangThai, gbc);
+        mainLabelMap.put(cmbTrangThai, lblTrangThai);
 
-
-        addFormField(formPanel, "Bệnh Nhân:", cmbTenBenhNhan);
-        addFormField(formPanel, "Ngày Tạo:", dateChooserNgayTao);
-        addFormField(formPanel, "Tổng Tiền (VND):", txtTongTien);
-        addFormField(formPanel, "Trạng Thái:", cmbTrangThai);
-        formPanel.add(Box.createVerticalStrut(15));
+        // --- Row 7: Error Trạng Thái ---
+        gbc.gridx = 1;
+        gbc.gridy = 7;
+        JLabel errTrangThai = new JLabel(" ");
+        errTrangThai.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errTrangThai, gbc);
+        errorLabelMap.put(cmbTrangThai, errTrangThai);
 
         JPanel buttonPanelDialog = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanelDialog.setBackground(Color.WHITE);
-        buttonPanelDialog.setBorder(new EmptyBorder(10, 0, 0, 0));
+        buttonPanelDialog.setBorder(new EmptyBorder(10, 20, 10, 20));
 
         JButton cancelButton = createRoundedButton("Hủy", new Color(108, 117, 125), buttonTextColor, 10);
         cancelButton.addActionListener(e -> dialog.dispose());
@@ -737,20 +827,17 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             boolean isFormValid = true;
 
             if (cmbTenBenhNhan.getSelectedItem() == null) {
-                setError(cmbTenBenhNhan, "Vui lòng chọn một bệnh nhân.");
+                setError(cmbTenBenhNhan, "Vui lòng chọn bệnh nhân.");
                 isFormValid = false;
             }
 
             Date ngayTao = dateChooserNgayTao.getDate();
             if (ngayTao == null) {
-                setError(dateChooserNgayTao, "Vui lòng chọn ngày tạo hợp lệ.");
+                setError(dateChooserNgayTao, "Vui lòng chọn ngày tạo.");
                 isFormValid = false;
-            } else {
-                Calendar calToday = Calendar.getInstance();
-                if (ngayTao.after(calToday.getTime())) {
-                    setError(dateChooserNgayTao, "Ngày tạo không được lớn hơn ngày hiện tại.");
-                    isFormValid = false;
-                }
+            } else if (ngayTao.after(Calendar.getInstance().getTime())) {
+                setError(dateChooserNgayTao, "Ngày tạo không được ở tương lai.");
+                isFormValid = false;
             }
 
             if (txtTongTien.getText().trim().isEmpty()) {
@@ -758,41 +845,32 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 isFormValid = false;
             } else {
                 try {
-                    Number parsedNumber = currencyFormat.parse(txtTongTien.getText().trim());
-                    double tongTien = parsedNumber.doubleValue();
-                    if (tongTien < 0) {
+                    double amount = Double.parseDouble(txtTongTien.getText().trim().replace(",", ""));
+                    if (amount < 0) {
                         setError(txtTongTien, "Tổng tiền không thể là số âm.");
                         isFormValid = false;
                     }
-                } catch (java.text.ParseException ex) {
-                    setError(txtTongTien, "Tổng tiền không hợp lệ. Vui lòng nhập một số.");
+                } catch (NumberFormatException ex) {
+                    setError(txtTongTien, "Tổng tiền không hợp lệ.");
                     isFormValid = false;
                 }
             }
 
             if (cmbTrangThai.getSelectedItem() == null) {
-                setError(cmbTrangThai, "Vui lòng chọn trạng thái cho hóa đơn.");
+                setError(cmbTrangThai, "Vui lòng chọn trạng thái.");
                 isFormValid = false;
             }
-            
-            if (!isFormValid) {
-                showNotification("Vui lòng điền đúng và đủ thông tin.", NotificationType.WARNING);
-                return;
-            }
+
+            if (!isFormValid) return;
 
             try {
                 String selectedBenhNhanStr = (String) cmbTenBenhNhan.getSelectedItem();
-                int idBenhNhan = -1;
-                Pattern patternId = Pattern.compile("\\(ID: (\\d+)\\)");
-                Matcher matcherId = patternId.matcher(selectedBenhNhanStr);
-                if (matcherId.find()) {
-                    idBenhNhan = Integer.parseInt(matcherId.group(1));
-                }
+                int idBenhNhan = Integer.parseInt(selectedBenhNhanStr.replaceAll(".*\\(ID: (\\d+)\\).*", "$1"));
+                double tongTienValue = Double.parseDouble(txtTongTien.getText().trim().replace(",", ""));
 
-                double tongTienValue = currencyFormat.parse(txtTongTien.getText().trim()).doubleValue();
                 String trangThaiUI = (String) cmbTrangThai.getSelectedItem();
                 String trangThaiController;
-                 switch (trangThaiUI) {
+                switch (trangThaiUI) {
                     case "Đã thanh toán": trangThaiController = "DaThanhToan"; break;
                     case "Đang xử lý": trangThaiController = "DangXuLy"; break;
                     case "Đã hủy": trangThaiController = "DaHuy"; break;
@@ -805,13 +883,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 hoaDon.setTongTien(tongTienValue);
                 hoaDon.setTrangThai(trangThaiController);
 
-                boolean success = hoaDonController.themHoaDon(hoaDon);
-                if (success) {
+                if (hoaDonController.themHoaDon(hoaDon)) {
                     loadTableData();
                     dialog.dispose();
                     showNotification("Thêm hóa đơn thành công!", NotificationType.SUCCESS);
                 } else {
-                    showNotification("Thêm hóa đơn thất bại. Vui lòng thử lại.", NotificationType.ERROR);
+                    showNotification("Thêm hóa đơn thất bại.", NotificationType.ERROR);
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -826,9 +903,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(buttonPanelDialog, BorderLayout.SOUTH);
 
+        dialog.pack();
+        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
     }
-    
+
     private void hienThiPopupChiTiet(HoaDon hoaDon) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi Tiết Hóa Đơn", true);
         dialog.setLayout(new BorderLayout());
@@ -1030,19 +1109,88 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     }
     
     private void addFormField(JPanel panel, String labelText, JComponent field) {
-        JPanel fieldPanel = new JPanel(new BorderLayout(10, 5));
+        JPanel fieldPanel = new JPanel();
         fieldPanel.setBackground(Color.WHITE);
-        fieldPanel.setBorder(new EmptyBorder(8, 0, 8, 0));
+        fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.Y_AXIS));
+
+        JPanel topPanel = new JPanel(new BorderLayout(10, 0));
+        topPanel.setBackground(Color.WHITE);
+
         JLabel label = new JLabel(labelText);
         label.setFont(regularFont);
         label.setPreferredSize(new Dimension(120, 30));
-        fieldPanel.add(label, BorderLayout.WEST);
-        JPanel fieldWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT,0,0));
-        fieldWrapper.setBackground(Color.WHITE);
-        fieldWrapper.add(field);
-        fieldPanel.add(fieldWrapper, BorderLayout.CENTER);
+        topPanel.add(label, BorderLayout.WEST);
+        topPanel.add(field, BorderLayout.CENTER);
+
+        fieldPanel.add(topPanel);
+        fieldPanel.setBorder(new EmptyBorder(0, 0, 5, 0));
         panel.add(fieldPanel);
     }
+
+    private void setError(JComponent component, String message) {
+        if (component == null) return;
+        
+        // 1. Set red border
+        Color errorColor = accentColor;
+        Border padding;
+        if (component instanceof JDateChooser) {
+            JTextFieldDateEditor editor = (JTextFieldDateEditor) ((JDateChooser) component).getDateEditor();
+            padding = BorderFactory.createEmptyBorder(5, 10, 5, 10);
+            editor.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
+        } else if (component instanceof JTextField) {
+            padding = BorderFactory.createEmptyBorder(5, 10, 5, 10);
+            component.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
+        } else if (component instanceof JComboBox) {
+            padding = BorderFactory.createEmptyBorder(0, 5, 0, 0);
+            component.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
+        }
+
+        // 2. Show error message (red, italic)
+        if (errorLabelMap.containsKey(component)) {
+            JLabel errorLabel = errorLabelMap.get(component);
+            errorLabel.setText("<html><i>" + message + "</i></html>");
+            errorLabel.setForeground(errorColor);
+        }
+
+        // 3. Add red asterisk to the main label
+        if (mainLabelMap.containsKey(component)) {
+            JLabel mainLabel = mainLabelMap.get(component);
+            String originalText = mainLabel.getText().replaceAll("<[^>]*>", "").replace("*", "").replace(":", "").trim();
+            mainLabel.setText("<html>" + originalText + ": <span style='color:red;'>*</span></html>");
+        }
+    }
+    
+    private void clearAllErrors(JComponent... components) {
+        for (JComponent component : components) {
+            if (component == null) continue;
+            
+            // 1. Restore original border
+            if (component instanceof JTextField) {
+                styleTextField((JTextField) component);
+            } else if (component instanceof JComboBox) {
+                styleComboBox((JComboBox<?>) component, "Chọn...");
+            } else if (component instanceof JDateChooser) {
+                styleDateChooser((JDateChooser) component);
+            }
+
+            // 2. Hide error message
+            if (errorLabelMap.containsKey(component)) {
+                JLabel errorLabel = errorLabelMap.get(component);
+                errorLabel.setText(" ");
+            }
+            
+            // 3. Remove asterisk from main label
+            if (mainLabelMap.containsKey(component)) {
+                JLabel mainLabel = mainLabelMap.get(component);
+                String text = mainLabel.getText();
+                if (text.startsWith("<html>")) {
+                    String plainText = text.replaceAll("<[^>]*>", "").replace("*", "").trim();
+                    mainLabel.setText(plainText);
+                }
+            }
+        }
+    }
+    
     private void addDetailField(JPanel panel, String labelText, String value) {
         JPanel fieldPanel = new JPanel(new BorderLayout(10, 0));
         fieldPanel.setBackground(Color.WHITE);
@@ -1058,7 +1206,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         fieldPanel.add(valueLabel, BorderLayout.CENTER);
         panel.add(fieldPanel);
     }
-
     private void styleTextField(JTextField textField) {
         textField.setFont(regularFont);
         textField.setPreferredSize(new Dimension(250, 38));
@@ -1067,20 +1214,18 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         textField.setBackground(new Color(250, 250, 255));
     }
-    
+
     private void styleComboBox(JComboBox<?> comboBox, String prompt) {
         comboBox.setFont(regularFont);
         comboBox.setPreferredSize(new Dimension(250, 38));
         comboBox.setBackground(Color.WHITE);
-        
         comboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                                                           boolean isSelected, boolean cellHasFocus) {
                 JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-                
-                if (value == null) {
+                if (value == null && index == -1) { // Show prompt only when nothing is selected
                     label.setText(prompt);
                     label.setForeground(Color.GRAY);
                 } else {
@@ -1092,7 +1237,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 return label;
             }
         });
-        
         comboBox.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(borderColor.brighter(), 1, true),
                 BorderFactory.createEmptyBorder(0, 5, 0, 0))
@@ -1109,45 +1253,10 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         styleTextField(editor);
     }
 
-    private void setError(JComponent component, String message) {
-        component.setToolTipText(message);
-        Color errorColor = accentColor;
-        
-        if (component instanceof JDateChooser) {
-            JTextFieldDateEditor editor = (JTextFieldDateEditor) ((JDateChooser) component).getDateEditor();
-            editor.setBorder(BorderFactory.createCompoundBorder(
-                new CustomBorder(8, errorColor),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-            ));
-        } else if (component instanceof JTextField) {
-             component.setBorder(BorderFactory.createCompoundBorder(
-                new CustomBorder(8, errorColor),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-            ));
-        } else if (component instanceof JComboBox) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(errorColor, 1, true),
-                BorderFactory.createEmptyBorder(0, 5, 0, 0))
-            );
-        }
-    }
-    
-    private void clearAllErrors(JComponent... components) {
-        for (JComponent component : components) {
-            component.setToolTipText(null);
-            if (component instanceof JTextField) {
-                styleTextField((JTextField) component);
-            } else if (component instanceof JComboBox) {
-                if ("cmbBenhNhan".equals(component.getName())) {
-                    styleComboBox((JComboBox<?>) component, "Chọn bệnh nhân...");
-                } else {
-                    styleComboBox((JComboBox<?>) component, "Chọn trạng thái...");
-                }
-            } else if (component instanceof JDateChooser) {
-                styleDateChooser((JDateChooser) component);
-            }
-        }
-    }
+    // =================================================================================
+    // === KẾT THÚC VÙNG CODE ĐƯỢC CẬP NHẬT ============================================
+    // =================================================================================
+
     private void showNotification(String message, NotificationType type) {
         JDialog toastDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this));
         toastDialog.setUndecorated(true);
@@ -1238,7 +1347,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private class RoundedPanel extends JPanel {
         private int cornerRadius;
         private boolean hasShadow;
-        private int shadowSize = 3; 
+        private int shadowSize = 3;
         private int shadowOpacity = 30;
         public RoundedPanel(int radius, boolean hasShadow) {
             super();
@@ -1265,8 +1374,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 }
             }
             g2.setColor(getBackground());
-            g2.fillRoundRect(shadowSize, shadowSize, 
-                             panelWidth - 2 * shadowSize, panelHeight - 2 * shadowSize, 
+            g2.fillRoundRect(shadowSize, shadowSize,
+                             panelWidth - 2 * shadowSize, panelHeight - 2 * shadowSize,
                              cornerRadius, cornerRadius);
             g2.dispose();
              super.paintComponent(g);
