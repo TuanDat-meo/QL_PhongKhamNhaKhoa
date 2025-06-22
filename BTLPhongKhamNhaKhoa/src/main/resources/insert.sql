@@ -1,4 +1,5 @@
 USE QuanLyPhongKham;
+DESCRIBE NguoiDung;
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
 (N'Nguyễn Thị Hồng Loan', N'bacsi13@gmail.com', N'bacsi123', N'0965432187', '1988-03-12', N'Nữ', N'Bác sĩ'),
 (N'Trần Minh Quân', N'bacsi14@gmail.com', N'bacsi123', N'0976543298', '1985-09-28', N'Nam', N'Bác sĩ'),

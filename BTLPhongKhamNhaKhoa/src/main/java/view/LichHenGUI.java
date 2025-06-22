@@ -894,7 +894,8 @@ public class LichHenGUI extends JPanel {
 
         card.add(fieldPanel);
     }
-    private void addAppointment() {
+
+private void addAppointment() {
         // Tạo panel chính với BorderLayout để tổ chức các thành phần
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -920,14 +921,18 @@ public class LichHenGUI extends JPanel {
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
 
-        // Tạo searchable combobox cho bác sĩ và bệnh nhân
-        JComboBox<String> comboBacSi = createSearchableComboBox(bacSiList, "Nhập tên bác sĩ...");
+        // Tạo combo box thông thường cho bác sĩ và bệnh nhân
+        bacSiList.add(0, "Lựa chọn");
+        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
         comboBacSi.setPreferredSize(new Dimension(250, 35));
+        comboBacSi.setSelectedIndex(0);
         
-        JComboBox<String> comboBenhNhan = createSearchableComboBox(benhNhanList, "Nhập tên bệnh nhân...");
+        benhNhanList.add(0, "Lựa chọn");
+        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
         comboBenhNhan.setPreferredSize(new Dimension(250, 35));
+        comboBenhNhan.setSelectedIndex(0);
         
-        // Phòng khám vẫn sử dụng combo thông thường
+        // Phòng khám
         phongKhamList.add(0, "Lựa chọn");
         JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
         comboPhongKham.setPreferredSize(new Dimension(250, 35));
@@ -1000,7 +1005,7 @@ public class LichHenGUI extends JPanel {
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Ngày mặc định được tự động chọn ngày làm việc gần nhất</b><br/>• <b>Có thể nhập tên để tìm kiếm bác sĩ/bệnh nhân</b></html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Ngày mặc định được tự động chọn ngày làm việc gần nhất</b></html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
@@ -1009,66 +1014,19 @@ public class LichHenGUI extends JPanel {
         errorPanel = createErrorPanel();
         // Khởi tạo error labels cho từng field
         initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
-        JTextComponent bacSiTextComponent = (JTextComponent) comboBacSi.getEditor().getEditorComponent();
-        JTextComponent benhNhanTextComponent = (JTextComponent) comboBenhNhan.getEditor().getEditorComponent();
 
-        bacSiTextComponent.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            private void validateBacSi() {
-                SwingUtilities.invokeLater(() -> {
-                    String currentText = bacSiTextComponent.getText().trim();
-                    validateAndClearError(comboBacSi, () -> {
-                        return !currentText.isEmpty() && 
-                               !currentText.equals("Nhập tên bác sĩ...") && 
-                               bacSiList.contains(currentText);
-                    });
-                });
-            }
-        });
+        // Validation cho combo box bác sĩ
+        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
+            String selected = (String) comboBacSi.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
 
-        // Validation cho bệnh nhân
-        benhNhanTextComponent.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            private void validateBenhNhan() {
-                SwingUtilities.invokeLater(() -> {
-                    String currentText = benhNhanTextComponent.getText().trim();
-                    validateAndClearError(comboBenhNhan, () -> {
-                        return !currentText.isEmpty() && 
-                               !currentText.equals("Nhập tên bệnh nhân...") && 
-                               benhNhanList.contains(currentText);
-                    });
-                });
-            }
-        });
-            
+        // Validation cho combo box bệnh nhân
+        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
+            String selected = (String) comboBenhNhan.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
+        
         comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
             String selected = (String) comboPhongKham.getSelectedItem();
             return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
@@ -1197,32 +1155,26 @@ public class LichHenGUI extends JPanel {
             dialog.dispose();
         });
         
-        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION
+        // Xử lý sự kiện nút lưu với validation
         saveButton.addActionListener(e -> {
             try {
                 clearAllFieldErrors();                
                 boolean hasErrors = false;                
                 
-                // Validate bác sĩ từ searchable combobox
-                String hoTenBacSi = getSelectedValueFromSearchableCombo(comboBacSi, "Nhập tên bác sĩ...").trim();
-                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.equals("Nhập tên bác sĩ...") || hoTenBacSi.isEmpty()) {
+                // Validate bác sĩ
+                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.isEmpty()) {
                     showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
-                    hasErrors = true;
-                } else if (!bacSiList.contains(hoTenBacSi)) {
-                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không tồn tại trong hệ thống");
                     hasErrors = true;
                 }
                 
-                // Validate bệnh nhân từ searchable combobox
-                String hoTenBenhNhan = getSelectedValueFromSearchableCombo(comboBenhNhan, "Nhập tên bệnh nhân...").trim();
-                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.equals("Nhập tên bệnh nhân...") || hoTenBenhNhan.isEmpty()) {
+                // Validate bệnh nhân
+                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.isEmpty()) {
                     showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
                     hasErrors = true;
-                } else if (!benhNhanList.contains(hoTenBenhNhan)) {
-                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không tồn tại trong hệ thống");
-                    hasErrors = true;
                 }
-                    
+                
                 String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
                 if ("Lựa chọn".equals(tenPhongKham)) {
                     showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
@@ -1369,242 +1321,6 @@ public class LichHenGUI extends JPanel {
         
         dialog.setVisible(true);
     }
-    private JComboBox<String> createSearchableComboBox(List<String> originalData, String defaultText) {
-        // Create copy of original data and add default text at the beginning
-        List<String> dataWithDefault = new ArrayList<>(originalData);
-        dataWithDefault.add(0, defaultText);
-
-        JComboBox<String> comboBox = createStyledComboBox(dataWithDefault.toArray(new String[0]));
-        comboBox.setEditable(true);
-
-        // Get the text component of the editor
-        JTextComponent textComponent = (JTextComponent) comboBox.getEditor().getEditorComponent();
-
-        // Store original data for filtering
-        final List<String> originalItems = new ArrayList<>(originalData);
-
-        // Flags to control behavior
-        // isFilteringItems: true when the DocumentListener is actively filtering/updating the model
-        final AtomicBoolean isFilteringItems = new AtomicBoolean(false);
-        // isSelectingFromDropdown: true when an item is selected from the dropdown (programmatic text change)
-        final AtomicBoolean isSelectingFromDropdown = new AtomicBoolean(false);
-        // hasFocus: true when the text component has focus
-        final AtomicBoolean hasFocus = new AtomicBoolean(false);
-        // ignoreDocumentEvents: A crucial flag to prevent re-triggering filtering
-        final AtomicBoolean ignoreDocumentEvents = new AtomicBoolean(false);
-
-        // Custom Document to get better control
-        class SearchDocument extends PlainDocument {
-            private Timer filterTimer;
-
-            @Override
-            public void insertString(int offset, String str, AttributeSet attr) throws BadLocationException {
-                if (ignoreDocumentEvents.get()) { // Ignore if we are programmatically updating
-                    super.insertString(offset, str, attr);
-                    return;
-                }
-                super.insertString(offset, str, attr);
-                scheduleFilter();
-            }
-
-            @Override
-            public void remove(int offset, int length) throws BadLocationException {
-                if (ignoreDocumentEvents.get()) { // Ignore if we are programmatically updating
-                    super.remove(offset, length);
-                    return;
-                }
-                super.remove(offset, length);
-                scheduleFilter();
-            }
-
-            private void scheduleFilter() {
-                if (filterTimer != null && filterTimer.isRunning()) {
-                    filterTimer.stop();
-                }
-
-                filterTimer = new Timer(200, e -> {
-                    if (hasFocus.get() && !isFilteringItems.get() && !isSelectingFromDropdown.get()) {
-                        performFiltering();
-                    }
-                });
-                filterTimer.setRepeats(false);
-                filterTimer.start();
-            }
-
-            private void performFiltering() {
-                SwingUtilities.invokeLater(() -> {
-                    // Ensure no conflicting operations
-                    if (isFilteringItems.get() || isSelectingFromDropdown.get()) return;
-
-                    try {
-                        String searchText = textComponent.getText().trim();
-
-                        if (searchText.isEmpty() || searchText.equals(defaultText)) {
-                            updateDropdownItems(originalItems); // Show all items if text is empty or default
-                            return;
-                        }
-
-                        // Filter items
-                        List<String> filteredItems = originalItems.stream()
-                            .filter(item -> item.toLowerCase().contains(searchText.toLowerCase()))
-                            .collect(Collectors.toList());
-
-                        updateDropdownItems(filteredItems);
-
-                        // Show popup if has results and focused
-                        if (!filteredItems.isEmpty() && hasFocus.get()) {
-                            SwingUtilities.invokeLater(() -> {
-                                if (!comboBox.isPopupVisible()) {
-                                    comboBox.showPopup();
-                                }
-                            });
-                        } else if (filteredItems.isEmpty() && comboBox.isPopupVisible()) {
-                            comboBox.hidePopup(); // Hide if no results
-                        }
-
-                    } catch (Exception ex) {
-                        // Log or handle the error appropriately, but for filtering, often ignored
-                        System.err.println("Error during filtering: " + ex.getMessage());
-                    }
-                });
-            }
-
-            private void updateDropdownItems(List<String> items) {
-                isFilteringItems.set(true); // Indicate that we are updating items
-                ignoreDocumentEvents.set(true); // Crucial: temporarily ignore document changes
-
-                try {
-                    String currentText = textComponent.getText(); // Store current text
-                    int caretPos = textComponent.getCaretPosition(); // Store caret position
-
-                    // Temporarily remove action listeners to prevent unwanted side effects
-                    // when programmatically setting selected item (though not directly here)
-                    ActionListener[] listeners = comboBox.getActionListeners();
-                    for (ActionListener listener : listeners) {
-                        comboBox.removeActionListener(listener);
-                    }
-
-                    // Clear existing items and add filtered ones
-                    comboBox.removeAllItems();
-                    comboBox.addItem(defaultText); // Always include default option
-                    for (String item : items) {
-                        comboBox.addItem(item);
-                    }
-
-                    // Restore action listeners
-                    for (ActionListener listener : listeners) {
-                        comboBox.addActionListener(listener);
-                    }
-
-                    // Restore text and caret position.
-                    // Because ignoreDocumentEvents is true, this setText won't re-trigger filtering.
-                    textComponent.setText(currentText);
-                    textComponent.setCaretPosition(Math.min(caretPos, currentText.length()));
-
-                } finally {
-                    isFilteringItems.set(false); // Reset flag
-                    ignoreDocumentEvents.set(false); // Reset flag
-                }
-            }
-        }
-
-        // Replace the default document with our custom one
-        textComponent.setDocument(new SearchDocument());
-
-        // Action listener for when an item is selected from the dropdown
-        comboBox.addActionListener(e -> {
-            // Only process if user is not actively filtering or if it's not a programmatic selection
-            if (isFilteringItems.get() || isSelectingFromDropdown.get()) {
-                return;
-            }
-
-            Object selectedItem = comboBox.getSelectedItem();
-            if (selectedItem != null && !selectedItem.equals(defaultText)) {
-                String selectedText = selectedItem.toString();
-                String currentTextInEditor = textComponent.getText();
-
-                // Only update if the selected item is different from what's currently in the editor
-                if (!selectedText.equals(currentTextInEditor)) {
-                    isSelectingFromDropdown.set(true); // Indicate programmatic change
-                    ignoreDocumentEvents.set(true); // Crucial: Prevent document listener from reacting
-                    try {
-                        textComponent.setText(selectedText);
-                        textComponent.setCaretPosition(selectedText.length());
-                        comboBox.hidePopup(); // Hide the popup after selection
-                    } finally {
-                        isSelectingFromDropdown.set(false); // Reset flag
-                        ignoreDocumentEvents.set(false); // Reset flag
-                    }
-                }
-            }
-        });
-
-        // Focus listeners to handle default text and filtering on focus
-        textComponent.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                hasFocus.set(true);
-                String currentText = textComponent.getText();
-
-                // Clear default text when focus is gained
-                if (defaultText.equals(currentText)) {
-                    isSelectingFromDropdown.set(true); // Treat as programmatic
-                    ignoreDocumentEvents.set(true);
-                    try {
-                        textComponent.setText("");
-                        textComponent.setCaretPosition(0);
-                    } finally {
-                        isSelectingFromDropdown.set(false);
-                        ignoreDocumentEvents.set(false);
-                    }
-                }
-                // Ensure popup is visible if items are filtered and there's text
-                if (!currentText.isEmpty() && !currentText.equals(defaultText)) {
-                     // Trigger a filter to ensure the popup shows relevant items
-                    ((SearchDocument) textComponent.getDocument()).performFiltering();
-                }
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                hasFocus.set(false);
-
-                // Delay to allow dropdown selection to complete before resetting text
-                Timer delayTimer = new Timer(150, event -> {
-                    String currentText = textComponent.getText().trim();
-
-                    // If text is empty or not a valid item from original list, revert to default
-                    if (currentText.isEmpty() || !originalItems.contains(currentText)) {
-                        isSelectingFromDropdown.set(true); // Treat as programmatic
-                        ignoreDocumentEvents.set(true);
-                        try {
-                            textComponent.setText(defaultText);
-                            textComponent.setCaretPosition(0);
-                        } finally {
-                            isSelectingFromDropdown.set(false);
-                            ignoreDocumentEvents.set(false);
-                        }
-                    }
-                    comboBox.hidePopup(); // Always hide popup on focus loss
-                });
-                delayTimer.setRepeats(false);
-                delayTimer.start();
-            }
-        });
-
-        return comboBox;
-    }
-    private String getSelectedValueFromSearchableCombo(JComboBox<String> comboBox, String defaultText) {
-        JTextComponent textComponent = (JTextComponent) comboBox.getEditor().getEditorComponent();
-        String currentText = textComponent.getText().trim();
-        
-        if (currentText.isEmpty() || currentText.equals(defaultText)) {
-            return "Lựa chọn"; 
-        }
-        
-        return currentText;
-    }
-
     // Remove the old updateComboBoxItems methods as they're no longer needed
     private java.util.Date getNextAvailableWorkingDate() {
         Calendar cal = Calendar.getInstance();
@@ -2003,20 +1719,19 @@ public class LichHenGUI extends JPanel {
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
 
-        // Tạo searchable combobox cho bác sĩ và bệnh nhân
-        JComboBox<String> comboBacSi = createSearchableComboBox(bacSiList, "Nhập tên bác sĩ...");
+        // Tạo regular combobox cho bác sĩ
+        bacSiList.add(0, "Lựa chọn");
+        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
         comboBacSi.setPreferredSize(new Dimension(250, 35));
-        // Set giá trị hiện tại cho bác sĩ
-        JTextComponent bacSiTextComponent = (JTextComponent) comboBacSi.getEditor().getEditorComponent();
-        bacSiTextComponent.setText(lichHen.getHoTenBacSi());
+        comboBacSi.setSelectedItem(lichHen.getHoTenBacSi());
         
-        JComboBox<String> comboBenhNhan = createSearchableComboBox(benhNhanList, "Nhập tên bệnh nhân...");
+        // Tạo regular combobox cho bệnh nhân
+        benhNhanList.add(0, "Lựa chọn");
+        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
         comboBenhNhan.setPreferredSize(new Dimension(250, 35));
-        // Set giá trị hiện tại cho bệnh nhân
-        JTextComponent benhNhanTextComponent = (JTextComponent) comboBenhNhan.getEditor().getEditorComponent();
-        benhNhanTextComponent.setText(lichHen.getHoTenBenhNhan());
+        comboBenhNhan.setSelectedItem(lichHen.getHoTenBenhNhan());
         
-        // Phòng khám vẫn sử dụng combo thông thường
+        // Phòng khám - regular combobox
         phongKhamList.add(0, "Lựa chọn");
         JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
         comboPhongKham.setPreferredSize(new Dimension(250, 35));
@@ -2116,7 +1831,7 @@ public class LichHenGUI extends JPanel {
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Có thể nhập tên để tìm kiếm bác sĩ/bệnh nhân</b></html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b></html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
@@ -2126,62 +1841,17 @@ public class LichHenGUI extends JPanel {
         // Khởi tạo error labels cho từng field
         initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
 
-        bacSiTextComponent.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                validateBacSi();
-            }
-            
-            private void validateBacSi() {
-                SwingUtilities.invokeLater(() -> {
-                    String currentText = bacSiTextComponent.getText().trim();
-                    validateAndClearError(comboBacSi, () -> {
-                        return !currentText.isEmpty() && 
-                               !currentText.equals("Nhập tên bác sĩ...") && 
-                               bacSiList.contains(currentText);
-                    });
-                });
-            }
-        });
+        // Validation cho bác sĩ
+        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
+            String selected = (String) comboBacSi.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
 
         // Validation cho bệnh nhân
-        benhNhanTextComponent.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                validateBenhNhan();
-            }
-            
-            private void validateBenhNhan() {
-                SwingUtilities.invokeLater(() -> {
-                    String currentText = benhNhanTextComponent.getText().trim();
-                    validateAndClearError(comboBenhNhan, () -> {
-                        return !currentText.isEmpty() && 
-                               !currentText.equals("Nhập tên bệnh nhân...") && 
-                               benhNhanList.contains(currentText);
-                    });
-                });
-            }
-        });
+        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
+            String selected = (String) comboBenhNhan.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
             
         comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
             String selected = (String) comboPhongKham.getSelectedItem();
@@ -2343,28 +2013,22 @@ public class LichHenGUI extends JPanel {
                 clearAllFieldErrors();                
                 boolean hasErrors = false;                
                 
-                // Validate bác sĩ từ searchable combobox
-                String hoTenBacSi = getSelectedValueFromSearchableCombo(comboBacSi, "Nhập tên bác sĩ...").trim();
-                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.equals("Nhập tên bác sĩ...") || hoTenBacSi.isEmpty()) {
+                // Validate bác sĩ từ regular combobox
+                String hoTenBacSi = ((String) comboBacSi.getSelectedItem());
+                if (hoTenBacSi == null || "Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.trim().isEmpty()) {
                     showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
-                    hasErrors = true;
-                } else if (!bacSiList.contains(hoTenBacSi)) {
-                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không tồn tại trong hệ thống");
                     hasErrors = true;
                 }
                 
-                // Validate bệnh nhân từ searchable combobox
-                String hoTenBenhNhan = getSelectedValueFromSearchableCombo(comboBenhNhan, "Nhập tên bệnh nhân...").trim();
-                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.equals("Nhập tên bệnh nhân...") || hoTenBenhNhan.isEmpty()) {
+                // Validate bệnh nhân từ regular combobox
+                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem());
+                if (hoTenBenhNhan == null || "Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.trim().isEmpty()) {
                     showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
-                    hasErrors = true;
-                } else if (!benhNhanList.contains(hoTenBenhNhan)) {
-                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không tồn tại trong hệ thống");
                     hasErrors = true;
                 }
                     
-                String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
-                if ("Lựa chọn".equals(tenPhongKham)) {
+                String tenPhongKham = ((String) comboPhongKham.getSelectedItem());
+                if (tenPhongKham == null || "Lựa chọn".equals(tenPhongKham) || tenPhongKham.trim().isEmpty()) {
                     showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
                     hasErrors = true;
                 }                
@@ -2519,7 +2183,7 @@ public class LichHenGUI extends JPanel {
                     showSuccessToast("Cập nhật lịch hẹn thành công!");
                 } else {
                     showPersistentFieldError(saveButton, "Không thể cập nhật lịch hẹn. Vui lòng thử lại");
-                }
+                }          
             } catch (DateTimeParseException ex) {
                 showPersistentFieldError(timePanel, "Lỗi định dạng thời gian");
             } catch (Exception ex) {

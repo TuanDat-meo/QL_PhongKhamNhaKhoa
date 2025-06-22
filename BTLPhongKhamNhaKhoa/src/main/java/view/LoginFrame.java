@@ -660,7 +660,7 @@ public class LoginFrame extends JFrame {
             UIManager.put("Button.arc", RADIUS);
             UIManager.put("Component.arc", RADIUS);
             UIManager.put("TextComponent.arc", RADIUS);
-            
+            NguoiDungController.migrateAllPlaintextPasswords();
         } catch (Exception e) {
             e.printStackTrace();
         }
