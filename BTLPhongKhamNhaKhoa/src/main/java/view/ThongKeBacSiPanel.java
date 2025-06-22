@@ -1,16 +1,18 @@
 package view;
 
 import controller.ThongKeBacSiController;
-import controller.ThongKeController;
 import model.BacSi;
+import util.ExportManager;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,7 @@ import java.util.Vector;
 /**
  * Panel thống kê thông tin về bác sĩ
  */
-public class ThongKeBacSiPanel extends JPanel {
+public class ThongKeBacSiPanel extends JPanel implements ExportManager.MessageCallback {
     private JComboBox<String> cboLoaiThongKe;
     private JPanel pnlTieuChi;
     private JPanel pnlBieuDo;
@@ -32,21 +34,30 @@ public class ThongKeBacSiPanel extends JPanel {
     private JComboBox<String> cboThang;
     private ThongKeBacSiController controller;
     private JPanel pnlBieuDoContainer;
-    private JLabel lblTongSo;
+    private JButton btnExport;
+    private JLabel lblTongSo; // Thêm lại lblTongSo
+    private ExportManager exportManager;
+    private JPanel headerPanel;
+    private final Color primaryColor = new Color(41, 128, 185);
+    private final Color buttonTextColor = Color.WHITE;
 
     public ThongKeBacSiPanel() {
         controller = new ThongKeBacSiController(this);
+        setBackground(new Color(245, 247, 250));
         initComponents();
         setupEvents();
         loadInitialData();
+        exportManager = new ExportManager(this, modelKetQua, this);
     }
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setBackground(new Color(245, 247, 250));
 
         // Panel Loại thống kê
         JPanel pnlLoaiThongKe = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        pnlLoaiThongKe.setBackground(new Color(245, 247, 250));
         pnlLoaiThongKe.add(new JLabel("Loại thống kê:"));
         
         String[] loaiThongKe = {
@@ -62,17 +73,24 @@ public class ThongKeBacSiPanel extends JPanel {
         
         // Panel Tiêu chí
         pnlTieuChi = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        pnlTieuChi.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(), "Tiêu chí thống kê", 
-                TitledBorder.LEFT, TitledBorder.TOP));
+        pnlTieuChi.setBackground(new Color(245, 247, 250));
+        TitledBorder tieuChiBorder = BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.BLACK),
+                "Tiêu chí thống kê", 
+                TitledBorder.LEFT, TitledBorder.TOP);
+        tieuChiBorder.setTitleColor(Color.BLACK);
+        pnlTieuChi.setBorder(tieuChiBorder);
         
-        // Thêm components cho Tiêu chí
+        Dimension tieuChiSize = new Dimension(0, 80);
+        pnlTieuChi.setPreferredSize(tieuChiSize);
+        pnlTieuChi.setMinimumSize(tieuChiSize);
+        pnlTieuChi.setMaximumSize(tieuChiSize);
+        
         cboChuyenKhoa = new JComboBox<>();
         cboPhongKham = new JComboBox<>();
         cboNam = new JComboBox<>();
         cboThang = new JComboBox<>(new String[]{"Tất cả", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"});
         
-        // Thêm các năm gần đây
         int currentYear = java.time.Year.now().getValue();
         for (int i = currentYear; i >= currentYear - 5; i--) {
             cboNam.addItem(i);
@@ -80,35 +98,83 @@ public class ThongKeBacSiPanel extends JPanel {
         
         JButton btnThongKe = new JButton("Thống kê");
         
-        // Panel kết quả
+        // Panel Kết quả (Dữ liệu thống kê)
         pnlKetQua = new JPanel(new BorderLayout(5, 5));
-        pnlKetQua.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(), "Kết quả thống kê", 
-                TitledBorder.LEFT, TitledBorder.TOP));
+        pnlKetQua.setBackground(new Color(245, 247, 250));
+        TitledBorder ketQuaBorder = BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.BLACK),
+                "Dữ liệu thống kê",
+                TitledBorder.LEFT, TitledBorder.TOP);
+        ketQuaBorder.setTitleColor(Color.BLACK);
+        pnlKetQua.setBorder(ketQuaBorder);
         
         // Bảng kết quả
         modelKetQua = new DefaultTableModel();
         tblKetQua = new JTable(modelKetQua);
+        
+        // Căn giữa và đặt font cho dữ liệu bảng
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        centerRenderer.setFont(new Font("Arial", Font.PLAIN, 12));
+        tblKetQua.setFont(new Font("Arial", Font.PLAIN, 12));
+        tblKetQua.setRowHeight(25);
+        
+        // Áp dụng renderer cho tất cả cột
+        tblKetQua.setDefaultRenderer(Object.class, centerRenderer); // Căn giữa tất cả cột
+        
+        // Tùy chỉnh hàng tiêu đề của bảng
+        JTableHeader header = tblKetQua.getTableHeader();
+        header.setFont(new Font("Arial", Font.BOLD, 13));
+        header.setBackground(new Color(41, 128, 185));
+        header.setForeground(Color.WHITE);
+        
         JScrollPane scrollPane = new JScrollPane(tblKetQua);
         scrollPane.setPreferredSize(new Dimension(600, 200));
+        scrollPane.setBackground(new Color(245, 247, 250));
         
-        // Label hiển thị tổng số
+        // Panel chứa Tổng số và Xuất dữ liệu
+        JPanel pnlBottom = new JPanel(new BorderLayout());
+        pnlBottom.setBackground(new Color(245, 247, 250));
+        
+        // Label Tổng số (căn trái)
         lblTongSo = new JLabel("Tổng số: 0");
         lblTongSo.setFont(new Font("Arial", Font.BOLD, 14));
-        
-        JPanel pnlTongSo = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel pnlTongSo = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        pnlTongSo.setBackground(new Color(245, 247, 250));
         pnlTongSo.add(lblTongSo);
         
+        // Nút Xuất dữ liệu (căn phải)
+        btnExport = new JButton("Xuất dữ liệu");
+        btnExport.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnExport.setBackground(primaryColor);
+        btnExport.setForeground(buttonTextColor);
+        btnExport.setFocusPainted(false);
+        btnExport.setBorderPainted(false);
+        btnExport.setOpaque(true);
+        btnExport.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        JPanel pnlExport = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        pnlExport.setBackground(new Color(245, 247, 250));
+        pnlExport.add(btnExport);
+        
+        pnlBottom.add(pnlTongSo, BorderLayout.WEST);
+        pnlBottom.add(pnlExport, BorderLayout.EAST);
+        
         pnlKetQua.add(scrollPane, BorderLayout.CENTER);
-        pnlKetQua.add(pnlTongSo, BorderLayout.SOUTH);
+        pnlKetQua.add(pnlBottom, BorderLayout.SOUTH);
         
         // Panel Biểu đồ
         pnlBieuDo = new JPanel(new BorderLayout());
-        pnlBieuDo.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(), "Biểu đồ thống kê", 
-                TitledBorder.LEFT, TitledBorder.TOP));
+        pnlBieuDo.setBackground(new Color(245, 247, 250));
+        TitledBorder bieuDoBorder = BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.BLACK),
+                "Biểu đồ thống kê", 
+                TitledBorder.LEFT, TitledBorder.TOP);
+        bieuDoBorder.setTitleColor(Color.BLACK);
+        pnlBieuDo.setBorder(bieuDoBorder);
         
         pnlBieuDoContainer = new JPanel();
+        pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
         pnlBieuDo.add(pnlBieuDoContainer, BorderLayout.CENTER);
         
         // Thêm tiêu chí mặc định
@@ -116,10 +182,12 @@ public class ThongKeBacSiPanel extends JPanel {
         
         // Thêm các panel vào panel chính
         JPanel pnlTop = new JPanel(new BorderLayout());
+        pnlTop.setBackground(new Color(245, 247, 250));
         pnlTop.add(pnlLoaiThongKe, BorderLayout.NORTH);
         pnlTop.add(pnlTieuChi, BorderLayout.CENTER);
         
         JPanel pnlCenter = new JPanel(new GridLayout(1, 2, 10, 0));
+        pnlCenter.setBackground(new Color(245, 247, 250));
         pnlCenter.add(pnlKetQua);
         pnlCenter.add(pnlBieuDo);
         
@@ -136,10 +204,35 @@ public class ThongKeBacSiPanel extends JPanel {
                 updateTieuChi();
             }
         });
+        
+        btnExport.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (modelKetQua.getRowCount() > 0) {
+                    exportManager.showExportOptions(primaryColor, primaryColor, buttonTextColor);
+                } else {
+                    showErrorMessage("Không có dữ liệu", "Không có dữ liệu thống kê để xuất.");
+                }
+            }
+        });
+        
+        btnExport.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnExport.setBackground(darkenColor(primaryColor));
+            }
+            
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnExport.setBackground(primaryColor);
+            }
+        });
+    }
+    
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
     
     private void loadInitialData() {
-        // Load danh sách chuyên khoa từ controller
         List<String> chuyenKhoaList = controller.getAllChuyenKhoa();
         cboChuyenKhoa.removeAllItems();
         cboChuyenKhoa.addItem("Tất cả");
@@ -147,7 +240,6 @@ public class ThongKeBacSiPanel extends JPanel {
             cboChuyenKhoa.addItem(chuyenKhoa);
         }
         
-        // Load danh sách phòng khám từ controller
         List<String> phongKhamList = controller.getAllPhongKham();
         cboPhongKham.removeAllItems();
         cboPhongKham.addItem("Tất cả");
@@ -155,7 +247,6 @@ public class ThongKeBacSiPanel extends JPanel {
             cboPhongKham.addItem(phongKham);
         }
         
-        // Thực hiện thống kê mặc định
         thongKeBacSiTheoChuyenKhoa();
     }
     
@@ -274,7 +365,6 @@ public class ThongKeBacSiPanel extends JPanel {
         
         lblTongSo.setText("Tổng số: " + tongSo + " bác sĩ");
         
-        // Hiển thị biểu đồ
         hienThiBieuDoCot(data, "Thống kê số lượng bác sĩ theo chuyên khoa");
     }
     
@@ -290,12 +380,11 @@ public class ThongKeBacSiPanel extends JPanel {
         
         for (Object[] row : data) {
             modelKetQua.addRow(row);
-            tongSo += (int) row[4]; // Cộng số lịch hẹn
+            tongSo += (int) row[4];
         }
         
         lblTongSo.setText("Tổng số: " + tongSo + " lịch hẹn");
         
-        // Hiển thị biểu đồ
         hienThiBieuDoTop10(data, "Top bác sĩ có nhiều lịch hẹn nhất", 1, 4);
     }
     
@@ -311,12 +400,11 @@ public class ThongKeBacSiPanel extends JPanel {
         
         for (Object[] row : data) {
             modelKetQua.addRow(row);
-            tongSo += (int) row[4]; // Cộng số ca điều trị
+            tongSo += (int) row[4];
         }
         
         lblTongSo.setText("Tổng số: " + tongSo + " ca điều trị");
         
-        // Hiển thị biểu đồ
         hienThiBieuDoTop10(data, "Top bác sĩ có nhiều ca điều trị nhất", 1, 4);
     }
     
@@ -334,7 +422,6 @@ public class ThongKeBacSiPanel extends JPanel {
         
         lblTongSo.setText("Tổng số: " + tongSo + " bác sĩ");
         
-        // Hiển thị biểu đồ
         hienThiBieuDoCot(data, "Thống kê số lượng bác sĩ theo phòng khám");
     }
     
@@ -352,7 +439,6 @@ public class ThongKeBacSiPanel extends JPanel {
         
         lblTongSo.setText("Tổng số: " + tongSo + " bác sĩ");
         
-        // Hiển thị biểu đồ
         hienThiBieuDoCot(data, "Thống kê số lượng bác sĩ theo kinh nghiệm");
     }
     
@@ -385,6 +471,7 @@ public class ThongKeBacSiPanel extends JPanel {
             JLabel lblNoData = new JLabel("Không có dữ liệu để hiển thị biểu đồ", JLabel.CENTER);
             lblNoData.setFont(new Font("Arial", Font.BOLD, 14));
             pnlBieuDoContainer.setLayout(new BorderLayout());
+            pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
             pnlBieuDoContainer.add(lblNoData, BorderLayout.CENTER);
             pnlBieuDoContainer.revalidate();
             pnlBieuDoContainer.repaint();
@@ -402,7 +489,7 @@ public class ThongKeBacSiPanel extends JPanel {
                 int height = getHeight();
                 
                 int marginTop = 40;
-                int marginBottom = 70; // Tăng marginBottom để có thêm không gian cho nhãn
+                int marginBottom = 70;
                 int marginLeft = 50;
                 int marginRight = 20;
                 
@@ -474,9 +561,7 @@ public class ThongKeBacSiPanel extends JPanel {
                     
                     g2d.drawString(valueText, textX, textY);
                     
-                    // Xử lý nhãn với khả năng xuống dòng
-                    String label = entry.getKey();
-                    drawMultilineLabel(g2d, label, barX + barWidth / 2, height - marginBottom + 15, barWidth + spacing);
+                    drawMultilineLabel(g2d, entry.getKey(), barX + barWidth / 2, height - marginBottom + 15, barWidth + spacing);
                     
                     i++;
                 }
@@ -490,7 +575,9 @@ public class ThongKeBacSiPanel extends JPanel {
         };
         
         chart.setPreferredSize(new Dimension(500, 300));
+        chart.setBackground(new Color(245, 247, 250));
         pnlBieuDoContainer.setLayout(new BorderLayout());
+        pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
         pnlBieuDoContainer.add(chart, BorderLayout.CENTER);
         
         pnlBieuDoContainer.revalidate();
@@ -504,6 +591,7 @@ public class ThongKeBacSiPanel extends JPanel {
             JLabel lblNoData = new JLabel("Không có dữ liệu để hiển thị biểu đồ", JLabel.CENTER);
             lblNoData.setFont(new Font("Arial", Font.BOLD, 14));
             pnlBieuDoContainer.setLayout(new BorderLayout());
+            pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
             pnlBieuDoContainer.add(lblNoData, BorderLayout.CENTER);
             pnlBieuDoContainer.revalidate();
             pnlBieuDoContainer.repaint();
@@ -521,7 +609,7 @@ public class ThongKeBacSiPanel extends JPanel {
                 int height = getHeight();
                 
                 int marginTop = 40;
-                int marginBottom = 70; // Tăng marginBottom để có thêm không gian cho nhãn
+                int marginBottom = 70;
                 int marginLeft = 50;
                 int marginRight = 20;
                 
@@ -596,7 +684,6 @@ public class ThongKeBacSiPanel extends JPanel {
                     
                     g2d.drawString(valueText, textX, textY);
                     
-                    // Xử lý nhãn với khả năng xuống dòng
                     drawMultilineLabel(g2d, label, barX + barWidth / 2, height - marginBottom + 15, barWidth + spacing);
                 }
                 
@@ -609,22 +696,23 @@ public class ThongKeBacSiPanel extends JPanel {
         };
         
         chart.setPreferredSize(new Dimension(500, 300));
+        chart.setBackground(new Color(245, 247, 250));
         pnlBieuDoContainer.setLayout(new BorderLayout());
+        pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
         pnlBieuDoContainer.add(chart, BorderLayout.CENTER);
         
         pnlBieuDoContainer.revalidate();
         pnlBieuDoContainer.repaint();
     }
+    
     private void drawMultilineLabel(Graphics2D g2d, String text, int x, int y, int maxWidth) {
         FontMetrics fm = g2d.getFontMetrics();
         
         if (fm.stringWidth(text) <= maxWidth) {
-            // Nếu văn bản ngắn, vẽ bình thường ở giữa
             g2d.drawString(text, x - fm.stringWidth(text) / 2, y);
             return;
         }
         
-        // Chia văn bản thành nhiều dòng
         java.util.List<String> lines = new ArrayList<>();
         String[] words = text.split(" ");
         StringBuilder currentLine = new StringBuilder();
@@ -667,9 +755,30 @@ public class ThongKeBacSiPanel extends JPanel {
             g2d.drawString(line, x - lineWidth / 2, y + i * lineHeight);
         }
     }
+    
     public void hienThiKetQua(Vector<Vector<Object>> data, Vector<String> columnNames) {
         DefaultTableModel model = new DefaultTableModel(data, columnNames);
         tblKetQua.setModel(model);
+        // Cập nhật renderer cho các cột sau khi đặt model mới
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        centerRenderer.setFont(new Font("Arial", Font.PLAIN, 12));
+        tblKetQua.setDefaultRenderer(Object.class, centerRenderer);
         tblKetQua.repaint();
+    }
+    
+    @Override
+    public void showSuccessToast(String message) {
+        // TODO: Thêm thông báo thành công nếu cần
+    }
+    
+    @Override
+    public void showErrorMessage(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+    
+    @Override
+    public void showMessage(String message, String title, int messageType) {
+        JOptionPane.showMessageDialog(this, message, title, messageType);
     }
 }
