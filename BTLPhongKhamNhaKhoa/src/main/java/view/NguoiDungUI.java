@@ -9,6 +9,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
+import com.toedter.calendar.JDateChooser;
 
 import controller.NguoiDungController;
 import model.NguoiDung;
@@ -486,12 +487,9 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             showInfoMessage("Vui lòng chọn người dùng để sửa.");
             return;
         }
-        
         int userId = (int) tableModel.getValueAt(selectedRow, 0);
-        
         try {
             NguoiDung user = controller.getNguoiDungById(userId);
-            
             if (user != null) {
                 java.util.List<String> availableRoles;
                 try {
@@ -506,114 +504,163 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                     availableRoles.add("Nhân viên");
                     availableRoles.add("Khách hàng");
                 }
-                
-                // Đảm bảo luôn có đủ các vai trò chính
                 if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
                 if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
-                
                 String[] roles = availableRoles.toArray(new String[0]);
-                
-                JDialog dialog = createStyledDialog("Sửa Thông Tin Người Dùng", 450, 450);
-                
-                JPanel contentPane = new JPanel(new BorderLayout());
-                contentPane.setBackground(panelColor);
-                
-                JPanel headerPanel = new JPanel(new BorderLayout());
+                // Dialog lớn, có scroll
+                JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chỉnh Sửa Người Dùng", true);
+                dialog.setSize(540, 650);
+                dialog.setLocationRelativeTo(this);
+                dialog.setResizable(false);
+                JPanel mainPanel = new JPanel(new BorderLayout());
+                mainPanel.setBackground(Color.WHITE);
+                JPanel headerPanel = new JPanel();
                 headerPanel.setBackground(primaryColor);
-                headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
-                
-                JLabel titleLabel = new JLabel("Sửa thông tin người dùng");
-                titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                headerPanel.setLayout(new BorderLayout());
+                headerPanel.setPreferredSize(new Dimension(0, 70));
+                headerPanel.setBorder(new EmptyBorder(18, 25, 18, 25));
+                JLabel titleLabel = new JLabel("CHỈNH SỬA NGƯỜI DÙNG");
+                titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
                 titleLabel.setForeground(Color.WHITE);
-                
                 headerPanel.add(titleLabel, BorderLayout.CENTER);
-                
+                mainPanel.add(headerPanel, BorderLayout.NORTH);
                 JPanel formPanel = new JPanel();
                 formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-                formPanel.setBackground(panelColor);
-                formPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 10, 25));
-                
+                formPanel.setBackground(Color.WHITE);
+                formPanel.setBorder(new EmptyBorder(25, 30, 25, 30));
+                // Input fields
                 JTextField hoTenField = createStyledTextField(user.getHoTen());
                 JTextField emailField = createStyledTextField(user.getEmail());
                 JTextField soDienThoaiField = createStyledTextField(user.getSoDienThoai());
+                // Ngày sinh dùng JDateChooser
+                com.toedter.calendar.JDateChooser ngaySinhChooser = new com.toedter.calendar.JDateChooser();
+                ngaySinhChooser.setDateFormatString("yyyy-MM-dd");
+                if (user.getNgaySinh() != null) ngaySinhChooser.setDate(user.getNgaySinh());
+                // Giới tính
+                String[] gioiTinhArr = {"Nam", "Nữ", "Khác"};
+                JComboBox<String> gioiTinhBox = new JComboBox<>(gioiTinhArr);
+                if (user.getGioiTinh() != null) gioiTinhBox.setSelectedItem(user.getGioiTinh());
+                // Vai trò
+                JComboBox<String> vaiTroBox = new JComboBox<>(roles);
+                vaiTroBox.setSelectedItem(user.getVaiTro());
+                // Mật khẩu mới
                 JPasswordField matKhauField = createStyledPasswordField();
-                JComboBox<String> vaiTroBox = createStyledComboBox(roles, user.getVaiTro());
-                
+                JPasswordField xacNhanMatKhauField = createStyledPasswordField();
+                // Label lỗi
+                JLabel hoTenError = createErrorLabel();
+                JLabel emailError = createErrorLabel();
+                JLabel phoneError = createErrorLabel();
+                JLabel ngaySinhError = createErrorLabel();
+                JLabel gioiTinhError = createErrorLabel();
+                JLabel matKhauError = createErrorLabel();
+                JLabel xacNhanMatKhauError = createErrorLabel();
+                JLabel vaiTroError = createErrorLabel();
+                // Add fields
                 formPanel.add(createFormRow("Họ tên:", hoTenField));
-                formPanel.add(Box.createVerticalStrut(15));
+                formPanel.add(hoTenError);
+                formPanel.add(Box.createVerticalStrut(12));
                 formPanel.add(createFormRow("Email:", emailField));
-                formPanel.add(Box.createVerticalStrut(15));
+                formPanel.add(emailError);
+                formPanel.add(Box.createVerticalStrut(12));
                 formPanel.add(createFormRow("Số điện thoại:", soDienThoaiField));
-                formPanel.add(Box.createVerticalStrut(15));
-                formPanel.add(createFormRow("Mật khẩu mới:", matKhauField));
-                formPanel.add(Box.createVerticalStrut(15));
+                formPanel.add(phoneError);
+                formPanel.add(Box.createVerticalStrut(12));
+                formPanel.add(createFormRow("Ngày sinh:", ngaySinhChooser));
+                formPanel.add(ngaySinhError);
+                formPanel.add(Box.createVerticalStrut(12));
+                formPanel.add(createFormRow("Giới tính:", gioiTinhBox));
+                formPanel.add(gioiTinhError);
+                formPanel.add(Box.createVerticalStrut(12));
                 formPanel.add(createFormRow("Vai trò:", vaiTroBox));
-                
+                formPanel.add(vaiTroError);
+                formPanel.add(Box.createVerticalStrut(12));
+                formPanel.add(createFormRow("Mật khẩu mới:", matKhauField));
+                formPanel.add(matKhauError);
+                formPanel.add(Box.createVerticalStrut(12));
+                formPanel.add(createFormRow("Xác nhận mật khẩu:", xacNhanMatKhauField));
+                formPanel.add(xacNhanMatKhauError);
+                formPanel.add(Box.createVerticalStrut(18));
+                JScrollPane scrollPane = new JScrollPane(formPanel);
+                scrollPane.setBorder(null);
+                scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+                mainPanel.add(scrollPane, BorderLayout.CENTER);
+                // Button panel
                 JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-                buttonPanel.setBackground(panelColor);
-                buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
-                
+                buttonPanel.setBackground(Color.WHITE);
+                buttonPanel.setBorder(new EmptyBorder(10, 30, 20, 30));
                 JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10, false);
                 JButton cancelButton = createRoundedButton("Hủy", primaryColor, buttonTextColor, 10, false);
-                
                 saveButton.setPreferredSize(new Dimension(100, 40));
                 cancelButton.setPreferredSize(new Dimension(100, 40));
-                
+                buttonPanel.add(saveButton);
+                buttonPanel.add(cancelButton);
+                mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+                dialog.setContentPane(mainPanel);
+                // Sự kiện nút Lưu
                 saveButton.addActionListener(e -> {
-                    if (hoTenField.getText().trim().isEmpty() || 
-                        emailField.getText().trim().isEmpty() ||
-                        soDienThoaiField.getText().trim().isEmpty()) {
-                        showWarningMessage("Vui lòng điền đầy đủ thông tin.");
-                        return;
+                    // Reset lỗi
+                    hoTenError.setText(" "); emailError.setText(" "); phoneError.setText(" ");
+                    ngaySinhError.setText(" "); gioiTinhError.setText(" "); matKhauError.setText(" ");
+                    xacNhanMatKhauError.setText(" "); vaiTroError.setText(" ");
+                    String hoTen = hoTenField.getText().trim();
+                    String email = emailField.getText().trim();
+                    String phone = soDienThoaiField.getText().trim();
+                    String gioiTinh = (String) gioiTinhBox.getSelectedItem();
+                    String selectedRole = (String) vaiTroBox.getSelectedItem();
+                    java.util.Date ngaySinhDate = ngaySinhChooser.getDate();
+                    String password = new String(matKhauField.getPassword());
+                    String confirmPassword = new String(xacNhanMatKhauField.getPassword());
+                    boolean isValid = true;
+                    if (hoTen.isEmpty()) { hoTenError.setText("Họ tên không được để trống"); isValid = false; }
+                    if (email.isEmpty()) { emailError.setText("Email không được để trống"); isValid = false; }
+                    else if (!isValidEmail(email)) { emailError.setText("Email không hợp lệ"); isValid = false; }
+                    if (phone.isEmpty()) { phoneError.setText("Số điện thoại không được để trống"); isValid = false; }
+                    else if (!isValidPhoneNumber(phone)) { phoneError.setText("Số điện thoại không hợp lệ"); isValid = false; }
+                    if (ngaySinhDate == null) { ngaySinhError.setText("Vui lòng chọn ngày sinh"); isValid = false; }
+                    else if (ngaySinhDate.after(new java.util.Date())) { ngaySinhError.setText("Ngày sinh không được lớn hơn hôm nay"); isValid = false; }
+                    if (selectedRole == null || selectedRole.isEmpty()) { vaiTroError.setText("Vui lòng chọn vai trò"); isValid = false; }
+                    // Nếu nhập mật khẩu mới thì kiểm tra
+                    if (!password.isEmpty() || !confirmPassword.isEmpty()) {
+                        if (!password.equals(confirmPassword)) { xacNhanMatKhauError.setText("Mật khẩu xác nhận không khớp"); isValid = false; }
+                        else if (!isValidPassword(password)) { matKhauError.setText("Mật khẩu phải đủ mạnh"); isValid = false; }
                     }
-                    
-                    user.setHoTen(hoTenField.getText().trim());                    
-                    user.setEmail(emailField.getText().trim());
-                    user.setSoDienThoai(soDienThoaiField.getText().trim());
-                    user.setVaiTro((String) vaiTroBox.getSelectedItem());
-                    
-                    String newPassword = new String(matKhauField.getPassword());
-                    if (!newPassword.isEmpty()) {
-                        // Thêm kiểm tra mật khẩu mới nếu người dùng nhập
-                        if (!isValidPassword(newPassword)) {
-                            showErrorMessage("Mật khẩu mới không hợp lệ. Mật khẩu phải có ít nhất 8 ký tự, bao gồm:\n" +
-                                           "- Ít nhất 1 chữ hoa\n" +
-                                           "- Ít nhất 1 chữ thường\n" +
-                                           "- Ít nhất 1 số\n" +
-                                           "- Ít nhất 1 ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?) ");
-                            return;
-                        }
-                        user.setMatKhau(newPassword);
-                    } else {
-                        user.setMatKhau(null); // Đảm bảo không truyền chuỗi rỗng xuống controller
-                    }
-                    
+                    // Kiểm tra email/sđt trùng với user khác
                     try {
+                        if (!email.equals(user.getEmail()) && controller.isEmailExists(email)) {
+                            emailError.setText("Email này đã được sử dụng"); isValid = false;
+                        }
+                        if (!phone.equals(user.getSoDienThoai()) && controller.isPhoneExists(phone)) {
+                            phoneError.setText("Số điện thoại này đã được sử dụng"); isValid = false;
+                        }
+                    } catch (Exception ex) {
+                        showErrorMessage("Lỗi kiểm tra email/số điện thoại: " + ex.getMessage());
+                        isValid = false;
+                    }
+                    if (!isValid) return;
+                    try {
+                        user.setHoTen(hoTen);
+                        user.setEmail(email);
+                        user.setSoDienThoai(phone);
+                        user.setGioiTinh(gioiTinh);
+                        user.setVaiTro(selectedRole);
+                        user.setNgaySinh(ngaySinhDate != null ? new java.sql.Date(ngaySinhDate.getTime()) : null);
+                        if (!password.isEmpty()) user.setMatKhau(password); // chỉ cập nhật nếu nhập mới
+                        else user.setMatKhau(null); // không đổi mật khẩu
                         controller.updateUser(user);
                         showSuccessMessage("Cập nhật thông tin người dùng thành công!");
                         dialog.dispose();
                         loadUserData();
-                    } catch (SQLException ex) {
+                    } catch (Exception ex) {
                         showErrorMessage("Lỗi khi cập nhật thông tin: " + ex.getMessage());
                         ex.printStackTrace();
                     }
                 });
-                
                 cancelButton.addActionListener(e -> dialog.dispose());
-                
-                buttonPanel.add(saveButton);
-                buttonPanel.add(cancelButton);
-                
-                contentPane.add(headerPanel, BorderLayout.NORTH);
-                contentPane.add(formPanel, BorderLayout.CENTER);
-                contentPane.add(buttonPanel, BorderLayout.SOUTH);
-                
-                dialog.setContentPane(contentPane);
                 dialog.setVisible(true);
             }
-        } catch (SQLException e) {
-            showErrorMessage("Lỗi khi lấy thông tin người dùng: " + e.getMessage());
-            e.printStackTrace();
+        } catch (Exception ex) {
+            showErrorMessage("Lỗi khi lấy thông tin người dùng: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
     
@@ -875,6 +922,177 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         }
     }
     private void showAddUserDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Thêm Người Dùng Mới", true);
+        dialog.setSize(540, 650);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBackground(primaryColor);
+        headerPanel.setLayout(new BorderLayout());
+        headerPanel.setPreferredSize(new Dimension(0, 70));
+        headerPanel.setBorder(new EmptyBorder(18, 25, 18, 25));
+        JLabel titleLabel = new JLabel("THÊM NGƯỜI DÙNG MỚI");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(3, 4, 0, 4);
+        gbc.weightx = 1.0;
+        Color requiredFieldColor = new Color(255, 0, 0);
+        // Họ tên
+        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblHoTen = new JLabel("Họ tên: ");
+        lblHoTen.setFont(regularFont);
+        JPanel hoTenLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        hoTenLabelPanel.setBackground(Color.WHITE);
+        hoTenLabelPanel.add(lblHoTen);
+        JLabel starHoTen = new JLabel("*");
+        starHoTen.setForeground(requiredFieldColor);
+        starHoTen.setFont(regularFont);
+        hoTenLabelPanel.add(starHoTen);
+        formPanel.add(hoTenLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JTextField hoTenField = createStyledTextField("");
+        hoTenField.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(hoTenField, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel hoTenError = createErrorLabel();
+        formPanel.add(hoTenError, gbc);
+        // Ngày sinh
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblNgaySinh = new JLabel("Ngày sinh: ");
+        lblNgaySinh.setFont(regularFont);
+        JPanel ngaySinhLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        ngaySinhLabelPanel.setBackground(Color.WHITE);
+        ngaySinhLabelPanel.add(lblNgaySinh);
+        JLabel starNgaySinh = new JLabel("*");
+        starNgaySinh.setForeground(requiredFieldColor);
+        starNgaySinh.setFont(regularFont);
+        ngaySinhLabelPanel.add(starNgaySinh);
+        formPanel.add(ngaySinhLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JDateChooser dateChooserNgaySinh = new JDateChooser();
+        dateChooserNgaySinh.setFont(regularFont);
+        dateChooserNgaySinh.setPreferredSize(new Dimension(230, 32));
+        dateChooserNgaySinh.setDateFormatString("dd/MM/yyyy");
+        formPanel.add(dateChooserNgaySinh, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel ngaySinhError = createErrorLabel();
+        formPanel.add(ngaySinhError, gbc);
+        // Giới tính
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblGioiTinh = new JLabel("Giới tính: ");
+        lblGioiTinh.setFont(regularFont);
+        JPanel gioiTinhLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        gioiTinhLabelPanel.setBackground(Color.WHITE);
+        gioiTinhLabelPanel.add(lblGioiTinh);
+        formPanel.add(gioiTinhLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        String[] genders = {"Nam", "Nữ", "Khác"};
+        JComboBox<String> gioiTinhBox = new JComboBox<>(genders);
+        gioiTinhBox.setFont(regularFont);
+        gioiTinhBox.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(gioiTinhBox, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        formPanel.add(Box.createVerticalStrut(10), gbc);
+        // Email
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblEmail = new JLabel("Email: ");
+        lblEmail.setFont(regularFont);
+        JPanel emailLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        emailLabelPanel.setBackground(Color.WHITE);
+        emailLabelPanel.add(lblEmail);
+        JLabel starEmail = new JLabel("*");
+        starEmail.setForeground(requiredFieldColor);
+        starEmail.setFont(regularFont);
+        emailLabelPanel.add(starEmail);
+        formPanel.add(emailLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JTextField emailField = createStyledTextField("");
+        emailField.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(emailField, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel emailError = createErrorLabel();
+        formPanel.add(emailError, gbc);
+        // Số điện thoại
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblSoDienThoai = new JLabel("Số điện thoại: ");
+        lblSoDienThoai.setFont(regularFont);
+        JPanel soDienThoaiLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        soDienThoaiLabelPanel.setBackground(Color.WHITE);
+        soDienThoaiLabelPanel.add(lblSoDienThoai);
+        JLabel starSoDienThoai = new JLabel("*");
+        starSoDienThoai.setForeground(requiredFieldColor);
+        starSoDienThoai.setFont(regularFont);
+        soDienThoaiLabelPanel.add(starSoDienThoai);
+        formPanel.add(soDienThoaiLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JTextField soDienThoaiField = createStyledTextField("");
+        soDienThoaiField.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(soDienThoaiField, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel phoneError = createErrorLabel();
+        formPanel.add(phoneError, gbc);
+        // Mật khẩu
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblMatKhau = new JLabel("Mật khẩu: ");
+        lblMatKhau.setFont(regularFont);
+        JPanel matKhauLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        matKhauLabelPanel.setBackground(Color.WHITE);
+        matKhauLabelPanel.add(lblMatKhau);
+        JLabel starMatKhau = new JLabel("*");
+        starMatKhau.setForeground(requiredFieldColor);
+        starMatKhau.setFont(regularFont);
+        matKhauLabelPanel.add(starMatKhau);
+        formPanel.add(matKhauLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JPasswordField matKhauField = createStyledPasswordField();
+        matKhauField.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(matKhauField, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel matKhauError = createErrorLabel();
+        formPanel.add(matKhauError, gbc);
+        // Xác nhận mật khẩu
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblXacNhanMatKhau = new JLabel("Xác nhận mật khẩu: ");
+        lblXacNhanMatKhau.setFont(regularFont);
+        JPanel xacNhanMatKhauLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        xacNhanMatKhauLabelPanel.setBackground(Color.WHITE);
+        xacNhanMatKhauLabelPanel.add(lblXacNhanMatKhau);
+        JLabel starXacNhan = new JLabel("*");
+        starXacNhan.setForeground(requiredFieldColor);
+        starXacNhan.setFont(regularFont);
+        xacNhanMatKhauLabelPanel.add(starXacNhan);
+        formPanel.add(xacNhanMatKhauLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
+        JPasswordField xacNhanMatKhauField = createStyledPasswordField();
+        xacNhanMatKhauField.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(xacNhanMatKhauField, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel xacNhanMatKhauError = createErrorLabel();
+        formPanel.add(xacNhanMatKhauError, gbc);
+        // Vai trò
+        gbc.gridx = 0; gbc.gridy++; gbc.anchor = GridBagConstraints.LINE_START;
+        JLabel lblVaiTro = new JLabel("Vai trò: ");
+        lblVaiTro.setFont(regularFont);
+        JPanel vaiTroLabelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        vaiTroLabelPanel.setBackground(Color.WHITE);
+        vaiTroLabelPanel.add(lblVaiTro);
+        JLabel starVaiTro = new JLabel("*");
+        starVaiTro.setForeground(requiredFieldColor);
+        starVaiTro.setFont(regularFont);
+        vaiTroLabelPanel.add(starVaiTro);
+        formPanel.add(vaiTroLabelPanel, gbc);
+        gbc.gridx = 1; gbc.anchor = GridBagConstraints.CENTER;
         java.util.List<String> availableRoles;
         try {
             availableRoles = controller.getAllRoles();
@@ -888,149 +1106,91 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             availableRoles.add("Nhân viên");
             availableRoles.add("Khách hàng");
         }
-        // Đảm bảo luôn có đủ các vai trò chính
         if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
         if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
         String[] roles = availableRoles.toArray(new String[0]);
-        // Create a new array with "Lựa chọn" at the beginning
-        String[] rolesWithDefault = new String[roles.length + 1];
-        rolesWithDefault[0] = "Lựa chọn";
-        System.arraycopy(roles, 0, rolesWithDefault, 1, roles.length);
-        
-        JDialog dialog = createStyledDialog("Thêm Người Dùng Mới", 450, 500);
-        
-        JPanel contentPane = new JPanel(new BorderLayout());
-        contentPane.setBackground(panelColor);
-        
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(primaryColor); 
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
-
-        JLabel titleLabel = new JLabel("THÊM NGƯỜI DÙNG MỚI");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        titleLabel.setForeground(Color.WHITE);
-        titleLabel.setHorizontalAlignment(SwingConstants.LEFT);
-
-        headerPanel.add(titleLabel, BorderLayout.WEST);
-        
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBackground(panelColor);
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 10, 25));
-        
-        JTextField hoTenField = createStyledTextField("");
-        JTextField emailField = createStyledTextField("");
-        JTextField soDienThoaiField = createStyledTextField("");
-        JPasswordField matKhauField = createStyledPasswordField();
-        JPasswordField xacNhanMatKhauField = createStyledPasswordField();
-        
-        JComboBox<String> vaiTroBox = createStyledComboBox(roles, "Lựa chọn");
-
-        
-        formPanel.add(createFormRow("Họ tên:", hoTenField));
-        formPanel.add(Box.createVerticalStrut(15));
-        formPanel.add(createFormRow("Email:", emailField));
-        formPanel.add(Box.createVerticalStrut(15));
-        formPanel.add(createFormRow("Số điện thoại:", soDienThoaiField));
-        formPanel.add(Box.createVerticalStrut(15));
-        formPanel.add(createFormRow("Mật khẩu:", matKhauField));
-        formPanel.add(Box.createVerticalStrut(15));
-        formPanel.add(createFormRow("Xác nhận mật khẩu:", xacNhanMatKhauField));
-        formPanel.add(Box.createVerticalStrut(15));
-        formPanel.add(createFormRow("Vai trò:", vaiTroBox));
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        buttonPanel.setBackground(panelColor);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 20, 25));
-
-        JButton cancelButton = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
-        cancelButton.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        JButton saveButton = createRoundedButton("Lưu", successColor, buttonTextColor, 10, true);
-        saveButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        saveButton.addActionListener(e -> {
+        JComboBox<String> vaiTroBox = new JComboBox<>(roles);
+        vaiTroBox.setFont(regularFont);
+        vaiTroBox.setPreferredSize(new Dimension(230, 32));
+        formPanel.add(vaiTroBox, gbc);
+        gbc.gridx = 1; gbc.gridy++;
+        JLabel vaiTroError = createErrorLabel();
+        formPanel.add(vaiTroError, gbc);
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
+        Dimension buttonSize = new Dimension(90, 36);
+        JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10, false);
+        btnLuu.setPreferredSize(buttonSize);
+        btnLuu.setMinimumSize(buttonSize);
+        btnLuu.setMaximumSize(buttonSize);
+        btnLuu.setFocusPainted(false);
+        btnLuu.setBorderPainted(false);
+        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
+        btnHuy.setBorder(new LineBorder(borderColor, 1));
+        btnHuy.setPreferredSize(buttonSize);
+        btnHuy.setMinimumSize(buttonSize);
+        btnHuy.setMaximumSize(buttonSize);
+        btnHuy.setFocusPainted(false);
+        btnHuy.setBorderPainted(false);
+        buttonPanel.add(btnLuu);
+        buttonPanel.add(btnHuy);
+        // Bọc formPanel trong JScrollPane
+        JScrollPane scrollPane = new JScrollPane(formPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.setContentPane(mainPanel);
+        // Xử lý sự kiện nút Lưu
+        btnLuu.addActionListener(e -> {
+            // Reset lỗi
+            hoTenError.setText(" "); emailError.setText(" "); phoneError.setText(" ");
+            ngaySinhError.setText(" "); matKhauError.setText(" "); xacNhanMatKhauError.setText(" "); vaiTroError.setText(" ");
             String hoTen = hoTenField.getText().trim();
             String email = emailField.getText().trim();
             String phone = soDienThoaiField.getText().trim();
             String password = new String(matKhauField.getPassword());
             String confirmPassword = new String(xacNhanMatKhauField.getPassword());
             String selectedRole = (String) vaiTroBox.getSelectedItem();
-
-            // Kiểm tra các trường bắt buộc
-            if (hoTen.isEmpty() || email.isEmpty() || phone.isEmpty() || 
-                password.isEmpty() || confirmPassword.isEmpty()) {
-                showWarningMessage("Vui lòng điền đầy đủ thông tin.");
-                return;
-            }
-
-            // Kiểm tra ràng buộc cho vai trò
-            if ("Lựa chọn".equals(selectedRole)) {
-                showWarningMessage("Vui lòng chọn một vai trò hợp lệ.");
-                return;
-            }
-
-            // Kiểm tra định dạng email
-            if (!isValidEmail(email)) {
-                showErrorMessage("Email không hợp lệ. Vui lòng nhập email đúng định dạng (ví dụ: example@domain.com)");
-                return;
-            }
-
-            // Kiểm tra định dạng số điện thoại
-            if (!isValidPhoneNumber(phone)) {
-                showErrorMessage("Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại đúng định dạng (ví dụ: 0123456789 hoặc 84123456789)");
-                return;
-            }
-
-            // Kiểm tra mật khẩu
-            if (!password.equals(confirmPassword)) {
-                showErrorMessage("Mật khẩu và xác nhận mật khẩu không khớp.");
-                return;
-            }
-
-            if (!isValidPassword(password)) {
-                showErrorMessage("Mật khẩu phải có ít nhất 8 ký tự, bao gồm:\n" +
-                               "- Ít nhất 1 chữ hoa\n" +
-                               "- Ít nhất 1 chữ thường\n" +
-                               "- Ít nhất 1 số\n" +
-                               "- Ít nhất 1 ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?)");
-                return;
-            }
-
+            java.util.Date ngaySinhDate = dateChooserNgaySinh.getDate();
+            String gioiTinh = (String) gioiTinhBox.getSelectedItem();
+            boolean isValid = true;
+            if (hoTen.isEmpty()) { hoTenError.setText("Họ tên không được để trống"); isValid = false; }
+            if (ngaySinhDate == null) { ngaySinhError.setText("Ngày sinh không được để trống"); isValid = false; }
+            else if (ngaySinhDate.after(new java.util.Date())) { ngaySinhError.setText("Ngày sinh không được lớn hơn hôm nay"); isValid = false; }
+            if (email.isEmpty()) { emailError.setText("Email không được để trống"); isValid = false; }
+            else if (!isValidEmail(email)) { emailError.setText("Email không hợp lệ"); isValid = false; }
+            if (phone.isEmpty()) { phoneError.setText("Số điện thoại không được để trống"); isValid = false; }
+            else if (!isValidPhoneNumber(phone)) { phoneError.setText("Số điện thoại không hợp lệ"); isValid = false; }
+            if (password.isEmpty()) { matKhauError.setText("Mật khẩu không được để trống"); isValid = false; }
+            else if (!isValidPassword(password)) { matKhauError.setText("Mật khẩu phải đủ mạnh"); isValid = false; }
+            if (!password.equals(confirmPassword)) { xacNhanMatKhauError.setText("Mật khẩu xác nhận không khớp"); isValid = false; }
+            if (selectedRole == null || selectedRole.isEmpty()) { vaiTroError.setText("Vui lòng chọn vai trò"); isValid = false; }
+            if (!isValid) return;
             try {
-                // Kiểm tra email đã tồn tại
-                if (controller.isEmailExists(email)) {
-                    showErrorMessage("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
-                    return;
-                }
-
-                // Tạo người dùng mới
                 NguoiDung newUser = new NguoiDung();
                 newUser.setHoTen(hoTen);
                 newUser.setEmail(email);
                 newUser.setSoDienThoai(phone);
-                newUser.setMatKhau(password);
+                newUser.setGioiTinh(gioiTinh);
                 newUser.setVaiTro(selectedRole);
-
-                // Thêm người dùng vào database
+                newUser.setNgaySinh(ngaySinhDate != null ? new java.sql.Date(ngaySinhDate.getTime()) : null);
+                if (!password.isEmpty()) newUser.setMatKhau(password);
+                else newUser.setMatKhau(null);
                 controller.addUser(newUser);
                 showSuccessMessage("Thêm người dùng mới thành công!");
                 dialog.dispose();
                 loadUserData();
-            } catch (SQLException ex) {
+            } catch (Exception ex) {
                 showErrorMessage("Lỗi khi thêm người dùng: " + ex.getMessage());
                 ex.printStackTrace();
             }
         });
-
-        buttonPanel.add(cancelButton);
-        buttonPanel.add(saveButton);
-        
-        contentPane.add(headerPanel, BorderLayout.NORTH);
-        contentPane.add(formPanel, BorderLayout.CENTER);
-        contentPane.add(buttonPanel, BorderLayout.SOUTH);
-        
-        dialog.setContentPane(contentPane);
+        btnHuy.addActionListener(e -> dialog.dispose());
         dialog.setVisible(true);
     }
 
@@ -1177,5 +1337,16 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             g2d.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
             g2d.dispose();
         }
+    }
+
+    private JLabel createErrorLabel() {
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        errorLabel.setForeground(new Color(220, 53, 69));
+        errorLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+        errorLabel.setVisible(true);
+        errorLabel.setPreferredSize(new Dimension(230, 16));
+        errorLabel.setMinimumSize(new Dimension(230, 16));
+        return errorLabel;
     }
 }

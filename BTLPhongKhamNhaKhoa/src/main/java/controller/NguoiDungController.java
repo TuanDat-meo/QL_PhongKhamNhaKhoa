@@ -1,4 +1,3 @@
-
 package controller;
 
 import model.BacSi;
@@ -45,68 +44,70 @@ public class NguoiDungController {
             return null;
         }
     }
+    public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String password) {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        NguoiDung user = null;
 
-public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String password) {
-    Connection connection = null;
-    PreparedStatement statement = null;
-    ResultSet resultSet = null;
-    NguoiDung user = null;
+        try {
+            connection = connectMySQL.getConnection();
+            String query = "SELECT * FROM NguoiDung WHERE (Email = ? OR SoDienThoai = ?)";
+            statement = connection.prepareStatement(query);
+            statement.setString(1, emailOrPhone);
+            statement.setString(2, emailOrPhone);
 
-    try {
-        connection = connectMySQL.getConnection();
-        
-        // CÁCH 1: Lấy user trước, sau đó kiểm tra mật khẩu trong Java
-        String query = "SELECT * FROM NguoiDung WHERE (Email = ? OR SoDienThoai = ?)";
-        statement = connection.prepareStatement(query);
-        statement.setString(1, emailOrPhone);
-        statement.setString(2, emailOrPhone);
+            resultSet = statement.executeQuery();
 
-        resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                String storedPassword = resultSet.getString("MatKhau");
 
-        if (resultSet.next()) {
-            String storedPassword = resultSet.getString("MatKhau");
+                // Kiểm tra xem mật khẩu đã được hash chưa
+                // Mật khẩu hash SHA-256 base64 thường có độ dài ~44 ký tự
+                boolean isHashed = storedPassword.length() > 20 && isBase64(storedPassword);
 
-            // Kiểm tra xem mật khẩu đã được hash chưa
-            // Mật khẩu hash SHA-256 base64 thường có độ dài ~44 ký tự
-            boolean isHashed = storedPassword.length() > 20 && isBase64(storedPassword);
+                boolean passwordMatch = false;
 
-            boolean passwordMatch = false;
+                if (isHashed) {
+                    // Mật khẩu đã hash, so sánh bình thường
+                    //System.out.println("Mật khẩu đã hash, tiến hành so sánh hash");
+                    passwordMatch = storedPassword.equals(hashPassword(password));
+                } else {
+                    // Mật khẩu chưa hash (dữ liệu cũ), so sánh plaintext
+                    //System.out.println("Mật khẩu chưa hash (dữ liệu cũ), so sánh plaintext");
+                    //System.out.println("Stored password: " + storedPassword);
+                    //System.out.println("Input password: " + password);
+                    passwordMatch = storedPassword.equals(password);
 
-            if (isHashed) {
-                // Mật khẩu đã hash, so sánh bình thường
-                passwordMatch = storedPassword.equals(hashPassword(password));
-            } else {
-                // Mật khẩu chưa hash (dữ liệu cũ), so sánh plaintext
-                passwordMatch = storedPassword.equals(password);
+                    // Nếu đăng nhập thành công, tự động hash và cập nhật mật khẩu
+                    if (passwordMatch) {
+                        //System.out.println("Đăng nhập thành công, tiến hành hash mật khẩu...");
+                        updatePasswordToHashed(resultSet.getInt("IdNguoiDung"), password);
+                    }
+                }
 
-                // Nếu đăng nhập thành công, tự động hash và cập nhật mật khẩu
                 if (passwordMatch) {
-                    updatePasswordToHashed(resultSet.getInt("IdNguoiDung"), password);
+                    user = new NguoiDung();
+                    user.setIdNguoiDung(resultSet.getInt("IdNguoiDung"));
+                    user.setHoTen(resultSet.getString("HoTen"));
+                    user.setEmail(resultSet.getString("Email"));
+                    user.setSoDienThoai(resultSet.getString("SoDienThoai"));
+                    user.setMatKhau(resultSet.getString("MatKhau"));
+                    user.setNgaySinh(resultSet.getDate("NgaySinh"));
+                    user.setGioiTinh(resultSet.getString("GioiTinh"));
+                    user.setVaiTro(resultSet.getString("VaiTro"));
                 }
             }
 
-            if (passwordMatch) {
-                user = new NguoiDung();
-                user.setIdNguoiDung(resultSet.getInt("IdNguoiDung"));
-                user.setHoTen(resultSet.getString("HoTen"));
-                user.setEmail(resultSet.getString("Email"));
-                user.setSoDienThoai(resultSet.getString("SoDienThoai"));
-                user.setMatKhau(resultSet.getString("MatKhau"));
-                user.setNgaySinh(resultSet.getDate("NgaySinh"));
-                user.setGioiTinh(resultSet.getString("GioiTinh"));
-                user.setVaiTro(resultSet.getString("VaiTro"));
-            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi xác thực đăng nhập: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            closeResources(resultSet, statement, connection);
         }
 
-    } catch (SQLException e) {
-        System.err.println("Lỗi xác thực đăng nhập: " + e.getMessage());
-        e.printStackTrace();
-    } finally {
-        closeResources(resultSet, statement, connection);
+        return user;
     }
-
-    return user;
-}
 
     // Helper method để kiểm tra xem string có phải base64 không
     private static boolean isBase64(String str) {
@@ -274,7 +275,7 @@ public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String passwor
 
             if (rs.next()) {
                 String currentPassword = rs.getString("MatKhau");
-                //System.out.println("Mật khẩu hiện tại: " + currentPassword);
+                System.out.println("Mật khẩu hiện tại: " + currentPassword);
             }
             rs.close();
             selectStmt.close();
@@ -283,7 +284,7 @@ public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String passwor
             String updateQuery = "UPDATE NguoiDung SET MatKhau = ? WHERE IdNguoiDung = ?";
             statement = connection.prepareStatement(updateQuery);
             String hashedPassword = hashPassword(newPassword);
-            //System.out.println("Mật khẩu sẽ update thành: " + hashedPassword);
+            System.out.println("Mật khẩu sẽ update thành: " + hashedPassword);
 
             statement.setString(1, hashedPassword);
             statement.setInt(2, userId);
@@ -291,7 +292,7 @@ public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String passwor
             int rowsUpdated = statement.executeUpdate();
             success = rowsUpdated > 0;
 
-            //System.out.println("Số dòng được update: " + rowsUpdated);
+            System.out.println("Số dòng được update: " + rowsUpdated);
 
             // Kiểm tra lại sau khi update
             selectStmt = connection.prepareStatement(selectQuery);
@@ -300,7 +301,7 @@ public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String passwor
 
             if (rs.next()) {
                 String updatedPassword = rs.getString("MatKhau");
-                //System.out.println("Mật khẩu sau khi update: " + updatedPassword);
+                System.out.println("Mật khẩu sau khi update: " + updatedPassword);
             }
             rs.close();
             selectStmt.close();

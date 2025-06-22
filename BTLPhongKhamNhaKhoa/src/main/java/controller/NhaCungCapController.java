@@ -63,7 +63,8 @@ public class NhaCungCapController {
             if (affectedRows > 0) {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
-                        return generatedKeys.getString(1); // Trả về ID mới được tạo
+                        // Trả về ID tự tăng dưới dạng String
+                        return String.valueOf(generatedKeys.getLong(1));
                     }
                 }
             }
@@ -99,17 +100,17 @@ public class NhaCungCapController {
         try (PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
             checkStmt.setString(1, maNCC);
             ResultSet rs = checkStmt.executeQuery();
-            
+
             if (rs.next() && rs.getInt(1) > 0) {
                 String getNccQuery = "SELECT TenNCC FROM NhaCungCap WHERE idNCC = ?";
                 try (PreparedStatement getNccStmt = conn.prepareStatement(getNccQuery)) {
                     getNccStmt.setString(1, maNCC);
                     ResultSet nccRs = getNccStmt.executeQuery();
-                    
+
                     if (nccRs.next()) {
                         String tenNCC = nccRs.getString("TenNCC");
                         String newTenNCC = tenNCC + " (ngừng cung cấp)";
-                        
+
                         String updateNccQuery = "UPDATE NhaCungCap SET TenNCC = ? WHERE idNCC = ?";
                         try (PreparedStatement updateNccStmt = conn.prepareStatement(updateNccQuery)) {
                             updateNccStmt.setString(1, newTenNCC);
