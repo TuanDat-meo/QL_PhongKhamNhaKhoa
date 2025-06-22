@@ -25,6 +25,8 @@ import java.awt.geom.RoundRectangle2D;
 import java.sql.SQLException;
 import java.text.Normalizer;
 import java.text.NumberFormat;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -74,10 +76,15 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private ExportManager exportManager;
     private java.text.SimpleDateFormat dateFormatter = new java.text.SimpleDateFormat("dd/MM/yyyy");
 
-    // Maps to manage error labels and main labels for validation
+    // --- Biến cho hiệu ứng highlight ---
+    private Timer highlightTimer;
+    private int highlightedModelIndex = -1;
+    private long highlightStartTime;
+    private final int HIGHLIGHT_DURATION = 2000; // 2 giây
+    private final Color HIGHLIGHT_COLOR = new Color(255, 255, 150); // Màu vàng nhạt
+
     private Map<JComponent, JLabel> errorLabelMap;
     private Map<JComponent, JLabel> mainLabelMap;
-
 
     public HoaDonUI() {
         initializeControllers();
@@ -88,7 +95,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         buildButtonPanel();
         setupEventListeners();
         setupPopupMenu();
-        loadTableData();
+        loadTableData(null);
     }
 
     private void initializeControllers() {
@@ -167,6 +174,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
         add(wrapperPanel, BorderLayout.CENTER);
     }
+
     private void initializeTable() {
         String[] columns = {"ID", "ID Bệnh Nhân", "Tên Bệnh Nhân", "Ngày Tạo", "Tổng Tiền", "Trạng Thái"};
         tableModel = new DefaultTableModel(columns, 0) {
@@ -179,23 +187,45 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 return String.class;
             }
         };
+
         tableHoaDon = new JTable(tableModel) {
             @Override
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
-                Component comp = super.prepareRenderer(renderer, row, column);
+                Component c = super.prepareRenderer(renderer, row, column);
+                int modelRow = convertRowIndexToModel(row);
+
+                if (modelRow == highlightedModelIndex) {
+                    long elapsed = System.currentTimeMillis() - highlightStartTime;
+                    if (elapsed < HIGHLIGHT_DURATION) {
+                        float progress = (float) elapsed / HIGHLIGHT_DURATION;
+                        Color endColor = isRowSelected(row) ? getSelectionBackground() : (modelRow % 2 == 0 ? Color.WHITE : tableStripeColor);
+                        
+                        int red = (int) (HIGHLIGHT_COLOR.getRed() * (1 - progress) + endColor.getRed() * progress);
+                        int green = (int) (HIGHLIGHT_COLOR.getGreen() * (1 - progress) + endColor.getGreen() * progress);
+                        int blue = (int) (HIGHLIGHT_COLOR.getBlue() * (1 - progress) + endColor.getBlue() * progress);
+                        
+                        c.setBackground(new Color(red, green, blue));
+                        return c;
+                    } else {
+                        highlightedModelIndex = -1;
+                        if (highlightTimer != null) highlightTimer.stop();
+                    }
+                }
+                
                 if (!isRowSelected(row)) {
                      if (!(renderer instanceof DefaultTableCellRenderer && ((DefaultTableCellRenderer)renderer).getBackground().equals(getSelectionBackground()))) {
-                        comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                        c.setBackground(modelRow % 2 == 0 ? Color.WHITE : tableStripeColor);
                      }
                 }
-                return comp;
+                return c;
             }
         };
+        
         sorter = new TableRowSorter<>(tableModel);
         tableHoaDon.setRowSorter(sorter);
+
         modelTotalRow = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         tableTotalRow = new JTable(modelTotalRow) {
             @Override
@@ -207,6 +237,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         };
         modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", 0.0, null});
     }
+
     private void styleTable() {
         styleMainTable(tableHoaDon);
         tableTotalRow.setFont(totalRowFont);
@@ -234,6 +265,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             }
         });
     }
+
     private void styleMainTable(JTable table) {
         table.setFont(tableFont);
         table.setRowHeight(40);
@@ -265,7 +297,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                                                          boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    int modelRow = table.convertRowIndexToModel(row);
+                    c.setBackground(modelRow % 2 == 0 ? Color.WHITE : tableStripeColor);
                 } else {
                     c.setBackground(table.getSelectionBackground());
                 }
@@ -288,7 +321,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                                                          boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    int modelRow = table.convertRowIndexToModel(row);
+                    c.setBackground(modelRow % 2 == 0 ? Color.WHITE : tableStripeColor);
                 } else {
                     c.setBackground(table.getSelectionBackground());
                 }
@@ -313,7 +347,8 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     setText(value.toString());
                 }
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    int modelRow = table.convertRowIndexToModel(row);
+                    c.setBackground(modelRow % 2 == 0 ? Color.WHITE : tableStripeColor);
                 } else {
                      c.setBackground(table.getSelectionBackground());
                      c.setForeground(table.getSelectionForeground());
@@ -332,17 +367,19 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                     Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                     setHorizontalAlignment(SwingConstants.CENTER);
                     ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
-                    if (isSelected) {
-                        c.setBackground(table.getSelectionBackground());
-                        c.setForeground(table.getSelectionForeground());
-                    } else {
-                        c.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+                    
+                    if (!isSelected) {
                         c.setForeground(textColor);
+                    } else {
+                        c.setForeground(table.getSelectionForeground());
                     }
+
                     if (value != null) {
                         String trangThai = value.toString();
+                        String displayText = translateTrangThaiToVietnamese(trangThai);
                         Font originalFont = c.getFont();
                         c.setFont(originalFont.deriveFont(Font.PLAIN));
+
                         if ("DaThanhToan".equalsIgnoreCase(trangThai)) {
                             c.setForeground(isSelected ? new Color(0,100,0) : new Color(34, 139, 34));
                             c.setFont(originalFont.deriveFont(Font.BOLD));
@@ -353,6 +390,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                         } else if ("DaHuy".equalsIgnoreCase(trangThai)) {
                             c.setForeground(isSelected ? Color.DARK_GRAY : Color.GRAY);
                         }
+                        ((JLabel)c).setText(displayText);
                     }
                     return c;
                 }
@@ -390,7 +428,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private void setupEventListeners() {
         btnTimKiem.addActionListener(e -> {
             if (txtTimKiem.getText().trim().isEmpty()) {
-                loadTableData();
+                loadTableData(null);
                 showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
             } else {
                 filterTable();
@@ -401,7 +439,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (txtTimKiem.getText().trim().isEmpty()) {
-                        loadTableData();
+                        loadTableData(null);
                         showNotification("Dữ liệu đã được làm mới!", NotificationType.SUCCESS);
                     } else {
                         filterTable();
@@ -536,26 +574,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
-    public void loadTableData() {
-        tableModel.setRowCount(0);
-        totalAmount = 0.0;
-        List<HoaDon> danhSach = hoaDonController.layDanhSachHoaDon();
-        for (HoaDon hd : danhSach) {
-            BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hd.getIdBenhNhan());
-            tableModel.addRow(new Object[]{
-                hd.getIdHoaDon(),
-                hd.getIdBenhNhan(),
-                benhNhan != null ? benhNhan.getHoTen() : "N/A",
-                dateFormatter.format(hd.getNgayTao()),
-                hd.getTongTien(),
-                hd.getTrangThai()
-            });
-            totalAmount += hd.getTongTien();
-        }
-        sorter = new TableRowSorter<>(tableModel);
-        tableHoaDon.setRowSorter(sorter);
-        updateTotalRow();
-    }
     private void updateTotalRow() {
         if (modelTotalRow.getRowCount() > 0) {
             modelTotalRow.setValueAt("Tổng:", 0, 3);
@@ -567,7 +585,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private void filterTable() {
         String searchText = txtTimKiem.getText().trim();
         if (searchText.isEmpty()) {
-            loadTableData();
+            loadTableData(null);
             return;
         }
         RowFilter<DefaultTableModel, Object> rf = new RowFilter<DefaultTableModel, Object>() {
@@ -577,10 +595,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                 for (int i = 0; i < entry.getValueCount(); i++) {
                     if (entry.getValue(i) != null) {
                         String valueStr;
-                        if (entry.getValue(i) instanceof Double) {
-                            valueStr = String.valueOf(entry.getValue(i));
+                        if (i == 5) { // Cột trạng thái
+                            valueStr = translateTrangThaiToVietnamese(entry.getStringValue(i));
+                        } else if (entry.getValue(i) instanceof Double) {
                              String formattedValue = currencyFormat.format((Double) entry.getValue(i));
                              if (formattedValue.toLowerCase().contains(searchText.toLowerCase())) return true;
+                             valueStr = entry.getValue(i).toString();
                         } else {
                             valueStr = entry.getValue(i).toString();
                         }
@@ -661,7 +681,7 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             if (choice == JOptionPane.YES_OPTION) {
                 boolean success = hoaDonController.xoaHoaDon(idHoaDon);
                 if (success) {
-                    loadTableData();
+                    loadTableData(null);
                     showNotification("Đã xóa hóa đơn ID: " + idHoaDon + " thành công!", NotificationType.SUCCESS);
                 } else {
                     showNotification("Lỗi khi xóa hóa đơn ID: " + idHoaDon, NotificationType.ERROR);
@@ -675,6 +695,98 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     // =================================================================================
     // === BẮT ĐẦU VÙNG CODE ĐƯỢC CẬP NHẬT THEO YÊU CẦU ===============================
     // =================================================================================
+    
+    public void loadTableData(Integer idToHighlight) {
+        tableModel.setRowCount(0);
+        totalAmount = 0.0;
+        List<HoaDon> danhSach = hoaDonController.layDanhSachHoaDon();
+
+        // Sắp xếp theo ID giảm dần để đưa mục mới nhất lên đầu
+        danhSach.sort(Comparator.comparing(HoaDon::getIdHoaDon).reversed());
+
+        // Nếu là CẬP NHẬT, tìm và đưa dòng được cập nhật lên ĐẦU danh sách
+        if (idToHighlight != null && idToHighlight != Integer.MAX_VALUE) {
+            for (int i = 0; i < danhSach.size(); i++) {
+                if (danhSach.get(i).getIdHoaDon() == idToHighlight) {
+                    HoaDon itemToMove = danhSach.remove(i);
+                    danhSach.add(0, itemToMove);
+                    break;
+                }
+            }
+        }
+
+        for (HoaDon hd : danhSach) {
+            BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hd.getIdBenhNhan());
+            tableModel.addRow(new Object[]{
+                hd.getIdHoaDon(),
+                hd.getIdBenhNhan(),
+                benhNhan != null ? benhNhan.getHoTen() : "N/A",
+                dateFormatter.format(hd.getNgayTao()),
+                hd.getTongTien(),
+                hd.getTrangThai()
+            });
+            totalAmount += hd.getTongTien();
+        }
+        
+        sorter.setModel(tableModel);
+        updateTotalRow();
+        
+        // Nếu có mục cần highlight (thêm mới hoặc cập nhật), nó sẽ luôn ở dòng đầu tiên
+        if (idToHighlight != null) {
+            startHighlightingRow(0); // Dòng cần highlight giờ luôn là dòng đầu tiên
+        }
+    }
+
+    private void startHighlightingRow(int modelIndex) {
+        if (modelIndex < 0) return;
+        
+        highlightedModelIndex = modelIndex;
+        highlightStartTime = System.currentTimeMillis();
+        
+        int viewIndex = tableHoaDon.convertRowIndexToView(modelIndex);
+        if (viewIndex >= 0) {
+             tableHoaDon.scrollRectToVisible(tableHoaDon.getCellRect(viewIndex, 0, true));
+             tableHoaDon.setRowSelectionInterval(viewIndex, viewIndex);
+        }
+
+        if (highlightTimer != null && highlightTimer.isRunning()) {
+            highlightTimer.stop();
+        }
+
+        highlightTimer = new Timer(50, e -> {
+            long elapsed = System.currentTimeMillis() - highlightStartTime;
+            if (elapsed > HIGHLIGHT_DURATION) {
+                highlightedModelIndex = -1;
+                ((Timer)e.getSource()).stop();
+                tableHoaDon.repaint();
+            } else {
+                 tableHoaDon.repaint();
+            }
+        });
+        highlightTimer.start();
+    }
+
+    private String translateTrangThaiToVietnamese(String trangThaiController) {
+        if (trangThaiController == null) return "";
+        switch (trangThaiController) {
+            case "DaThanhToan": return "Đã Thanh Toán";
+            case "ChuaThanhToan": return "Chưa Thanh Toán";
+            case "DangXuLy": return "Đang Xử Lý";
+            case "DaHuy": return "Đã Hủy";
+            default: return trangThaiController;
+        }
+    }
+
+    private String translateVietnameseToTrangThai(String trangThaiUI) {
+         if (trangThaiUI == null) return "";
+         switch (trangThaiUI) {
+            case "Đã Thanh Toán": return "DaThanhToan";
+            case "Chưa Thanh Toán": return "ChuaThanhToan";
+            case "Đang Xử Lý": return "DangXuLy";
+            case "Đã Hủy": return "DaHuy";
+            default: return trangThaiUI;
+        }
+    }
 
     private void hienThiFormThemHoaDon() throws SQLException {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Thêm Hóa Đơn Mới", true);
@@ -683,13 +795,6 @@ public class HoaDonUI extends JPanel implements MessageCallback {
 
         errorLabelMap = new HashMap<>();
         mainLabelMap = new HashMap<>();
-
-        dialog.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-                dialog.getRootPane().requestFocusInWindow();
-            }
-        });
 
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
@@ -706,19 +811,13 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(0, 0, 2, 10);
 
-        // --- Row 0: Bệnh nhân ---
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         JLabel lblBenhNhan = new JLabel("Bệnh Nhân:");
         lblBenhNhan.setFont(regularFont);
         lblBenhNhan.setPreferredSize(new Dimension(120, 30));
         formPanel.add(lblBenhNhan, gbc);
 
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.fill = GridBagConstraints.HORIZONTAL;
         List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
         DefaultComboBoxModel<String> benhNhanComboBoxModel = new DefaultComboBoxModel<>();
         for (BenhNhan bn : danhSachBenhNhan) {
@@ -730,19 +829,13 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         formPanel.add(cmbTenBenhNhan, gbc);
         mainLabelMap.put(cmbTenBenhNhan, lblBenhNhan);
 
-        // --- Row 1: Error Bệnh nhân ---
-        gbc.gridx = 1;
-        gbc.gridy = 1;
-        gbc.insets = new Insets(0, 0, 10, 0);
+        gbc.gridx = 1; gbc.gridy = 1; gbc.insets = new Insets(0, 0, 10, 0);
         JLabel errBenhNhan = new JLabel(" ");
         errBenhNhan.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         formPanel.add(errBenhNhan, gbc);
         errorLabelMap.put(cmbTenBenhNhan, errBenhNhan);
-
-        // --- Row 2: Ngày Tạo ---
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.insets = new Insets(0, 0, 2, 10);
+        
+        gbc.gridx = 0; gbc.gridy = 2; gbc.insets = new Insets(0, 0, 2, 10);
         JLabel lblNgayTao = new JLabel("Ngày Tạo:");
         lblNgayTao.setFont(regularFont);
         lblNgayTao.setPreferredSize(new Dimension(120, 30));
@@ -755,19 +848,13 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         formPanel.add(dateChooserNgayTao, gbc);
         mainLabelMap.put(dateChooserNgayTao, lblNgayTao);
 
-        // --- Row 3: Error Ngày Tạo ---
-        gbc.gridx = 1;
-        gbc.gridy = 3;
-        gbc.insets = new Insets(0, 0, 10, 0);
+        gbc.gridx = 1; gbc.gridy = 3; gbc.insets = new Insets(0, 0, 10, 0);
         JLabel errNgayTao = new JLabel(" ");
         errNgayTao.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         formPanel.add(errNgayTao, gbc);
         errorLabelMap.put(dateChooserNgayTao, errNgayTao);
 
-        // --- Row 4: Tổng Tiền ---
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.insets = new Insets(0, 0, 2, 10);
+        gbc.gridx = 0; gbc.gridy = 4; gbc.insets = new Insets(0, 0, 2, 10);
         JLabel lblTongTien = new JLabel("Tổng Tiền (VND):");
         lblTongTien.setFont(regularFont);
         lblTongTien.setPreferredSize(new Dimension(120, 30));
@@ -780,35 +867,27 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         formPanel.add(txtTongTien, gbc);
         mainLabelMap.put(txtTongTien, lblTongTien);
 
-        // --- Row 5: Error Tổng Tiền ---
-        gbc.gridx = 1;
-        gbc.gridy = 5;
-        gbc.insets = new Insets(0, 0, 10, 0);
+        gbc.gridx = 1; gbc.gridy = 5; gbc.insets = new Insets(0, 0, 10, 0);
         JLabel errTongTien = new JLabel(" ");
         errTongTien.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         formPanel.add(errTongTien, gbc);
         errorLabelMap.put(txtTongTien, errTongTien);
 
-        // --- Row 6: Trạng Thái ---
-        gbc.gridx = 0;
-        gbc.gridy = 6;
-        gbc.insets = new Insets(0, 0, 2, 10);
+        gbc.gridx = 0; gbc.gridy = 6; gbc.insets = new Insets(0, 0, 2, 10);
         JLabel lblTrangThai = new JLabel("Trạng Thái:");
         lblTrangThai.setFont(regularFont);
         lblTrangThai.setPreferredSize(new Dimension(120, 30));
         formPanel.add(lblTrangThai, gbc);
 
         gbc.gridx = 1;
-        String[] trangThaiOptions = {"Chưa thanh toán", "Đã thanh toán", "Đang xử lý", "Đã hủy"};
+        String[] trangThaiOptions = {"Chưa Thanh Toán", "Đã Thanh Toán", "Đang Xử Lý", "Đã Hủy"};
         JComboBox<String> cmbTrangThai = new JComboBox<>(trangThaiOptions);
         styleComboBox(cmbTrangThai, "Chọn trạng thái...");
         cmbTrangThai.setSelectedIndex(-1);
         formPanel.add(cmbTrangThai, gbc);
         mainLabelMap.put(cmbTrangThai, lblTrangThai);
 
-        // --- Row 7: Error Trạng Thái ---
-        gbc.gridx = 1;
-        gbc.gridy = 7;
+        gbc.gridx = 1; gbc.gridy = 7; gbc.insets = new Insets(0, 0, 10, 0);
         JLabel errTrangThai = new JLabel(" ");
         errTrangThai.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         formPanel.add(errTrangThai, gbc);
@@ -827,71 +906,46 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             boolean isFormValid = true;
 
             if (cmbTenBenhNhan.getSelectedItem() == null) {
-                setError(cmbTenBenhNhan, "Vui lòng chọn bệnh nhân.");
-                isFormValid = false;
+                setError(cmbTenBenhNhan, "Vui lòng chọn bệnh nhân."); isFormValid = false;
             }
-
             Date ngayTao = dateChooserNgayTao.getDate();
             if (ngayTao == null) {
-                setError(dateChooserNgayTao, "Vui lòng chọn ngày tạo.");
-                isFormValid = false;
+                setError(dateChooserNgayTao, "Vui lòng chọn ngày tạo."); isFormValid = false;
             } else if (ngayTao.after(Calendar.getInstance().getTime())) {
-                setError(dateChooserNgayTao, "Ngày tạo không được ở tương lai.");
-                isFormValid = false;
+                setError(dateChooserNgayTao, "Ngày tạo không được ở tương lai."); isFormValid = false;
             }
-
             if (txtTongTien.getText().trim().isEmpty()) {
-                setError(txtTongTien, "Vui lòng nhập tổng tiền.");
-                isFormValid = false;
+                setError(txtTongTien, "Vui lòng nhập tổng tiền."); isFormValid = false;
             } else {
                 try {
-                    double amount = Double.parseDouble(txtTongTien.getText().trim().replace(",", ""));
-                    if (amount < 0) {
-                        setError(txtTongTien, "Tổng tiền không thể là số âm.");
-                        isFormValid = false;
+                    if (Double.parseDouble(txtTongTien.getText().trim().replace(",", "")) < 0) {
+                        setError(txtTongTien, "Tổng tiền không thể là số âm."); isFormValid = false;
                     }
                 } catch (NumberFormatException ex) {
-                    setError(txtTongTien, "Tổng tiền không hợp lệ.");
-                    isFormValid = false;
+                    setError(txtTongTien, "Tổng tiền không hợp lệ."); isFormValid = false;
                 }
             }
-
             if (cmbTrangThai.getSelectedItem() == null) {
-                setError(cmbTrangThai, "Vui lòng chọn trạng thái.");
-                isFormValid = false;
+                setError(cmbTrangThai, "Vui lòng chọn trạng thái."); isFormValid = false;
             }
-
             if (!isFormValid) return;
 
             try {
-                String selectedBenhNhanStr = (String) cmbTenBenhNhan.getSelectedItem();
-                int idBenhNhan = Integer.parseInt(selectedBenhNhanStr.replaceAll(".*\\(ID: (\\d+)\\).*", "$1"));
-                double tongTienValue = Double.parseDouble(txtTongTien.getText().trim().replace(",", ""));
-
-                String trangThaiUI = (String) cmbTrangThai.getSelectedItem();
-                String trangThaiController;
-                switch (trangThaiUI) {
-                    case "Đã thanh toán": trangThaiController = "DaThanhToan"; break;
-                    case "Đang xử lý": trangThaiController = "DangXuLy"; break;
-                    case "Đã hủy": trangThaiController = "DaHuy"; break;
-                    default: trangThaiController = "ChuaThanhToan";
-                }
-
                 HoaDon hoaDon = new HoaDon();
-                hoaDon.setIdBenhNhan(idBenhNhan);
+                String selectedBenhNhanStr = (String) cmbTenBenhNhan.getSelectedItem();
+                hoaDon.setIdBenhNhan(Integer.parseInt(selectedBenhNhanStr.replaceAll(".*\\(ID: (\\d+)\\).*", "$1")));
                 hoaDon.setNgayTao(ngayTao);
-                hoaDon.setTongTien(tongTienValue);
-                hoaDon.setTrangThai(trangThaiController);
+                hoaDon.setTongTien(Double.parseDouble(txtTongTien.getText().trim().replace(",", "")));
+                hoaDon.setTrangThai(translateVietnameseToTrangThai((String) cmbTrangThai.getSelectedItem()));
 
                 if (hoaDonController.themHoaDon(hoaDon)) {
-                    loadTableData();
+                    loadTableData(Integer.MAX_VALUE); // Báo hiệu thêm mới để highlight dòng đầu
                     dialog.dispose();
                     showNotification("Thêm hóa đơn thành công!", NotificationType.SUCCESS);
                 } else {
                     showNotification("Thêm hóa đơn thất bại.", NotificationType.ERROR);
                 }
             } catch (Exception ex) {
-                ex.printStackTrace();
                 showNotification("Lỗi khi thêm hóa đơn: " + ex.getMessage(), NotificationType.ERROR);
             }
         });
@@ -911,9 +965,10 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private void hienThiPopupChiTiet(HoaDon hoaDon) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi Tiết Hóa Đơn", true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(480, 420);
+        dialog.setSize(480, 450);
         dialog.setResizable(false);
         dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
+
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -921,10 +976,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         titleLabelDialog.setFont(new Font("Segoe UI", Font.BOLD, 18));
         titleLabelDialog.setForeground(Color.WHITE);
         headerPanel.add(titleLabelDialog, BorderLayout.CENTER);
+
         JPanel detailContentPanel = new JPanel();
         detailContentPanel.setLayout(new BoxLayout(detailContentPanel, BoxLayout.Y_AXIS));
         detailContentPanel.setBorder(new EmptyBorder(20, 25, 20, 25));
         detailContentPanel.setBackground(Color.WHITE);
+
         BenhNhan benhNhan = benhNhanController.timKiemBenhNhanTheoId(hoaDon.getIdBenhNhan());
         ThanhToanBenhNhan thanhToan = hoaDonController.layThanhToanTheoIdHoaDon(hoaDon.getIdHoaDon());
         addDetailField(detailContentPanel, "ID Hóa Đơn:", String.valueOf(hoaDon.getIdHoaDon()));
@@ -932,38 +989,34 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         addDetailField(detailContentPanel, "ID Bệnh Nhân:", String.valueOf(hoaDon.getIdBenhNhan()));
         addDetailField(detailContentPanel, "Ngày Tạo:", dateFormatter.format(hoaDon.getNgayTao()));
         addDetailField(detailContentPanel, "Tổng Tiền:", currencyFormat.format(hoaDon.getTongTien()) + " VND");
-        String trangThaiDisplay;
-        switch (hoaDon.getTrangThai()) {
-            case "DaThanhToan": trangThaiDisplay = "Đã thanh toán"; break;
-            case "ChuaThanhToan": trangThaiDisplay = "Chưa thanh toán"; break;
-            case "DangXuLy": trangThaiDisplay = "Đang xử lý"; break;
-            case "DaHuy": trangThaiDisplay = "Đã hủy"; break;
-            default: trangThaiDisplay = hoaDon.getTrangThai();
-        }
-        addDetailField(detailContentPanel, "Trạng Thái HĐ:", trangThaiDisplay);
+        addDetailField(detailContentPanel, "Trạng Thái HĐ:", translateTrangThaiToVietnamese(hoaDon.getTrangThai()));
+        
         if (thanhToan != null) {
             addDetailField(detailContentPanel, "ID Thanh Toán:", String.valueOf(thanhToan.getIdThanhToan()));
             addDetailField(detailContentPanel, "Phương thức TT:", thanhToan.getHinhThucThanhToan() != null ? thanhToan.getHinhThucThanhToan() : "Chưa có");
-            String trangThaiTTDisplay;
-             switch (thanhToan.getTrangThai()) {
-                case "ThanhToanThanhCong": trangThaiTTDisplay = "Thành công"; break;
-                case "ThanhToanThatBai": trangThaiTTDisplay = "Thất bại"; break;
-                case "HuyThanhToan": trangThaiTTDisplay = "Đã hủy"; break;
-                case "DangChoXuLy": trangThaiTTDisplay = "Đang chờ"; break;
-                default: trangThaiTTDisplay = thanhToan.getTrangThai();
-            }
-            addDetailField(detailContentPanel, "Trạng Thái TT:", trangThaiTTDisplay);
+            addDetailField(detailContentPanel, "Trạng Thái TT:", translateTrangThaiToVietnamese(thanhToan.getTrangThai()));
             if (thanhToan.getMaQR() != null && !thanhToan.getMaQR().isEmpty()) {
                  addDetailField(detailContentPanel, "Mã QR:", thanhToan.getMaQR());
             }
         } else {
             addDetailField(detailContentPanel, "Thanh Toán:", "Chưa có thông tin thanh toán");
         }
+
         JPanel buttonPanelDialog = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanelDialog.setBackground(Color.WHITE);
-        buttonPanelDialog.setBorder(new EmptyBorder(10, 0, 0, 0));
-        JButton closeButton = createRoundedButton("Đóng", secondaryColor, textColor, 10);
+        buttonPanelDialog.setBorder(new EmptyBorder(10, 20, 10, 20));
+        JButton editButton = createRoundedButton("Sửa", warningColor, buttonTextColor, 10);
+        editButton.addActionListener(e -> {
+            dialog.dispose();
+            try {
+                suaHoaDon();
+            } catch (SQLException ex) {
+                showNotification("Lỗi khi mở form chỉnh sửa: " + ex.getMessage(), NotificationType.ERROR);
+            }
+        });
+        JButton closeButton = createRoundedButton("Đóng", new Color(108, 117, 125), buttonTextColor, 10);
         closeButton.addActionListener(e -> dialog.dispose());
+        buttonPanelDialog.add(editButton);
         buttonPanelDialog.add(closeButton);
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(new JScrollPane(detailContentPanel), BorderLayout.CENTER);
@@ -974,9 +1027,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private void hienThiPopupSua(HoaDon hoaDon) throws SQLException {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chỉnh Sửa Hóa Đơn", true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(500, 400);
         dialog.setResizable(false);
-        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
+    
+        errorLabelMap = new HashMap<>();
+        mainLabelMap = new HashMap<>();
+    
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(primaryColor);
         headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
@@ -984,115 +1039,138 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         titleLabelDialog.setFont(new Font("Segoe UI", Font.BOLD, 18));
         titleLabelDialog.setForeground(Color.WHITE);
         headerPanel.add(titleLabelDialog, BorderLayout.CENTER);
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+    
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         formPanel.setBackground(Color.WHITE);
-        List<BenhNhan> danhSachBenhNhan = benhNhanController.layDanhSachBenhNhan();
-        DefaultComboBoxModel<String> benhNhanComboBoxModel = new DefaultComboBoxModel<>();
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 0, 2, 10);
+    
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel lblBenhNhan = new JLabel("Bệnh Nhân:");
+        lblBenhNhan.setFont(regularFont);
+        lblBenhNhan.setPreferredSize(new Dimension(120, 30));
+        formPanel.add(lblBenhNhan, gbc);
+    
+        gbc.gridx = 1;
         BenhNhan benhNhanHienTai = benhNhanController.timKiemBenhNhanTheoId(hoaDon.getIdBenhNhan());
-        String tenBenhNhanSelected = null;
-        if (benhNhanHienTai != null) {
-             tenBenhNhanSelected = benhNhanHienTai.getHoTen() + " (ID: " + benhNhanHienTai.getIdBenhNhan() + ")";
-        }
-        for (BenhNhan bn : danhSachBenhNhan) {
-             benhNhanComboBoxModel.addElement(bn.getHoTen() + " (ID: " + bn.getIdBenhNhan() + ")");
-        }
-        JComboBox<String> cmbTenBenhNhan = new JComboBox<>(benhNhanComboBoxModel);
-        styleComboBox(cmbTenBenhNhan, "Chọn bệnh nhân...");
+        String tenBenhNhanSelected = (benhNhanHienTai != null) 
+            ? benhNhanHienTai.getHoTen() + " (ID: " + benhNhanHienTai.getIdBenhNhan() + ")" 
+            : "Không rõ (ID: " + hoaDon.getIdBenhNhan() + ")";
+        JComboBox<String> cmbTenBenhNhan = new JComboBox<>(new String[]{tenBenhNhanSelected});
+        styleComboBox(cmbTenBenhNhan, "");
         cmbTenBenhNhan.setSelectedItem(tenBenhNhanSelected);
+        cmbTenBenhNhan.setEnabled(false);
+        formPanel.add(cmbTenBenhNhan, gbc);
         
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        formPanel.add(new JLabel(" "), gbc);
+    
+        gbc.insets = new Insets(0, 0, 2, 10);
+        gbc.gridx = 0; gbc.gridy++;
+        JLabel lblNgayTao = new JLabel("Ngày Tạo:");
+        lblNgayTao.setFont(regularFont);
+        formPanel.add(lblNgayTao, gbc);
+    
+        gbc.gridx = 1;
         JDateChooser dateChooserNgayTao = new JDateChooser();
         dateChooserNgayTao.setDate(hoaDon.getNgayTao());
         styleDateChooser(dateChooserNgayTao);
-
+        formPanel.add(dateChooserNgayTao, gbc);
+        mainLabelMap.put(dateChooserNgayTao, lblNgayTao);
+    
+        gbc.gridy++; gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errNgayTao = new JLabel(" ");
+        errNgayTao.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errNgayTao, gbc);
+        errorLabelMap.put(dateChooserNgayTao, errNgayTao);
+    
+        gbc.insets = new Insets(0, 0, 2, 10);
+        gbc.gridx = 0; gbc.gridy++;
+        JLabel lblTongTien = new JLabel("Tổng Tiền (VND):");
+        lblTongTien.setFont(regularFont);
+        formPanel.add(lblTongTien, gbc);
+    
+        gbc.gridx = 1;
         JTextField txtTongTien = new JTextField(currencyFormat.format(hoaDon.getTongTien()));
         styleTextField(txtTongTien);
         txtTongTien.setHorizontalAlignment(JTextField.RIGHT);
-
-        String[] trangThaiOptions = {"Chưa thanh toán", "Đã thanh toán", "Đang xử lý", "Đã hủy"};
+        formPanel.add(txtTongTien, gbc);
+        mainLabelMap.put(txtTongTien, lblTongTien);
+    
+        gbc.gridy++; gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errTongTien = new JLabel(" ");
+        errTongTien.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errTongTien, gbc);
+        errorLabelMap.put(txtTongTien, errTongTien);
+    
+        gbc.insets = new Insets(0, 0, 2, 10);
+        gbc.gridx = 0; gbc.gridy++;
+        JLabel lblTrangThai = new JLabel("Trạng Thái:");
+        lblTrangThai.setFont(regularFont);
+        formPanel.add(lblTrangThai, gbc);
+    
+        gbc.gridx = 1;
+        String[] trangThaiOptions = {"Chưa Thanh Toán", "Đã Thanh Toán", "Đang Xử Lý", "Đã Hủy"};
         JComboBox<String> cmbTrangThai = new JComboBox<>(trangThaiOptions);
-        String currentTrangThaiUI;
-        switch (hoaDon.getTrangThai()) {
-            case "DaThanhToan": currentTrangThaiUI = "Đã thanh toán"; break;
-            case "ChuaThanhToan": currentTrangThaiUI = "Chưa thanh toán"; break;
-            case "DangXuLy": currentTrangThaiUI = "Đang xử lý"; break;
-            case "DaHuy": currentTrangThaiUI = "Đã hủy"; break;
-            default: currentTrangThaiUI = null;
-        }
+        cmbTrangThai.setSelectedItem(translateTrangThaiToVietnamese(hoaDon.getTrangThai()));
         styleComboBox(cmbTrangThai, "Chọn trạng thái...");
-        cmbTrangThai.setSelectedItem(currentTrangThaiUI);
-
-        addFormField(formPanel, "Bệnh Nhân:", cmbTenBenhNhan);
-        addFormField(formPanel, "Ngày Tạo:", dateChooserNgayTao);
-        addFormField(formPanel, "Tổng Tiền (VND):", txtTongTien);
-        addFormField(formPanel, "Trạng Thái:", cmbTrangThai);
-        formPanel.add(Box.createVerticalStrut(15));
+        formPanel.add(cmbTrangThai, gbc);
+        mainLabelMap.put(cmbTrangThai, lblTrangThai);
+        
+        gbc.gridy++; gbc.insets = new Insets(0, 0, 10, 0);
+        JLabel errTrangThai = new JLabel(" ");
+        errTrangThai.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        formPanel.add(errTrangThai, gbc);
+        errorLabelMap.put(cmbTrangThai, errTrangThai);
+    
         JPanel buttonPanelDialog = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanelDialog.setBackground(Color.WHITE);
-        buttonPanelDialog.setBorder(new EmptyBorder(10, 0, 0, 0));
+        buttonPanelDialog.setBorder(new EmptyBorder(10, 20, 10, 20));
         JButton cancelButton = createRoundedButton("Hủy", new Color(108, 117, 125), buttonTextColor, 10);
         cancelButton.addActionListener(e -> dialog.dispose());
-        JButton submitButton = createRoundedButton("Cập nhật", warningColor, buttonTextColor, 10);
+    
+        JButton submitButton = createRoundedButton("Cập nhật", successColor, buttonTextColor, 10);
         submitButton.addActionListener(e -> {
-            try {
-                String selectedBenhNhanStr = (String) cmbTenBenhNhan.getSelectedItem();
-                 if (selectedBenhNhanStr == null) {
-                    showNotification("Vui lòng chọn bệnh nhân.", NotificationType.WARNING);
-                    return;
-                }
-                int idBenhNhanMoi = -1;
-                Pattern patternId = Pattern.compile("\\(ID: (\\d+)\\)");
-                Matcher matcherId = patternId.matcher(selectedBenhNhanStr);
-                if (matcherId.find()) {
-                    idBenhNhanMoi = Integer.parseInt(matcherId.group(1));
-                }
-                 if (idBenhNhanMoi == -1) {
-                     showNotification("Không thể xác định ID bệnh nhân mới.", NotificationType.ERROR);
-                    return;
-                }
-                hoaDon.setIdBenhNhan(idBenhNhanMoi);
-                Date ngayTaoMoi = dateChooserNgayTao.getDate();
-                if(ngayTaoMoi == null) {
-                     showNotification("Ngày tạo không hợp lệ.", NotificationType.WARNING);
-                    return;
-                }
-                hoaDon.setNgayTao(ngayTaoMoi);
-
-                double tongTienMoi;
+            clearAllErrors(dateChooserNgayTao, txtTongTien, cmbTrangThai);
+            boolean isFormValid = true;
+    
+            Date ngayTao = dateChooserNgayTao.getDate();
+            if (ngayTao == null) {
+                setError(dateChooserNgayTao, "Vui lòng chọn ngày tạo."); isFormValid = false;
+            } else if (ngayTao.after(Calendar.getInstance().getTime())) {
+                setError(dateChooserNgayTao, "Ngày tạo không được ở tương lai."); isFormValid = false;
+            }
+            if (txtTongTien.getText().trim().isEmpty()) {
+                setError(txtTongTien, "Vui lòng nhập tổng tiền."); isFormValid = false;
+            } else {
                 try {
-                    Number parsedNumber = currencyFormat.parse(txtTongTien.getText().trim());
-                    tongTienMoi = parsedNumber.doubleValue();
-                     if (tongTienMoi < 0) {
-                         showNotification("Tổng tiền không thể âm.", NotificationType.WARNING);
-                        return;
+                    if (currencyFormat.parse(txtTongTien.getText().trim()).doubleValue() < 0) {
+                        setError(txtTongTien, "Tổng tiền không thể là số âm."); isFormValid = false;
                     }
-                    hoaDon.setTongTien(tongTienMoi);
                 } catch (java.text.ParseException ex) {
-                    showNotification("Tổng tiền không hợp lệ.", NotificationType.WARNING);
-                    return;
+                    setError(txtTongTien, "Tổng tiền không hợp lệ."); isFormValid = false;
                 }
-                String trangThaiUIMoi = (String) cmbTrangThai.getSelectedItem();
-                if(trangThaiUIMoi == null){
-                     showNotification("Trạng thái mới không hợp lệ.", NotificationType.ERROR);
-                    return;
-                }
-                String trangThaiControllerMoi;
-                switch (trangThaiUIMoi) {
-                    case "Đã thanh toán": trangThaiControllerMoi = "DaThanhToan"; break;
-                    case "Chưa thanh toán": trangThaiControllerMoi = "ChuaThanhToan"; break;
-                    case "Đang xử lý": trangThaiControllerMoi = "DangXuLy"; break;
-                    case "Đã hủy": trangThaiControllerMoi = "DaHuy"; break;
-                    default:
-                        showNotification("Trạng thái mới không hợp lệ.", NotificationType.ERROR);
-                        return;
-                }
-                hoaDon.setTrangThai(trangThaiControllerMoi);
-                boolean success = hoaDonController.capNhatHoaDon(hoaDon);
-                if (success) {
-                    loadTableData();
+            }
+            if (cmbTrangThai.getSelectedItem() == null) {
+                setError(cmbTrangThai, "Vui lòng chọn trạng thái."); isFormValid = false;
+            }
+            if (!isFormValid) return;
+    
+            try {
+                int idToHighlight = hoaDon.getIdHoaDon();
+                hoaDon.setNgayTao(dateChooserNgayTao.getDate());
+                hoaDon.setTongTien(currencyFormat.parse(txtTongTien.getText().trim()).doubleValue());
+                hoaDon.setTrangThai(translateVietnameseToTrangThai((String) cmbTrangThai.getSelectedItem()));
+    
+                if (hoaDonController.capNhatHoaDon(hoaDon)) {
+                    loadTableData(idToHighlight);
                     dialog.dispose();
-                    showNotification("Cập nhật hóa đơn ID: " + hoaDon.getIdHoaDon() + " thành công!", NotificationType.SUCCESS);
+                    showNotification("Cập nhật hóa đơn ID: " + idToHighlight + " thành công!", NotificationType.SUCCESS);
                 } else {
                     showNotification("Cập nhật hóa đơn thất bại.", NotificationType.ERROR);
                 }
@@ -1102,41 +1180,23 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         });
         buttonPanelDialog.add(submitButton);
         buttonPanelDialog.add(cancelButton);
+    
         dialog.add(headerPanel, BorderLayout.NORTH);
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(buttonPanelDialog, BorderLayout.SOUTH);
+    
+        dialog.pack();
+        dialog.setLocationRelativeTo(SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
     }
     
-    private void addFormField(JPanel panel, String labelText, JComponent field) {
-        JPanel fieldPanel = new JPanel();
-        fieldPanel.setBackground(Color.WHITE);
-        fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.Y_AXIS));
-
-        JPanel topPanel = new JPanel(new BorderLayout(10, 0));
-        topPanel.setBackground(Color.WHITE);
-
-        JLabel label = new JLabel(labelText);
-        label.setFont(regularFont);
-        label.setPreferredSize(new Dimension(120, 30));
-        topPanel.add(label, BorderLayout.WEST);
-        topPanel.add(field, BorderLayout.CENTER);
-
-        fieldPanel.add(topPanel);
-        fieldPanel.setBorder(new EmptyBorder(0, 0, 5, 0));
-        panel.add(fieldPanel);
-    }
-
     private void setError(JComponent component, String message) {
         if (component == null) return;
-        
-        // 1. Set red border
         Color errorColor = accentColor;
         Border padding;
         if (component instanceof JDateChooser) {
-            JTextFieldDateEditor editor = (JTextFieldDateEditor) ((JDateChooser) component).getDateEditor();
             padding = BorderFactory.createEmptyBorder(5, 10, 5, 10);
-            editor.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
+            ((JTextFieldDateEditor)((JDateChooser) component).getDateEditor()).setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
         } else if (component instanceof JTextField) {
             padding = BorderFactory.createEmptyBorder(5, 10, 5, 10);
             component.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
@@ -1144,15 +1204,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
             padding = BorderFactory.createEmptyBorder(0, 5, 0, 0);
             component.setBorder(BorderFactory.createCompoundBorder(new LineBorder(errorColor, 1), padding));
         }
-
-        // 2. Show error message (red, italic)
         if (errorLabelMap.containsKey(component)) {
             JLabel errorLabel = errorLabelMap.get(component);
             errorLabel.setText("<html><i>" + message + "</i></html>");
             errorLabel.setForeground(errorColor);
         }
-
-        // 3. Add red asterisk to the main label
         if (mainLabelMap.containsKey(component)) {
             JLabel mainLabel = mainLabelMap.get(component);
             String originalText = mainLabel.getText().replaceAll("<[^>]*>", "").replace("*", "").replace(":", "").trim();
@@ -1163,30 +1219,17 @@ public class HoaDonUI extends JPanel implements MessageCallback {
     private void clearAllErrors(JComponent... components) {
         for (JComponent component : components) {
             if (component == null) continue;
-            
-            // 1. Restore original border
-            if (component instanceof JTextField) {
-                styleTextField((JTextField) component);
-            } else if (component instanceof JComboBox) {
-                styleComboBox((JComboBox<?>) component, "Chọn...");
-            } else if (component instanceof JDateChooser) {
-                styleDateChooser((JDateChooser) component);
-            }
-
-            // 2. Hide error message
-            if (errorLabelMap.containsKey(component)) {
-                JLabel errorLabel = errorLabelMap.get(component);
-                errorLabel.setText(" ");
-            }
-            
-            // 3. Remove asterisk from main label
+            if (component instanceof JTextField) styleTextField((JTextField) component);
+            else if (component instanceof JComboBox) {
+                if (mainLabelMap.get(component) != null && mainLabelMap.get(component).getText().contains("Bệnh Nhân"))
+                     styleComboBox((JComboBox<?>) component, "Chọn bệnh nhân...");
+                else styleComboBox((JComboBox<?>) component, "Chọn trạng thái...");
+            } else if (component instanceof JDateChooser) styleDateChooser((JDateChooser) component);
+            if (errorLabelMap.containsKey(component)) errorLabelMap.get(component).setText(" ");
             if (mainLabelMap.containsKey(component)) {
                 JLabel mainLabel = mainLabelMap.get(component);
                 String text = mainLabel.getText();
-                if (text.startsWith("<html>")) {
-                    String plainText = text.replaceAll("<[^>]*>", "").replace("*", "").trim();
-                    mainLabel.setText(plainText);
-                }
+                if (text.startsWith("<html>")) mainLabel.setText(text.replaceAll("<[^>]*>", "").replace("*", "").trim());
             }
         }
     }
@@ -1225,14 +1268,12 @@ public class HoaDonUI extends JPanel implements MessageCallback {
                                                           boolean isSelected, boolean cellHasFocus) {
                 JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-                if (value == null && index == -1) { // Show prompt only when nothing is selected
+                if (value == null && index == -1) { 
                     label.setText(prompt);
                     label.setForeground(Color.GRAY);
                 } else {
                     label.setText(value.toString());
-                    if (!isSelected) {
-                        label.setForeground(textColor);
-                    }
+                    if (!isSelected) label.setForeground(textColor);
                 }
                 return label;
             }
@@ -1248,9 +1289,11 @@ public class HoaDonUI extends JPanel implements MessageCallback {
         dateChooser.setFont(regularFont);
         dateChooser.setDateFormatString("dd/MM/yyyy");
         dateChooser.setBorder(null);
-
-        JTextFieldDateEditor editor = (JTextFieldDateEditor) dateChooser.getDateEditor();
-        styleTextField(editor);
+        ((JTextFieldDateEditor) dateChooser.getDateEditor()).setBorder(
+            BorderFactory.createCompoundBorder(
+                new CustomBorder(8, borderColor.brighter()),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10))
+        );
     }
 
     // =================================================================================
