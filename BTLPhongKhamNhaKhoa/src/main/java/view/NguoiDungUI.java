@@ -499,9 +499,17 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 } catch (SQLException e) {
                     availableRoles = new java.util.ArrayList<>();
                     availableRoles.add("Admin");
+                    availableRoles.add("Bác sĩ");
+                    availableRoles.add("Lễ tân");
+                    availableRoles.add("Kế toán");
+                    availableRoles.add("Quản kho");
                     availableRoles.add("Nhân viên");
                     availableRoles.add("Khách hàng");
                 }
+                
+                // Đảm bảo luôn có đủ các vai trò chính
+                if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
+                if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
                 
                 String[] roles = availableRoles.toArray(new String[0]);
                 
@@ -576,6 +584,8 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                             return;
                         }
                         user.setMatKhau(newPassword);
+                    } else {
+                        user.setMatKhau(null); // Đảm bảo không truyền chuỗi rỗng xuống controller
                     }
                     
                     try {
@@ -871,15 +881,17 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         } catch (SQLException e) {
             availableRoles = new java.util.ArrayList<>();
             availableRoles.add("Admin");
+            availableRoles.add("Bác sĩ");
+            availableRoles.add("Lễ tân");
+            availableRoles.add("Kế toán");
+            availableRoles.add("Quản kho");
             availableRoles.add("Nhân viên");
             availableRoles.add("Khách hàng");
         }
-        
+        // Đảm bảo luôn có đủ các vai trò chính
+        if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
+        if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
         String[] roles = availableRoles.toArray(new String[0]);
-        // Create a new array with "Lựa chọn" at the beginning
-        String[] rolesWithDefault = new String[roles.length + 1];
-        rolesWithDefault[0] = "Lựa chọn";
-        System.arraycopy(roles, 0, rolesWithDefault, 1, roles.length);
         
         JDialog dialog = createStyledDialog("Thêm Người Dùng Mới", 450, 500);
         
@@ -908,7 +920,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPasswordField matKhauField = createStyledPasswordField();
         JPasswordField xacNhanMatKhauField = createStyledPasswordField();
         
-        JComboBox<String> vaiTroBox = createStyledComboBox(rolesWithDefault, "Lựa chọn");
+        JComboBox<String> vaiTroBox = createStyledComboBox(roles, "Lựa chọn");
         
         formPanel.add(createFormRow("Họ tên:", hoTenField));
         formPanel.add(Box.createVerticalStrut(15));
