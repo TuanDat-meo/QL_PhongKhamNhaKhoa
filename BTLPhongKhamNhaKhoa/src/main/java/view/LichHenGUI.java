@@ -5,6 +5,12 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.PlainDocument;
 
 import com.toedter.calendar.JDateChooser;
 import controller.LichHenController;
@@ -23,8 +29,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -910,28 +920,27 @@ public class LichHenGUI extends JPanel {
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
 
-        // Thêm lựa chọn mặc định vào đầu danh sách
-        bacSiList.add(0, "Lựa chọn");
-        benhNhanList.add(0, "Lựa chọn");
-        phongKhamList.add(0, "Lựa chọn");
-
-        // Chuẩn bị các components với style nhất quán và kích thước lớn hơn
-        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
-        comboBacSi.setPreferredSize(new Dimension(250, 35)); // Tăng kích thước
-        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
+        // Tạo searchable combobox cho bác sĩ và bệnh nhân
+        JComboBox<String> comboBacSi = createSearchableComboBox(bacSiList, "Nhập tên bác sĩ...");
+        comboBacSi.setPreferredSize(new Dimension(250, 35));
+        
+        JComboBox<String> comboBenhNhan = createSearchableComboBox(benhNhanList, "Nhập tên bệnh nhân...");
         comboBenhNhan.setPreferredSize(new Dimension(250, 35));
+        
+        // Phòng khám vẫn sử dụng combo thông thường
+        phongKhamList.add(0, "Lựa chọn");
         JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
         comboPhongKham.setPreferredSize(new Dimension(250, 35));
-
-        // Đặt lựa chọn mặc định
-        comboBacSi.setSelectedIndex(0);
-        comboBenhNhan.setSelectedIndex(0);
         comboPhongKham.setSelectedIndex(0);
 
-        // DateChooser với style nhất quán và kích thước lớn hơn
+        // DateChooser với style nhất quán và kích thước lớn hơn - LOGIC MỚI CHO NGÀY MẶC ĐỊNH
         JDateChooser dateChooserNgayHen = createStyledDateChooser();
         dateChooserNgayHen.setPreferredSize(new Dimension(250, 35));
-        dateChooserNgayHen.setDate(Calendar.getInstance().getTime());
+        
+        // Tính toán ngày mặc định thông minh
+        java.util.Date defaultDate = getNextAvailableWorkingDate();
+        dateChooserNgayHen.setMinSelectableDate(new java.util.Date());
+        dateChooserNgayHen.setDate(defaultDate);
 
         // Tạo time picker hiện đại với JSpinner - kích thước lớn hơn
         JPanel timePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
@@ -984,50 +993,153 @@ public class LichHenGUI extends JPanel {
         JTextField txtMoTa = createStyledTextField("");
         txtMoTa.setPreferredSize(new Dimension(250, 35));
 
-        // Thông tin giờ làm việc
+        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN
         JPanel infoPanel = new JPanel(new BorderLayout());
         infoPanel.setBackground(new Color(240, 248, 255));
         infoPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Giờ làm việc:</b> Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>Lịch hẹn cách nhau ít nhất 30 phút</html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Ngày mặc định được tự động chọn ngày làm việc gần nhất</b><br/>• <b>Có thể nhập tên để tìm kiếm bác sĩ/bệnh nhân</b></html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
+        
         // Tạo error panel
         errorPanel = createErrorPanel();
         // Khởi tạo error labels cho từng field
         initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
+        JTextComponent bacSiTextComponent = (JTextComponent) comboBacSi.getEditor().getEditorComponent();
+        JTextComponent benhNhanTextComponent = (JTextComponent) comboBenhNhan.getEditor().getEditorComponent();
 
-        // Thêm listeners để validate và clear lỗi khi user thay đổi input
-        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
-            String selected = (String) comboBacSi.getSelectedItem();
-            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
-        }));        
-        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
-            String selected = (String) comboBenhNhan.getSelectedItem();
-            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
-        }));        
+        bacSiTextComponent.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            private void validateBacSi() {
+                SwingUtilities.invokeLater(() -> {
+                    String currentText = bacSiTextComponent.getText().trim();
+                    validateAndClearError(comboBacSi, () -> {
+                        return !currentText.isEmpty() && 
+                               !currentText.equals("Nhập tên bác sĩ...") && 
+                               bacSiList.contains(currentText);
+                    });
+                });
+            }
+        });
+
+        // Validation cho bệnh nhân
+        benhNhanTextComponent.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            private void validateBenhNhan() {
+                SwingUtilities.invokeLater(() -> {
+                    String currentText = benhNhanTextComponent.getText().trim();
+                    validateAndClearError(comboBenhNhan, () -> {
+                        return !currentText.isEmpty() && 
+                               !currentText.equals("Nhập tên bệnh nhân...") && 
+                               benhNhanList.contains(currentText);
+                    });
+                });
+            }
+        });
+            
         comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
             String selected = (String) comboPhongKham.getSelectedItem();
             return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
         }));        
+        
+        // THÊM VALIDATION CHO NGÀY - KIỂM TRA KHÔNG ĐƯỢC CHỌN QUÁ KHỨ VÀ NGÀY NGHỈ
         dateChooserNgayHen.addPropertyChangeListener("date", e -> validateAndClearError(dateChooserNgayHen, () -> {
-            return dateChooserNgayHen.getDate() != null;
+            java.util.Date selectedDate = dateChooserNgayHen.getDate();
+            if (selectedDate == null) return false;
+            
+            // Kiểm tra ngày không được ở quá khứ
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            Calendar selectedCal = Calendar.getInstance();
+            selectedCal.setTime(selectedDate);
+            selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+            selectedCal.set(Calendar.MINUTE, 0);
+            selectedCal.set(Calendar.SECOND, 0);
+            selectedCal.set(Calendar.MILLISECOND, 0);
+            
+            if (selectedCal.before(today)) return false;
+            
+            // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
+            int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+            return dayOfWeek != Calendar.SUNDAY;
         }));        
-        // Listeners cho time spinners
+        
+        // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
         ChangeListener timeChangeListener = e -> validateAndClearError(timePanel, () -> {
             try {
                 int hour = (Integer) hourSpinner.getValue();
                 String minute = (String) minuteSpinner.getValue();
-                return hour >= 7 && hour <= 17 && minute != null;
+                java.util.Date selectedDate = dateChooserNgayHen.getDate();
+                
+                if (selectedDate == null || hour < 7 || hour > 17 || minute == null) {
+                    return false;
+                }
+                
+                // Kiểm tra nếu là ngày hôm nay, thời gian phải sau thời điểm hiện tại
+                Calendar today = Calendar.getInstance();
+                Calendar selectedCal = Calendar.getInstance();
+                selectedCal.setTime(selectedDate);
+                
+                // Nếu là cùng ngày
+                if (today.get(Calendar.DATE) == selectedCal.get(Calendar.DATE) &&
+                    today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
+                    today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR)) {
+                    
+                    int currentHour = today.get(Calendar.HOUR_OF_DAY);
+                    int currentMinute = today.get(Calendar.MINUTE);
+                    int selectedMinuteInt = Integer.parseInt(minute);
+                    
+                    // Thời gian phải sau thời điểm hiện tại ít nhất 15 phút
+                    if (hour < currentHour || 
+                        (hour == currentHour && selectedMinuteInt <= currentMinute + 15)) {
+                        return false;
+                    }
+                }
+                
+                return true;
             } catch (Exception ex) {
                 return false;
             }
         });
         hourSpinner.addChangeListener(timeChangeListener);
         minuteSpinner.addChangeListener(timeChangeListener);
+        
         // Thêm các thành phần vào form với GridBagLayout
         int currentRow = 0;        
         // Cột nhãn và điều khiển
@@ -1054,7 +1166,7 @@ public class LichHenGUI extends JPanel {
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(null);
-        scrollPane.setPreferredSize(new Dimension(480, 500)); // Tăng kích thước đáng kể        
+        scrollPane.setPreferredSize(new Dimension(480, 520)); // Tăng kích thước để hiển thị info thêm        
         // Thêm formPanel vào phần trung tâm của mainPanel
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -1064,7 +1176,7 @@ public class LichHenGUI extends JPanel {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         JButton cancelButton = createRoundedButton("Hủy", Color.LIGHT_GRAY, Color.BLACK, cornerRadius);
-        cancelButton.setPreferredSize(new Dimension(90, 35)); // Tăng kích thước nút
+        cancelButton.setPreferredSize(new Dimension(90, 35));
         JButton saveButton = createRoundedButton("Lưu", primaryColor, Color.WHITE, cornerRadius);
         saveButton.setPreferredSize(new Dimension(90, 35));
 
@@ -1075,7 +1187,7 @@ public class LichHenGUI extends JPanel {
         // Hiển thị dialog với panel chính - kích thước lớn hơn
         JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thêm Lịch Hẹn", true);
         dialog.setContentPane(mainPanel);
-        dialog.setSize(550, 620); // Tăng kích thước dialog đáng kể
+        dialog.setSize(550, 640); // Tăng kích thước dialog
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
         
@@ -1084,23 +1196,33 @@ public class LichHenGUI extends JPanel {
             clearAllFieldErrors();
             dialog.dispose();
         });
-        // Xử lý sự kiện nút lưu với validation mới
+        
+        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION
         saveButton.addActionListener(e -> {
             try {
                 clearAllFieldErrors();                
                 boolean hasErrors = false;                
-                // Validate từng field
-                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
-                if ("Lựa chọn".equals(hoTenBacSi)) {
+                
+                // Validate bác sĩ từ searchable combobox
+                String hoTenBacSi = getSelectedValueFromSearchableCombo(comboBacSi, "Nhập tên bác sĩ...").trim();
+                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.equals("Nhập tên bác sĩ...") || hoTenBacSi.isEmpty()) {
                     showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
+                    hasErrors = true;
+                } else if (!bacSiList.contains(hoTenBacSi)) {
+                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không tồn tại trong hệ thống");
                     hasErrors = true;
                 }
                 
-                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
-                if ("Lựa chọn".equals(hoTenBenhNhan)) {
+                // Validate bệnh nhân từ searchable combobox
+                String hoTenBenhNhan = getSelectedValueFromSearchableCombo(comboBenhNhan, "Nhập tên bệnh nhân...").trim();
+                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.equals("Nhập tên bệnh nhân...") || hoTenBenhNhan.isEmpty()) {
                     showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
                     hasErrors = true;
-                }                
+                } else if (!benhNhanList.contains(hoTenBenhNhan)) {
+                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không tồn tại trong hệ thống");
+                    hasErrors = true;
+                }
+                    
                 String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
                 if ("Lựa chọn".equals(tenPhongKham)) {
                     showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
@@ -1110,14 +1232,65 @@ public class LichHenGUI extends JPanel {
                 if (ngayHenDate == null) {
                     showPersistentFieldError(dateChooserNgayHen, "Vui lòng chọn ngày hẹn");
                     hasErrors = true;
-                }                
+                } else {
+                    // VALIDATION NGÀY KHÔNG ĐƯỢC Ở QUÁ KHỨ
+                    Calendar today = Calendar.getInstance();
+                    today.set(Calendar.HOUR_OF_DAY, 0);
+                    today.set(Calendar.MINUTE, 0);
+                    today.set(Calendar.SECOND, 0);
+                    today.set(Calendar.MILLISECOND, 0);
+                    
+                    Calendar selectedCal = Calendar.getInstance();
+                    selectedCal.setTime(ngayHenDate);
+                    selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+                    selectedCal.set(Calendar.MINUTE, 0);
+                    selectedCal.set(Calendar.SECOND, 0);
+                    selectedCal.set(Calendar.MILLISECOND, 0);
+                    
+                    if (selectedCal.before(today)) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn trong quá khứ");
+                        hasErrors = true;
+                    }
+                    
+                    // VALIDATION NGÀY NGHỈ
+                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                        hasErrors = true;
+                    }
+                }
+                
                 // Validate time
                 int selectedHour = (Integer) hourSpinner.getValue();
                 String selectedMinute = (String) minuteSpinner.getValue();
                 if (selectedHour < 7 || selectedHour > 17) {
                     showPersistentFieldError(timePanel, "Giờ hẹn phải trong khoảng 7:00 - 17:00");
                     hasErrors = true;
-                }                
+                } else if (ngayHenDate != null) {
+                    // VALIDATION THỜI GIAN KHÔNG ĐƯỢC Ở QUÁ KHỨ NÕU LÀ HÔM NAY
+                    Calendar now = Calendar.getInstance();
+                    Calendar selectedDateTime = Calendar.getInstance();
+                    selectedDateTime.setTime(ngayHenDate);
+                    selectedDateTime.set(Calendar.HOUR_OF_DAY, selectedHour);
+                    selectedDateTime.set(Calendar.MINUTE, Integer.parseInt(selectedMinute));
+                    selectedDateTime.set(Calendar.SECOND, 0);
+                    selectedDateTime.set(Calendar.MILLISECOND, 0);
+                    
+                    // Kiểm tra nếu là ngày hôm nay và thời gian đã qua hoặc quá gần
+                    if (selectedDateTime.get(Calendar.DATE) == now.get(Calendar.DATE) &&
+                        selectedDateTime.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                        selectedDateTime.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                        
+                        // Thêm 15 phút buffer để đảm bảo có thời gian chuẩn bị
+                        now.add(Calendar.MINUTE, 15);
+                        
+                        if (selectedDateTime.before(now) || selectedDateTime.equals(now)) {
+                            showPersistentFieldError(timePanel, "Thời gian hẹn phải sau thời điểm hiện tại ít nhất 15 phút");
+                            hasErrors = true;
+                        }
+                    }
+                }
+                
                 if (hasErrors) {
                     return;
                 }
@@ -1137,7 +1310,7 @@ public class LichHenGUI extends JPanel {
                 if (idPhongKham == -1) {
                     showPersistentFieldError(comboPhongKham, "Tên phòng khám không hợp lệ");
                     return;
-                }                
+                }       
                 java.sql.Date ngayHen = new java.sql.Date(ngayHenDate.getTime());
                 String timeString = String.format("%02d:%s", selectedHour, selectedMinute);
                 LocalTime gioHen = LocalTime.parse(timeString);
@@ -1195,6 +1368,290 @@ public class LichHenGUI extends JPanel {
         });
         
         dialog.setVisible(true);
+    }
+    private JComboBox<String> createSearchableComboBox(List<String> originalData, String defaultText) {
+        // Create copy of original data and add default text at the beginning
+        List<String> dataWithDefault = new ArrayList<>(originalData);
+        dataWithDefault.add(0, defaultText);
+
+        JComboBox<String> comboBox = createStyledComboBox(dataWithDefault.toArray(new String[0]));
+        comboBox.setEditable(true);
+
+        // Get the text component of the editor
+        JTextComponent textComponent = (JTextComponent) comboBox.getEditor().getEditorComponent();
+
+        // Store original data for filtering
+        final List<String> originalItems = new ArrayList<>(originalData);
+
+        // Flags to control behavior
+        // isFilteringItems: true when the DocumentListener is actively filtering/updating the model
+        final AtomicBoolean isFilteringItems = new AtomicBoolean(false);
+        // isSelectingFromDropdown: true when an item is selected from the dropdown (programmatic text change)
+        final AtomicBoolean isSelectingFromDropdown = new AtomicBoolean(false);
+        // hasFocus: true when the text component has focus
+        final AtomicBoolean hasFocus = new AtomicBoolean(false);
+        // ignoreDocumentEvents: A crucial flag to prevent re-triggering filtering
+        final AtomicBoolean ignoreDocumentEvents = new AtomicBoolean(false);
+
+        // Custom Document to get better control
+        class SearchDocument extends PlainDocument {
+            private Timer filterTimer;
+
+            @Override
+            public void insertString(int offset, String str, AttributeSet attr) throws BadLocationException {
+                if (ignoreDocumentEvents.get()) { // Ignore if we are programmatically updating
+                    super.insertString(offset, str, attr);
+                    return;
+                }
+                super.insertString(offset, str, attr);
+                scheduleFilter();
+            }
+
+            @Override
+            public void remove(int offset, int length) throws BadLocationException {
+                if (ignoreDocumentEvents.get()) { // Ignore if we are programmatically updating
+                    super.remove(offset, length);
+                    return;
+                }
+                super.remove(offset, length);
+                scheduleFilter();
+            }
+
+            private void scheduleFilter() {
+                if (filterTimer != null && filterTimer.isRunning()) {
+                    filterTimer.stop();
+                }
+
+                filterTimer = new Timer(200, e -> {
+                    if (hasFocus.get() && !isFilteringItems.get() && !isSelectingFromDropdown.get()) {
+                        performFiltering();
+                    }
+                });
+                filterTimer.setRepeats(false);
+                filterTimer.start();
+            }
+
+            private void performFiltering() {
+                SwingUtilities.invokeLater(() -> {
+                    // Ensure no conflicting operations
+                    if (isFilteringItems.get() || isSelectingFromDropdown.get()) return;
+
+                    try {
+                        String searchText = textComponent.getText().trim();
+
+                        if (searchText.isEmpty() || searchText.equals(defaultText)) {
+                            updateDropdownItems(originalItems); // Show all items if text is empty or default
+                            return;
+                        }
+
+                        // Filter items
+                        List<String> filteredItems = originalItems.stream()
+                            .filter(item -> item.toLowerCase().contains(searchText.toLowerCase()))
+                            .collect(Collectors.toList());
+
+                        updateDropdownItems(filteredItems);
+
+                        // Show popup if has results and focused
+                        if (!filteredItems.isEmpty() && hasFocus.get()) {
+                            SwingUtilities.invokeLater(() -> {
+                                if (!comboBox.isPopupVisible()) {
+                                    comboBox.showPopup();
+                                }
+                            });
+                        } else if (filteredItems.isEmpty() && comboBox.isPopupVisible()) {
+                            comboBox.hidePopup(); // Hide if no results
+                        }
+
+                    } catch (Exception ex) {
+                        // Log or handle the error appropriately, but for filtering, often ignored
+                        System.err.println("Error during filtering: " + ex.getMessage());
+                    }
+                });
+            }
+
+            private void updateDropdownItems(List<String> items) {
+                isFilteringItems.set(true); // Indicate that we are updating items
+                ignoreDocumentEvents.set(true); // Crucial: temporarily ignore document changes
+
+                try {
+                    String currentText = textComponent.getText(); // Store current text
+                    int caretPos = textComponent.getCaretPosition(); // Store caret position
+
+                    // Temporarily remove action listeners to prevent unwanted side effects
+                    // when programmatically setting selected item (though not directly here)
+                    ActionListener[] listeners = comboBox.getActionListeners();
+                    for (ActionListener listener : listeners) {
+                        comboBox.removeActionListener(listener);
+                    }
+
+                    // Clear existing items and add filtered ones
+                    comboBox.removeAllItems();
+                    comboBox.addItem(defaultText); // Always include default option
+                    for (String item : items) {
+                        comboBox.addItem(item);
+                    }
+
+                    // Restore action listeners
+                    for (ActionListener listener : listeners) {
+                        comboBox.addActionListener(listener);
+                    }
+
+                    // Restore text and caret position.
+                    // Because ignoreDocumentEvents is true, this setText won't re-trigger filtering.
+                    textComponent.setText(currentText);
+                    textComponent.setCaretPosition(Math.min(caretPos, currentText.length()));
+
+                } finally {
+                    isFilteringItems.set(false); // Reset flag
+                    ignoreDocumentEvents.set(false); // Reset flag
+                }
+            }
+        }
+
+        // Replace the default document with our custom one
+        textComponent.setDocument(new SearchDocument());
+
+        // Action listener for when an item is selected from the dropdown
+        comboBox.addActionListener(e -> {
+            // Only process if user is not actively filtering or if it's not a programmatic selection
+            if (isFilteringItems.get() || isSelectingFromDropdown.get()) {
+                return;
+            }
+
+            Object selectedItem = comboBox.getSelectedItem();
+            if (selectedItem != null && !selectedItem.equals(defaultText)) {
+                String selectedText = selectedItem.toString();
+                String currentTextInEditor = textComponent.getText();
+
+                // Only update if the selected item is different from what's currently in the editor
+                if (!selectedText.equals(currentTextInEditor)) {
+                    isSelectingFromDropdown.set(true); // Indicate programmatic change
+                    ignoreDocumentEvents.set(true); // Crucial: Prevent document listener from reacting
+                    try {
+                        textComponent.setText(selectedText);
+                        textComponent.setCaretPosition(selectedText.length());
+                        comboBox.hidePopup(); // Hide the popup after selection
+                    } finally {
+                        isSelectingFromDropdown.set(false); // Reset flag
+                        ignoreDocumentEvents.set(false); // Reset flag
+                    }
+                }
+            }
+        });
+
+        // Focus listeners to handle default text and filtering on focus
+        textComponent.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                hasFocus.set(true);
+                String currentText = textComponent.getText();
+
+                // Clear default text when focus is gained
+                if (defaultText.equals(currentText)) {
+                    isSelectingFromDropdown.set(true); // Treat as programmatic
+                    ignoreDocumentEvents.set(true);
+                    try {
+                        textComponent.setText("");
+                        textComponent.setCaretPosition(0);
+                    } finally {
+                        isSelectingFromDropdown.set(false);
+                        ignoreDocumentEvents.set(false);
+                    }
+                }
+                // Ensure popup is visible if items are filtered and there's text
+                if (!currentText.isEmpty() && !currentText.equals(defaultText)) {
+                     // Trigger a filter to ensure the popup shows relevant items
+                    ((SearchDocument) textComponent.getDocument()).performFiltering();
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                hasFocus.set(false);
+
+                // Delay to allow dropdown selection to complete before resetting text
+                Timer delayTimer = new Timer(150, event -> {
+                    String currentText = textComponent.getText().trim();
+
+                    // If text is empty or not a valid item from original list, revert to default
+                    if (currentText.isEmpty() || !originalItems.contains(currentText)) {
+                        isSelectingFromDropdown.set(true); // Treat as programmatic
+                        ignoreDocumentEvents.set(true);
+                        try {
+                            textComponent.setText(defaultText);
+                            textComponent.setCaretPosition(0);
+                        } finally {
+                            isSelectingFromDropdown.set(false);
+                            ignoreDocumentEvents.set(false);
+                        }
+                    }
+                    comboBox.hidePopup(); // Always hide popup on focus loss
+                });
+                delayTimer.setRepeats(false);
+                delayTimer.start();
+            }
+        });
+
+        return comboBox;
+    }
+    private String getSelectedValueFromSearchableCombo(JComboBox<String> comboBox, String defaultText) {
+        JTextComponent textComponent = (JTextComponent) comboBox.getEditor().getEditorComponent();
+        String currentText = textComponent.getText().trim();
+        
+        if (currentText.isEmpty() || currentText.equals(defaultText)) {
+            return "Lựa chọn"; 
+        }
+        
+        return currentText;
+    }
+
+    // Remove the old updateComboBoxItems methods as they're no longer needed
+    private java.util.Date getNextAvailableWorkingDate() {
+        Calendar cal = Calendar.getInstance();
+        
+        // Kiểm tra xem hôm nay có thể đặt lịch được không
+        if (isTodayBookable()) {
+            return cal.getTime();
+        }
+        
+        // Nếu hôm nay không thể đặt lịch, tìm ngày làm việc tiếp theo
+        cal.add(Calendar.DAY_OF_MONTH, 1); // Chuyển sang ngày mai
+        
+        // Tìm ngày làm việc tiếp theo (không phải thứ 7, chủ nhật)
+        while (true) {
+            int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+            
+            // Nếu là ngày làm việc (thứ 2-6)
+            if (dayOfWeek != Calendar.SUNDAY) {
+                return cal.getTime();
+            }
+            
+            // Nếu là ngày nghỉ, chuyển sang ngày tiếp theo
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            
+            // Tránh vòng lặp vô hạn (tối đa 7 ngày)
+            if (cal.get(Calendar.DAY_OF_MONTH) > Calendar.getInstance().get(Calendar.DAY_OF_MONTH) + 7) {
+                break;
+            }
+        }
+        
+        return cal.getTime();
+    }
+    private boolean isTodayBookable() {
+        Calendar now = Calendar.getInstance();
+        int dayOfWeek = now.get(Calendar.DAY_OF_WEEK);
+        if (dayOfWeek == Calendar.SUNDAY) {
+            return false;
+        }
+        int currentHour = now.get(Calendar.HOUR_OF_DAY);
+        int currentMinute = now.get(Calendar.MINUTE);
+        if (currentHour < 11 || (currentHour == 11 && currentMinute <= 30)) {
+            return true;
+        }
+        if (currentHour >= 13 && (currentHour < 16 || (currentHour == 16 && currentMinute <= 30))) {
+            return true;
+        }
+        return false;
     }
     private void deleteAppointment(LichHen lichHen) {
         // Tạo dialog xác nhận tùy chỉnh
@@ -1546,22 +2003,29 @@ public class LichHenGUI extends JPanel {
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
 
-        // Chuẩn bị các components với style nhất quán và kích thước lớn hơn
-        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
-        comboBacSi.setPreferredSize(new Dimension(250, 35)); // Tăng kích thước
-        comboBacSi.setSelectedItem(lichHen.getHoTenBacSi());
+        // Tạo searchable combobox cho bác sĩ và bệnh nhân
+        JComboBox<String> comboBacSi = createSearchableComboBox(bacSiList, "Nhập tên bác sĩ...");
+        comboBacSi.setPreferredSize(new Dimension(250, 35));
+        // Set giá trị hiện tại cho bác sĩ
+        JTextComponent bacSiTextComponent = (JTextComponent) comboBacSi.getEditor().getEditorComponent();
+        bacSiTextComponent.setText(lichHen.getHoTenBacSi());
         
-        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
+        JComboBox<String> comboBenhNhan = createSearchableComboBox(benhNhanList, "Nhập tên bệnh nhân...");
         comboBenhNhan.setPreferredSize(new Dimension(250, 35));
-        comboBenhNhan.setSelectedItem(lichHen.getHoTenBenhNhan());
+        // Set giá trị hiện tại cho bệnh nhân
+        JTextComponent benhNhanTextComponent = (JTextComponent) comboBenhNhan.getEditor().getEditorComponent();
+        benhNhanTextComponent.setText(lichHen.getHoTenBenhNhan());
         
+        // Phòng khám vẫn sử dụng combo thông thường
+        phongKhamList.add(0, "Lựa chọn");
         JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
         comboPhongKham.setPreferredSize(new Dimension(250, 35));
         comboPhongKham.setSelectedItem(lichHen.getTenPhong());
 
-        // DateChooser với style nhất quán và kích thước lớn hơn
+        // DateChooser với style nhất quán và kích thước lớn hơn - THÊM VALIDATION NGHỈ
         JDateChooser dateChooserNgayHen = createStyledDateChooser();
         dateChooserNgayHen.setPreferredSize(new Dimension(250, 35));
+        dateChooserNgayHen.setMinSelectableDate(new java.util.Date());
         dateChooserNgayHen.setDate(java.sql.Date.valueOf(lichHen.getNgayHen().toLocalDate()));
 
         // Tạo time picker hiện đại với JSpinner - kích thước lớn hơn
@@ -1645,50 +2109,142 @@ public class LichHenGUI extends JPanel {
         txtIdLichHen.setEditable(false);
         txtIdLichHen.setBackground(new Color(245, 245, 245));
 
-        // Thông tin giờ làm việc
+        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN
         JPanel infoPanel = new JPanel(new BorderLayout());
         infoPanel.setBackground(new Color(240, 248, 255));
         infoPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Giờ làm việc:</b> Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>Lịch hẹn cách nhau ít nhất 30 phút</html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Có thể nhập tên để tìm kiếm bác sĩ/bệnh nhân</b></html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
 
         // Tạo error panel
         errorPanel = createErrorPanel();
-
         // Khởi tạo error labels cho từng field
         initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
 
-        // Thêm listeners để validate và clear lỗi khi user thay đổi input
-        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
-            String selected = (String) comboBacSi.getSelectedItem();
-            return selected != null && !selected.trim().isEmpty();
-        }));
-        
-        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
-            String selected = (String) comboBenhNhan.getSelectedItem();
-            return selected != null && !selected.trim().isEmpty();
-        }));
-        
+        bacSiTextComponent.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validateBacSi();
+            }
+            
+            private void validateBacSi() {
+                SwingUtilities.invokeLater(() -> {
+                    String currentText = bacSiTextComponent.getText().trim();
+                    validateAndClearError(comboBacSi, () -> {
+                        return !currentText.isEmpty() && 
+                               !currentText.equals("Nhập tên bác sĩ...") && 
+                               bacSiList.contains(currentText);
+                    });
+                });
+            }
+        });
+
+        // Validation cho bệnh nhân
+        benhNhanTextComponent.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validateBenhNhan();
+            }
+            
+            private void validateBenhNhan() {
+                SwingUtilities.invokeLater(() -> {
+                    String currentText = benhNhanTextComponent.getText().trim();
+                    validateAndClearError(comboBenhNhan, () -> {
+                        return !currentText.isEmpty() && 
+                               !currentText.equals("Nhập tên bệnh nhân...") && 
+                               benhNhanList.contains(currentText);
+                    });
+                });
+            }
+        });
+            
         comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
             String selected = (String) comboPhongKham.getSelectedItem();
-            return selected != null && !selected.trim().isEmpty();
-        }));
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));        
         
+        // THÊM VALIDATION CHO NGÀY - KIỂM TRA KHÔNG ĐƯỢC CHỌN QUÁ KHỨ VÀ NGÀY NGHỈ
         dateChooserNgayHen.addPropertyChangeListener("date", e -> validateAndClearError(dateChooserNgayHen, () -> {
-            return dateChooserNgayHen.getDate() != null;
-        }));
+            java.util.Date selectedDate = dateChooserNgayHen.getDate();
+            if (selectedDate == null) return false;
+            
+            // Kiểm tra ngày không được ở quá khứ
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            Calendar selectedCal = Calendar.getInstance();
+            selectedCal.setTime(selectedDate);
+            selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+            selectedCal.set(Calendar.MINUTE, 0);
+            selectedCal.set(Calendar.SECOND, 0);
+            selectedCal.set(Calendar.MILLISECOND, 0);
+            
+            if (selectedCal.before(today)) return false;
+            
+            // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
+            int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+            return dayOfWeek != Calendar.SUNDAY;
+        }));        
         
-        // Listeners cho time spinners
+        // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
         ChangeListener timeChangeListener = e -> validateAndClearError(timePanel, () -> {
             try {
                 int hour = (Integer) hourSpinner.getValue();
                 String minute = (String) minuteSpinner.getValue();
-                return hour >= 7 && hour <= 17 && minute != null;
+                java.util.Date selectedDate = dateChooserNgayHen.getDate();
+                
+                if (selectedDate == null || hour < 7 || hour > 17 || minute == null) {
+                    return false;
+                }
+                
+                // Kiểm tra nếu là ngày hôm nay, thời gian phải sau thời điểm hiện tại
+                Calendar today = Calendar.getInstance();
+                Calendar selectedCal = Calendar.getInstance();
+                selectedCal.setTime(selectedDate);
+                
+                // Nếu là cùng ngày
+                if (today.get(Calendar.DATE) == selectedCal.get(Calendar.DATE) &&
+                    today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
+                    today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR)) {
+                    
+                    int selectedMinuteInt = Integer.parseInt(minute);
+                    
+                    // Thời gian phải sau thời điểm hiện tại ít nhất 15 phút
+                    if (hour < currentHour || 
+                        (hour == currentHour && selectedMinuteInt <= currentMinute + 15)) {
+                        return false;
+                    }
+                }
+                
+                return true;
             } catch (Exception ex) {
                 return false;
             }
@@ -1714,20 +2270,17 @@ public class LichHenGUI extends JPanel {
         gbc.gridy = currentRow++;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(5, 5, 5, 5);
-        formPanel.add(errorPanel, gbc);
-        
+        formPanel.add(errorPanel, gbc);        
         // Thêm info panel
         gbc.gridy = currentRow++;
         gbc.insets = new Insets(10, 5, 8, 5);
-        formPanel.add(infoPanel, gbc);
-        
+        formPanel.add(infoPanel, gbc);        
         // Tạo scroll pane với kích thước lớn hơn
         JScrollPane scrollPane = new JScrollPane(formPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(null);
-        scrollPane.setPreferredSize(new Dimension(480, 520)); // Tăng kích thước
-        
+        scrollPane.setPreferredSize(new Dimension(480, 520)); // Tăng kích thước để hiển thị info thêm        
         // Thêm formPanel vào phần trung tâm của mainPanel
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -1737,7 +2290,7 @@ public class LichHenGUI extends JPanel {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         JButton cancelButton = createRoundedButton("Hủy", Color.LIGHT_GRAY, Color.BLACK, cornerRadius);
-        cancelButton.setPreferredSize(new Dimension(90, 35)); // Tăng kích thước nút
+        cancelButton.setPreferredSize(new Dimension(90, 35));
         JButton saveButton = createRoundedButton("Lưu", primaryColor, Color.WHITE, cornerRadius);
         saveButton.setPreferredSize(new Dimension(90, 35));
         JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, cornerRadius);
@@ -1784,37 +2337,67 @@ public class LichHenGUI extends JPanel {
             }
         });
         
-        // Xử lý sự kiện nút lưu với validation mới
+        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION
         saveButton.addActionListener(e -> {
             try {
-                // Clear tất cả lỗi trước khi validate
-                clearAllFieldErrors();
+                clearAllFieldErrors();                
+                boolean hasErrors = false;                
                 
-                boolean hasErrors = false;
-                
-                // Validate từng field
-                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
-                if (hoTenBacSi == null || hoTenBacSi.isEmpty()) {
+                // Validate bác sĩ từ searchable combobox
+                String hoTenBacSi = getSelectedValueFromSearchableCombo(comboBacSi, "Nhập tên bác sĩ...").trim();
+                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.equals("Nhập tên bác sĩ...") || hoTenBacSi.isEmpty()) {
                     showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
                     hasErrors = true;
+                } else if (!bacSiList.contains(hoTenBacSi)) {
+                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không tồn tại trong hệ thống");
+                    hasErrors = true;
                 }
                 
-                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
-                if (hoTenBenhNhan == null || hoTenBenhNhan.isEmpty()) {
+                // Validate bệnh nhân từ searchable combobox
+                String hoTenBenhNhan = getSelectedValueFromSearchableCombo(comboBenhNhan, "Nhập tên bệnh nhân...").trim();
+                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.equals("Nhập tên bệnh nhân...") || hoTenBenhNhan.isEmpty()) {
                     showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
                     hasErrors = true;
-                }
-                
-                String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
-                if (tenPhongKham == null || tenPhongKham.isEmpty()) {
-                    showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
+                } else if (!benhNhanList.contains(hoTenBenhNhan)) {
+                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không tồn tại trong hệ thống");
                     hasErrors = true;
                 }
-                
+                    
+                String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(tenPhongKham)) {
+                    showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
+                    hasErrors = true;
+                }                
                 java.util.Date ngayHenDate = dateChooserNgayHen.getDate();
                 if (ngayHenDate == null) {
                     showPersistentFieldError(dateChooserNgayHen, "Vui lòng chọn ngày hẹn");
                     hasErrors = true;
+                } else {
+                    // VALIDATION NGÀY KHÔNG ĐƯỢC Ở QUÁ KHỨ
+                    Calendar today = Calendar.getInstance();
+                    today.set(Calendar.HOUR_OF_DAY, 0);
+                    today.set(Calendar.MINUTE, 0);
+                    today.set(Calendar.SECOND, 0);
+                    today.set(Calendar.MILLISECOND, 0);
+                    
+                    Calendar selectedCal = Calendar.getInstance();
+                    selectedCal.setTime(ngayHenDate);
+                    selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+                    selectedCal.set(Calendar.MINUTE, 0);
+                    selectedCal.set(Calendar.SECOND, 0);
+                    selectedCal.set(Calendar.MILLISECOND, 0);
+                    
+                    if (selectedCal.before(today)) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn trong quá khứ");
+                        hasErrors = true;
+                    }
+                    
+                    // VALIDATION NGÀY NGHỈ
+                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                        hasErrors = true;
+                    }
                 }
                 
                 // Validate time
@@ -1823,6 +2406,29 @@ public class LichHenGUI extends JPanel {
                 if (selectedHour < 7 || selectedHour > 17) {
                     showPersistentFieldError(timePanel, "Giờ hẹn phải trong khoảng 7:00 - 17:00");
                     hasErrors = true;
+                } else if (ngayHenDate != null) {
+                    // VALIDATION THỜI GIAN KHÔNG ĐƯỢC Ở QUÁ KHỨ NÕU LÀ HÔM NAY
+                    Calendar now = Calendar.getInstance();
+                    Calendar selectedDateTime = Calendar.getInstance();
+                    selectedDateTime.setTime(ngayHenDate);
+                    selectedDateTime.set(Calendar.HOUR_OF_DAY, selectedHour);
+                    selectedDateTime.set(Calendar.MINUTE, Integer.parseInt(selectedMinute));
+                    selectedDateTime.set(Calendar.SECOND, 0);
+                    selectedDateTime.set(Calendar.MILLISECOND, 0);
+                    
+                    // Kiểm tra nếu là ngày hôm nay và thời gian đã qua hoặc quá gần
+                    if (selectedDateTime.get(Calendar.DATE) == now.get(Calendar.DATE) &&
+                        selectedDateTime.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                        selectedDateTime.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                        
+                        // Thêm 15 phút buffer để đảm bảo có thời gian chuẩn bị
+                        now.add(Calendar.MINUTE, 15);
+                        
+                        if (selectedDateTime.before(now) || selectedDateTime.equals(now)) {
+                            showPersistentFieldError(timePanel, "Thời gian hẹn phải sau thời điểm hiện tại ít nhất 15 phút");
+                            hasErrors = true;
+                        }
+                    }
                 }
                 
                 if (hasErrors) {
