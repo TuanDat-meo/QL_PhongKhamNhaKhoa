@@ -35,7 +35,9 @@ public class NguoiDungController {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hashedBytes = md.digest(password.getBytes());
-            //System.out.println("Mật khẩu nhập: " + Base64.getEncoder().encodeToString(hashedBytes));
+
+            System.out.println("Mật khẩu nhập: " + Base64.getEncoder().encodeToString(hashedBytes));
+
             return Base64.getEncoder().encodeToString(hashedBytes);
         } catch (NoSuchAlgorithmException e) {
             System.err.println("Lỗi thuật toán mã hóa mật khẩu: " + e.getMessage());
@@ -43,8 +45,6 @@ public class NguoiDungController {
             return null;
         }
     }
-
- // GIẢI PHÁP 1: Tự động migrate mật khẩu khi đăng nhập
     public static NguoiDung checkLoginAndGetUser(String emailOrPhone, String password) {
         Connection connection = null;
         PreparedStatement statement = null;
@@ -57,6 +57,7 @@ public class NguoiDungController {
             statement = connection.prepareStatement(query);
             statement.setString(1, emailOrPhone);
             statement.setString(2, emailOrPhone);
+            statement.setString(3, hashPassword(password));
 
             resultSet = statement.executeQuery();
 

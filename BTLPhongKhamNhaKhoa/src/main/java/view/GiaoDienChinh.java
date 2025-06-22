@@ -34,16 +34,23 @@ public class GiaoDienChinh extends JFrame {
     private final Color DIALOG_BUTTON_TEXT_COLOR = Color.WHITE;
     private final Color BORDER_COLOR_DIALOG = new Color(222, 226, 230); // Light gray borders
 
-    // Base menu items for all users
-    private String[] baseMenuItems = {
-            "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn",
-            "Quản lý Hồ Sơ", "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn",
-            "Quản lý Lương", "Quản lý Nhà Cung Cấp", "Thống Kê"
+    // Menu items for each role
+    private static final String[] ADMIN_MENU = {
+        "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn", "Quản lý Hồ Sơ",
+        "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn", "Quản lý Lương", "Quản lý Nhà Cung Cấp",
+        "Thống Kê", "Quản lý Bác Sĩ", "Quản lý Người Dùng"
     };
-    
-    // Admin-only menu items
-    private String[] adminMenuItems = {
-            "Quản lý Bác Sĩ", "Quản lý Người Dùng"
+    private static final String[] BACSI_MENU = {
+        "Quản lý Bệnh Nhân", "Quản lý Hồ Sơ", "Quản lý Lịch Hẹn", "Quản lý Bác Sĩ"
+    };
+    private static final String[] LETAN_MENU = {
+        "Quản lý Hóa Đơn", "Quản lý Lịch Hẹn"
+    };
+    private static final String[] KETOAN_MENU = {
+        "Quản lý Doanh Thu", "Quản lý Hóa Đơn", "Quản lý Lương", "Thống Kê"
+    };
+    private static final String[] QUANKHO_MENU = {
+        "Quản lý Kho Vật Tư", "Quản lý Nhà Cung Cấp", "Thống Kê"
     };
     
     // Combined menu items to be populated based on user role
@@ -98,16 +105,31 @@ public class GiaoDienChinh extends JFrame {
     
     // Initialize menu items based on user role
     private void initializeMenuItems(NguoiDung user) {
-        boolean isAdmin = user.getVaiTro() != null && user.getVaiTro().equalsIgnoreCase("admin");
-        
-        if (isAdmin) {
-            // Combine base and admin menu items for admin users
-            menuItems = new String[baseMenuItems.length + adminMenuItems.length];
-            System.arraycopy(baseMenuItems, 0, menuItems, 0, baseMenuItems.length);
-            System.arraycopy(adminMenuItems, 0, menuItems, baseMenuItems.length, adminMenuItems.length);
-        } else {
-            // Only use base menu items for regular users
-            menuItems = baseMenuItems;
+        String role = user.getVaiTro() != null ? user.getVaiTro().trim().toLowerCase() : "";
+        System.out.println("ROLE: " + role);
+        switch (role) {
+            case "admin":
+            case "quản trị viên":
+                menuItems = ADMIN_MENU;
+                break;
+            case "bác sĩ":
+            case "bacsi":
+                menuItems = BACSI_MENU;
+                break;
+            case "lễ tân":
+            case "letan":
+                menuItems = LETAN_MENU;
+                break;
+            case "kế toán":
+            case "ketoan":
+                menuItems = KETOAN_MENU;
+                break;
+            case "quản kho":
+            case "quan kho":
+                menuItems = QUANKHO_MENU;
+                break;
+            default:
+                menuItems = new String[]{}; // Không có menu nào ngoài logout
         }
     }
 
@@ -451,48 +473,54 @@ public class GiaoDienChinh extends JFrame {
     }
     
     private void initializeContentPanels() throws SQLException {
-        // Thêm các panel cho từng chức năng
-        BenhNhanUI benhNhanPanel = new BenhNhanUI();
-        contentPanel.add(benhNhanPanel, "Quản lý Bệnh Nhân");
-
-        LichHenGUI lichHenPanel = new LichHenGUI();
-        contentPanel.add(lichHenPanel, "Quản lý Lịch Hẹn");
-        
-        HoSoBenhAnUI hoSoBenhAnPanel = new HoSoBenhAnUI();
-        contentPanel.add(hoSoBenhAnPanel, "Quản lý Hồ Sơ");
-        
-        HoaDonUI hoaDonPanel = new HoaDonUI();
-        contentPanel.add(hoaDonPanel, "Quản lý Hóa Đơn");
-        
-        DoanhThuUI doanhThuPanel = new DoanhThuUI();
-        contentPanel.add(doanhThuPanel, "Quản lý Doanh Thu");
-        
-        NhaCungCapUI nhaCungCapPanel = new NhaCungCapUI();
-        contentPanel.add(nhaCungCapPanel, "Quản lý Nhà Cung Cấp");
-        
-        KhoVatTuUI khoVatTuPanel = new KhoVatTuUI();
-        contentPanel.add(khoVatTuPanel, "Quản lý Kho Vật Tư");
-        
-        LuongUI luongPanel = new LuongUI();
-        contentPanel.add(luongPanel, "Quản lý Lương");
-        
-        ThongKeUI thongKePanel = new ThongKeUI();
-        contentPanel.add(thongKePanel, "Thống Kê");
-
-        // Only add admin-only panels if user is admin
-        boolean isAdmin = loggedInUser.getVaiTro() != null && loggedInUser.getVaiTro().equalsIgnoreCase("admin");
-        if (isAdmin) {
-            // Add the new admin panels
-            BacSiUI bacSiPanel = new BacSiUI();
-            contentPanel.add(bacSiPanel, "Quản lý Bác Sĩ");
-            
-            NguoiDungUI nguoiDungPanel = new NguoiDungUI();
-            contentPanel.add(nguoiDungPanel, "Quản lý Người Dùng");
+        // Xóa tất cả panel cũ (nếu có)
+        contentPanel.removeAll();
+        // Thêm các panel cho từng chức năng nếu có trong menuItems
+        for (String menu : menuItems) {
+            switch (menu) {
+                case "Quản lý Bệnh Nhân":
+                    contentPanel.add(new BenhNhanUI(), menu);
+                    break;
+                case "Quản lý Doanh Thu":
+                    contentPanel.add(new DoanhThuUI(), menu);
+                    break;
+                case "Quản lý Hóa Đơn":
+                    contentPanel.add(new HoaDonUI(), menu);
+                    break;
+                case "Quản lý Hồ Sơ":
+                    contentPanel.add(new HoSoBenhAnUI(), menu);
+                    break;
+                case "Quản lý Kho Vật Tư":
+                    contentPanel.add(new KhoVatTuUI(), menu);
+                    break;
+                case "Quản lý Lịch Hẹn":
+                    contentPanel.add(new LichHenGUI(), menu);
+                    break;
+                case "Quản lý Lương":
+                    contentPanel.add(new LuongUI(), menu);
+                    break;
+                case "Quản lý Nhà Cung Cấp":
+                    contentPanel.add(new NhaCungCapUI(), menu);
+                    break;
+                case "Thống Kê":
+                    contentPanel.add(new ThongKeUI(), menu);
+                    break;
+                case "Quản lý Bác Sĩ":
+                    contentPanel.add(new BacSiUI(), menu);
+                    break;
+                case "Quản lý Người Dùng":
+                    contentPanel.add(new NguoiDungUI(), menu);
+                    break;
+                default:
+                    // Không thêm panel nào nếu menu không khớp
+                    break;
+            }
         }
-
-        // Set default panel
-        CardLayout cl = (CardLayout) contentPanel.getLayout();
-        cl.show(contentPanel, "Quản lý Bệnh Nhân");
+        // Nếu có menu thì show panel đầu tiên, không thì không show gì
+        if (menuItems.length > 0) {
+            CardLayout cl = (CardLayout) contentPanel.getLayout();
+            cl.show(contentPanel, menuItems[0]);
+        }
     }
 
     private void showLogoutConfirmationDialog() {
