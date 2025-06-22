@@ -106,7 +106,7 @@ public class GiaoDienChinh extends JFrame {
     // Initialize menu items based on user role
     private void initializeMenuItems(NguoiDung user) {
         String role = user.getVaiTro() != null ? user.getVaiTro().trim().toLowerCase() : "";
-        System.out.println("ROLE: " + role);
+        //System.out.println("ROLE: " + role);
         switch (role) {
             case "admin":
             case "quản trị viên":
