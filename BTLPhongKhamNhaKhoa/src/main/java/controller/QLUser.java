@@ -15,13 +15,51 @@ public class QLUser {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, email);
-            pstmt.setString(2, password);
+            pstmt.setString(2, NguoiDungController.hashPassword(password));
             ResultSet rs = pstmt.executeQuery();
 
             return rs.next(); // Nếu có kết quả, trả về true (đăng nhập thành công)
 
         } catch (SQLException e) {
             e.printStackTrace(); // Chỉ in lỗi nếu có lỗi kết nối database
+        }
+        return false;
+    }
+    
+    public static boolean isEmailExists(String email) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE email = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public static boolean isPhoneExists(String phone) {
+        String sql = "SELECT COUNT(*) FROM NguoiDung WHERE soDienThoai = ?";
+        
+        try (Connection conn = connectMySQL.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, phone);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return false;
     }

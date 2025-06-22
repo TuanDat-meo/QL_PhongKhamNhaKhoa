@@ -32,8 +32,9 @@ public class ValidationUtils {
     private static final String HO_TEN_PATTERN = "^[\\p{L} .'-]+$";
     private static final String SO_DIEN_THOAI_PATTERN = "^(0|\\+84)\\d{9}$";
     private static final String CCCD_PATTERN = "^\\d{9}|\\d{12}$";
-    private static final String EMAIL_PATTERN = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
-    private static final String PHONE_PATTERN = "^(0|\\+84)(3|5|7|8|9)([0-9]{8})$";
+    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    private static final String PHONE_PATTERN = "^0\\d{9}$";
+    private static final String PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
     
     private static final int MIN_PASSWORD_LENGTH = 6;
     
@@ -338,77 +339,42 @@ public class ValidationUtils {
         return true;
     }
     
-    public static boolean validateEmail(String email, JComponent component, JComponent errorLabel) {
+    public static boolean validateEmail(String email, JComponent field, JLabel errorLabel) {
         if (email == null || email.isEmpty()) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(EMAIL_EMPTY_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(EMAIL_EMPTY_ERROR);
-            }
+            setError(field, errorLabel, EMAIL_EMPTY_ERROR);
             return false;
         }
         if (!Pattern.matches(EMAIL_PATTERN, email)) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(EMAIL_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(EMAIL_ERROR);
-            }
+            setError(field, errorLabel, EMAIL_ERROR);
             return false;
         }
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(SUCCESS_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
-        }
+        setSuccess(field, errorLabel);
         return true;
     }
     
-    public static boolean validatePhoneNumber(String phone, JComponent component, JComponent errorLabel) {
+    public static boolean validatePhoneNumber(String phone, JComponent field, JLabel errorLabel) {
         if (phone == null || phone.isEmpty()) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PHONE_EMPTY_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PHONE_EMPTY_ERROR);
-            }
+            setError(field, errorLabel, PHONE_EMPTY_ERROR);
             return false;
         }
         if (!Pattern.matches(PHONE_PATTERN, phone)) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PHONE_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PHONE_ERROR);
-            }
+            setError(field, errorLabel, PHONE_ERROR);
             return false;
         }
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(SUCCESS_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
+        setSuccess(field, errorLabel);
+        return true;
+    }
+    
+    public static boolean validatePasswordWithPattern(String password, JComponent field, JLabel errorLabel) {
+        if (password == null || password.isEmpty()) {
+            setError(field, errorLabel, PASSWORD_EMPTY_ERROR);
+            return false;
         }
+        if (!Pattern.matches(PASSWORD_PATTERN, password)) {
+            setError(field, errorLabel, "Password must be at least 8 characters and contain uppercase, lowercase, number and special character");
+            return false;
+        }
+        setSuccess(field, errorLabel);
         return true;
     }
     
@@ -466,6 +432,7 @@ public class ValidationUtils {
         return label;
     }
     
+    // Methods from Đức-Tính branch
     public static boolean validateIdHoaDon(String idText, JComponent component, JComponent errorLabel) {
         if (idText == null || idText.trim().isEmpty()) {
             showValidationError(component, errorLabel, ID_HOA_DON_EMPTY_ERROR);
@@ -531,27 +498,70 @@ public class ValidationUtils {
         component.repaint();
     }
 
+    // Methods from main branch
+    public static void setError(JComponent field, JLabel errorLabel, String errorMessage) {
+        errorLabel.setText(errorMessage);
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(ERROR_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    
+    public static void setSuccess(JComponent field, JLabel errorLabel) {
+        errorLabel.setText("");
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(SUCCESS_COLOR, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    
+    // Updated clearValidationError method that handles both versions
     public static void clearValidationError(JComponent component, JComponent errorLabel) {
         if (component instanceof JDateChooser) {
-            component.setBorder(new util.CustomBorder(8, BORDER_COLOR));
+            // Handle JDateChooser case (from Đức-Tính branch)
+            try {
+                component.setBorder(new util.CustomBorder(8, BORDER_COLOR));
+            } catch (Exception e) {
+                // Fallback if CustomBorder is not available
+                component.setBorder(new LineBorder(BORDER_COLOR, 1, true));
+            }
             JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
             dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
             dateField.setForeground(Color.BLACK);
         } else {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, BORDER_COLOR),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
+            // Handle regular components
+            try {
+                component.setBorder(BorderFactory.createCompoundBorder(
+                    new util.CustomBorder(8, BORDER_COLOR),
+                    new EmptyBorder(10, 15, 10, 15)
+                ));
+            } catch (Exception e) {
+                // Fallback if CustomBorder is not available
+                component.setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(BORDER_COLOR, 1, true),
+                    new EmptyBorder(10, 15, 10, 15)
+                ));
+            }
             if (component instanceof JTextField) {
                 ((JTextField) component).setForeground(Color.BLACK);
             }
         }
+        
         if (errorLabel instanceof JTextField) {
             ((JTextField) errorLabel).setText("");
         } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText(" ");
+            ((JLabel) errorLabel).setText("");
         }
+        
         component.revalidate();
         component.repaint();
+    }
+    
+    public static void validateConfirmPassword(String password, String confirmPassword, JComponent field, JLabel errorLabel) {
+        if (!confirmPassword.equals(password)) {
+            setError(field, errorLabel, "Passwords do not match");
+            return;
+        }
+        setSuccess(field, errorLabel);
     }
 }

@@ -566,6 +566,15 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                     
                     String newPassword = new String(matKhauField.getPassword());
                     if (!newPassword.isEmpty()) {
+                        // Thêm kiểm tra mật khẩu mới nếu người dùng nhập
+                        if (!isValidPassword(newPassword)) {
+                            showErrorMessage("Mật khẩu mới không hợp lệ. Mật khẩu phải có ít nhất 8 ký tự, bao gồm:\n" +
+                                           "- Ít nhất 1 chữ hoa\n" +
+                                           "- Ít nhất 1 chữ thường\n" +
+                                           "- Ít nhất 1 số\n" +
+                                           "- Ít nhất 1 ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?) ");
+                            return;
+                        }
                         user.setMatKhau(newPassword);
                     }
                     
@@ -703,22 +712,51 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         int userId = (int) tableModel.getValueAt(selectedRow, 0);
         String userName = (String) tableModel.getValueAt(selectedRow, 1);
         
-        int confirm = JOptionPane.showConfirmDialog(this,
-            "Bạn có chắc chắn muốn xóa người dùng '" + userName + "'?",
-            "Xác nhận xóa",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE);
-            
-        if (confirm == JOptionPane.YES_OPTION) {
+        JDialog confirmDialog = new JDialog();
+        confirmDialog.setTitle("Xác nhận xóa");
+        confirmDialog.setModal(true);
+        confirmDialog.setSize(400, 200);
+        confirmDialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 15));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+        messagePanel.setBackground(Color.WHITE);
+
+        JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn xóa người dùng <b>" + userName + "</b>?</html>");
+        messageLabel.setFont(regularFont);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+
+        panel.add(messagePanel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+
+        JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
+        cancelButton.addActionListener(e -> confirmDialog.dispose());
+
+        JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, 8, false);
+        deleteButton.addActionListener(e -> {
             try {
                 controller.deleteUser(userId);
-                showSuccessMessage("Xóa người dùng thành công!");
-                loadUserData();
-            } catch (SQLException e) {
-                showErrorMessage("Lỗi khi xóa người dùng: " + e.getMessage());
-                e.printStackTrace();
+                confirmDialog.dispose();
+                SwingUtilities.invokeLater(() -> {
+                    loadUserData();
+                });
+            } catch (SQLException ex) {
+                showErrorMessage("Lỗi khi xóa người dùng", ex.getMessage());
+                ex.printStackTrace();
             }
-        }
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(deleteButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        confirmDialog.setContentPane(panel);
+        confirmDialog.setVisible(true);
     }
     
     private void searchUsers() {
@@ -838,6 +876,10 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         }
         
         String[] roles = availableRoles.toArray(new String[0]);
+        // Create a new array with "Lựa chọn" at the beginning
+        String[] rolesWithDefault = new String[roles.length + 1];
+        rolesWithDefault[0] = "Lựa chọn";
+        System.arraycopy(roles, 0, rolesWithDefault, 1, roles.length);
         
         JDialog dialog = createStyledDialog("Thêm Người Dùng Mới", 450, 500);
         
@@ -866,8 +908,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPasswordField matKhauField = createStyledPasswordField();
         JPasswordField xacNhanMatKhauField = createStyledPasswordField();
         
-        String defaultRole = availableRoles.contains("Khách hàng") ? "Khách hàng" : (roles.length > 0 ? roles[0] : "");
-        JComboBox<String> vaiTroBox = createStyledComboBox(roles, defaultRole);
+        JComboBox<String> vaiTroBox = createStyledComboBox(rolesWithDefault, "Lựa chọn");
         
         formPanel.add(createFormRow("Họ tên:", hoTenField));
         formPanel.add(Box.createVerticalStrut(15));
@@ -897,11 +938,18 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             String phone = soDienThoaiField.getText().trim();
             String password = new String(matKhauField.getPassword());
             String confirmPassword = new String(xacNhanMatKhauField.getPassword());
+            String selectedRole = (String) vaiTroBox.getSelectedItem();
 
             // Kiểm tra các trường bắt buộc
             if (hoTen.isEmpty() || email.isEmpty() || phone.isEmpty() || 
                 password.isEmpty() || confirmPassword.isEmpty()) {
                 showWarningMessage("Vui lòng điền đầy đủ thông tin.");
+                return;
+            }
+
+            // Kiểm tra ràng buộc cho vai trò
+            if ("Lựa chọn".equals(selectedRole)) {
+                showWarningMessage("Vui lòng chọn một vai trò hợp lệ.");
                 return;
             }
 
@@ -945,7 +993,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 newUser.setEmail(email);
                 newUser.setSoDienThoai(phone);
                 newUser.setMatKhau(password);
-                newUser.setVaiTro((String) vaiTroBox.getSelectedItem());
+                newUser.setVaiTro(selectedRole);
 
                 // Thêm người dùng vào database
                 controller.addUser(newUser);

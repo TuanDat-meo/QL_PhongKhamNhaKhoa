@@ -95,7 +95,9 @@ CREATE TABLE NhaCungCap (
     idNCC INT AUTO_INCREMENT PRIMARY KEY,
     tenNCC NVARCHAR(100),
     diaChi NVARCHAR(255),
-    soDienThoai NVARCHAR(15)
+    soDienThoai NVARCHAR(15),
+    MaSoThue NVARCHAR(20), -- Cột mới: Mã số thuế của nhà cung cấp
+    NgayDangKy DATE          -- Cột mới: Ngày đăng ký của nhà cung cấp
 );
 CREATE TABLE DichVu (
     idDichVu INT AUTO_INCREMENT PRIMARY KEY,

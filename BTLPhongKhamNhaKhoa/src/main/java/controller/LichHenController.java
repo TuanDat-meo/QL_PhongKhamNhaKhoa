@@ -92,6 +92,20 @@ public class LichHenController {
         }
         return null;
     }
+    public boolean capNhatTrangThaiLichHen(int idLichHen, String trangThaiMoi) {
+        String sql = "UPDATE LichHen SET trangThai = ? WHERE idLichHen = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, trangThaiMoi);
+            stmt.setInt(2, idLichHen);
+            
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi cập nhật trạng thái lịch hẹn: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
     public List<LichHen> getLichHenByDate(java.util.Date date) {
         List<LichHen> dsLichHen = new ArrayList<>();
         String sql = "SELECT lh.idLichHen, lh.idBacSi, bs.hoTenBacSi, bn.hoTen, lh.ngayHen, pk.tenPhong, " +
