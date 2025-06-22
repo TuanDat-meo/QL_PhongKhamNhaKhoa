@@ -5,13 +5,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.ChangeListener;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.JTextComponent;
-import javax.swing.text.PlainDocument;
-
 import com.toedter.calendar.JDateChooser;
 import controller.LichHenController;
 import model.LichHen;
@@ -29,12 +22,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -468,6 +457,21 @@ public class LichHenGUI extends JPanel {
                 lichHenList.sort(Comparator.comparing(LichHen::getGioHen));
 
                 for (LichHen info : lichHenList) {
+                    // **AUTO-UPDATE PAST APPOINTMENTS TO "ĐÃ HỦY" STATUS**
+                    LocalDate appointmentDate = info.getNgayHen().toLocalDate();
+                    boolean isPastAppointment = appointmentDate.isBefore(today);
+                    
+                    // Nếu là lịch hẹn quá khứ và trạng thái không phải "Đã xác nhận" hoặc "Đã hủy"
+                    if (isPastAppointment && 
+                        !info.getTrangThai().equals("Đã xác nhận") && 
+                        !info.getTrangThai().equals("Đã hủy")) {
+                        
+                        // Cập nhật trạng thái trong database
+                        qlLichHen.capNhatTrangThaiLichHen(info.getIdLichHen(), "Đã hủy");
+                        // Cập nhật trạng thái trong object để hiển thị đúng màu
+                        info.setTrangThai("Đã hủy");
+                    }
+                    
                     // Tối ưu appointment panel để tiết kiệm không gian
                     JPanel appointmentPanel = new JPanel();
                     appointmentPanel.setLayout(new BorderLayout());
@@ -522,6 +526,7 @@ public class LichHenGUI extends JPanel {
                     contentPanel.add(doctorLabel);
                     contentPanel.add(roomLabel);                    
                     appointmentPanel.add(contentPanel, BorderLayout.CENTER);                    
+                    
                     // Add mouse listener for popup menu and hover effects
                     appointmentPanel.addMouseListener(new java.awt.event.MouseAdapter() {
                         @Override
@@ -1055,8 +1060,17 @@ private void addAppointment() {
             
             // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
             int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
-            return dayOfWeek != Calendar.SUNDAY;
-        }));        
+            if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) {
+                return false;
+            }
+            
+            // Kiểm tra không phải ngày nghỉ lễ
+            if (isHoliday(selectedCal)) {
+                return false;
+            }
+            
+            return true;
+        }));  
         
         // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
         ChangeListener timeChangeListener = e -> validateAndClearError(timePanel, () -> {
@@ -1204,10 +1218,16 @@ private void addAppointment() {
                         hasErrors = true;
                     }
                     
-                    // VALIDATION NGÀY NGHỈ
+                    // VALIDATION NGÀY NGHỈ (Thứ 7, Chủ nhật)
                     int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
-                    if (dayOfWeek == Calendar.SUNDAY) {
-                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                    if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào cuối tuần (thứ 7, chủ nhật)");
+                        hasErrors = true;
+                    }
+                    
+                    // VALIDATION NGÀY NGHỈ LỄ
+                    if (isHoliday(selectedCal)) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ lễ");
                         hasErrors = true;
                     }
                 }
@@ -1491,16 +1511,7 @@ private void addAppointment() {
             oldTimer.stop();
             fieldErrorTimers.remove(field);
         }
-    }
-    private void validateAndClearError(JComponent field, Supplier<Boolean> validator) {
-        try {
-            if (validator.get()) {
-                clearFieldError(field);
-            }
-        } catch (Exception e) {
-            // Nếu validation throw exception, không clear error
-        }
-    }
+    }    
     private void performSearch(String query) {
         searchResultsContainer.removeAll();
         searchResultsPanel.removeAll();
@@ -1693,6 +1704,29 @@ private void addAppointment() {
                 return Color.GRAY;
         }
     }
+    private void validateAndClearError(JComponent field, Supplier<Boolean> validator) {
+        try {
+            if (validator.get()) {
+                clearFieldError(field);
+            }
+        } catch (Exception e) {
+            // Nếu validation throw exception, không clear error
+        }
+    }
+    private boolean isHoliday(Calendar date) {
+        int month = date.get(Calendar.MONTH) + 1; // Calendar.MONTH bắt đầu từ 0
+        int day = date.get(Calendar.DAY_OF_MONTH);        
+        // Các ngày nghỉ lễ cố định
+        if ((month == 1 && day == 1) ||    // Tết Dương lịch
+            (month == 4 && day == 30) ||   // 30/4 - Giải phóng miền Nam
+            (month == 5 && day == 1) ||    // Quốc tế Lao động
+            (month == 9 && day == 2) ||    // Quốc khánh
+            (month == 12 && day == 25)) {  // Noel
+            return true;
+        }        
+        return false;
+    }
+
     private void editAppointment(LichHen lichHen) {
         // Tạo panel chính với BorderLayout để tổ chức các thành phần
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
@@ -1737,7 +1771,7 @@ private void addAppointment() {
         comboPhongKham.setPreferredSize(new Dimension(250, 35));
         comboPhongKham.setSelectedItem(lichHen.getTenPhong());
 
-        // DateChooser với style nhất quán và kích thước lớn hơn - THÊM VALIDATION NGHỈ
+        // DateChooser với style nhất quán và kích thước lớn hơn - THÊM VALIDATION NGHỈ LỄ
         JDateChooser dateChooserNgayHen = createStyledDateChooser();
         dateChooserNgayHen.setPreferredSize(new Dimension(250, 35));
         dateChooserNgayHen.setMinSelectableDate(new java.util.Date());
@@ -1824,14 +1858,14 @@ private void addAppointment() {
         txtIdLichHen.setEditable(false);
         txtIdLichHen.setBackground(new Color(245, 245, 245));
 
-        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN
+        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN NGHỈ LỄ
         JPanel infoPanel = new JPanel(new BorderLayout());
         infoPanel.setBackground(new Color(240, 248, 255));
         infoPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b></html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ chủ nhật và các ngày lễ</b><br/>• Ngày nghỉ lễ: 1/1, 30/4, 1/5, 2/9, 25/12</html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
@@ -1858,17 +1892,11 @@ private void addAppointment() {
             return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
         }));        
         
-        // THÊM VALIDATION CHO NGÀY - KIỂM TRA KHÔNG ĐƯỢC CHỌN QUÁ KHỨ VÀ NGÀY NGHỈ
+        // CẬP NHẬT VALIDATION CHO NGÀY - KIỂM TRA NGHỈ LỄ VÀ CHỦ NHẬT
         dateChooserNgayHen.addPropertyChangeListener("date", e -> validateAndClearError(dateChooserNgayHen, () -> {
             java.util.Date selectedDate = dateChooserNgayHen.getDate();
             if (selectedDate == null) return false;
             
-            // Kiểm tra ngày không được ở quá khứ
-            Calendar today = Calendar.getInstance();
-            today.set(Calendar.HOUR_OF_DAY, 0);
-            today.set(Calendar.MINUTE, 0);
-            today.set(Calendar.SECOND, 0);
-            today.set(Calendar.MILLISECOND, 0);
             
             Calendar selectedCal = Calendar.getInstance();
             selectedCal.setTime(selectedDate);
@@ -1877,11 +1905,14 @@ private void addAppointment() {
             selectedCal.set(Calendar.SECOND, 0);
             selectedCal.set(Calendar.MILLISECOND, 0);
             
-            if (selectedCal.before(today)) return false;
-            
-            // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
+            // Kiểm tra không phải chủ nhật
             int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
-            return dayOfWeek != Calendar.SUNDAY;
+            if (dayOfWeek == Calendar.SUNDAY) return false;
+            
+            // Kiểm tra không phải ngày nghỉ lễ
+            if (isHoliday(selectedCal)) return false;
+            
+            return true;
         }));        
         
         // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
@@ -2007,7 +2038,7 @@ private void addAppointment() {
             }
         });
         
-        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION
+        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION NGHỈ LỄ
         saveButton.addActionListener(e -> {
             try {
                 clearAllFieldErrors();                
@@ -2036,30 +2067,33 @@ private void addAppointment() {
                 if (ngayHenDate == null) {
                     showPersistentFieldError(dateChooserNgayHen, "Vui lòng chọn ngày hẹn");
                     hasErrors = true;
-                } else {
-                    // VALIDATION NGÀY KHÔNG ĐƯỢC Ở QUÁ KHỨ
-                    Calendar today = Calendar.getInstance();
-                    today.set(Calendar.HOUR_OF_DAY, 0);
-                    today.set(Calendar.MINUTE, 0);
-                    today.set(Calendar.SECOND, 0);
-                    today.set(Calendar.MILLISECOND, 0);
-                    
+                } else {                    
                     Calendar selectedCal = Calendar.getInstance();
                     selectedCal.setTime(ngayHenDate);
                     selectedCal.set(Calendar.HOUR_OF_DAY, 0);
                     selectedCal.set(Calendar.MINUTE, 0);
                     selectedCal.set(Calendar.SECOND, 0);
-                    selectedCal.set(Calendar.MILLISECOND, 0);
+                    selectedCal.set(Calendar.MILLISECOND, 0);                    
                     
-                    if (selectedCal.before(today)) {
-                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn trong quá khứ");
+                    // VALIDATION NGÀY CHỦ NHẬT
+                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày chủ nhật");
                         hasErrors = true;
                     }
                     
-                    // VALIDATION NGÀY NGHỈ
-                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
-                    if (dayOfWeek == Calendar.SUNDAY) {
-                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                    // VALIDATION NGÀY NGHỈ LỄ
+                    if (isHoliday(selectedCal)) {
+                        int month = selectedCal.get(Calendar.MONTH) + 1;
+                        int day = selectedCal.get(Calendar.DAY_OF_MONTH);
+                        String holidayName = "";
+                        if (month == 1 && day == 1) holidayName = "Tết Dương lịch";
+                        else if (month == 4 && day == 30) holidayName = "Giải phóng miền Nam";
+                        else if (month == 5 && day == 1) holidayName = "Quốc tế Lao động";
+                        else if (month == 9 && day == 2) holidayName = "Quốc khánh";
+                        else if (month == 12 && day == 25) holidayName = "Lễ Noel";
+                        
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ lễ (" + holidayName + ")");
                         hasErrors = true;
                     }
                 }
@@ -2129,7 +2163,6 @@ private void addAppointment() {
                         otherAppointments.add(appointment);
                     }
                 }
-                
                 // Kiểm tra thời gian hợp lệ
                 String validationError = util.TimeValidator.validateAppointmentTime(
                     ngayHen, 
@@ -2174,7 +2207,7 @@ private void addAppointment() {
                 lichHen.setMoTa(moTa);
                 
                 // Thực hiện cập nhật và kiểm tra kết quả
-                boolean success = qlLichHen.updateLichHen(lichHen);
+                boolean success = qlLichHen.updateLichHen(lichHen);                
                 if (success) {
                     // Clear tất cả errors trước khi đóng
                     clearAllFieldErrors();

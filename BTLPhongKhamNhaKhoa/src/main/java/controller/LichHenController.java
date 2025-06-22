@@ -368,7 +368,40 @@ public int getPhongKhamIdFromName(String tenPhong) {
         }
         return null;
     }
-
+    public void capNhatLichHenQuaKhu() {
+        String sql = "UPDATE LichHen SET trangThai = 'Đã hủy' " +
+                     "WHERE ngayHen < CURDATE() " +
+                     "AND trangThai != 'Đã xác nhận' " +
+                     "AND trangThai != 'Đã hủy'"; // Không cập nhật những cái đã hủy rồi
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Đã cập nhật " + rowsAffected + " lịch hẹn quá khứ thành trạng thái 'Đã hủy'");
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi cập nhật lịch hẹn quá khứ: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public void capNhatLichHenQuaKhuTheoNgay(java.util.Date date) {
+        String sql = "UPDATE LichHen SET trangThai = 'Đã hủy' " +
+                     "WHERE ngayHen = ? " +
+                     "AND ngayHen < CURDATE() " +
+                     "AND trangThai != 'Đã xác nhận' " +
+                     "AND trangThai != 'Đã hủy'";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, new java.sql.Date(date.getTime()));
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Đã cập nhật " + rowsAffected + " lịch hẹn quá khứ cho ngày " + date);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi cập nhật lịch hẹn quá khứ theo ngày: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
 
 }

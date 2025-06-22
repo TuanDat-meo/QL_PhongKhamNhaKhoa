@@ -35,7 +35,7 @@ public class NguoiDungController {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hashedBytes = md.digest(password.getBytes());
 
-            System.out.println("Mật khẩu nhập: " + Base64.getEncoder().encodeToString(hashedBytes));
+            //System.out.println("Mật khẩu nhập: " + Base64.getEncoder().encodeToString(hashedBytes));
 
             return Base64.getEncoder().encodeToString(hashedBytes);
         } catch (NoSuchAlgorithmException e) {
