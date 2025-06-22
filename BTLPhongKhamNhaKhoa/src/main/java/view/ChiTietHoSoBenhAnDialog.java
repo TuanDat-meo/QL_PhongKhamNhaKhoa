@@ -31,7 +31,7 @@ public class ChiTietHoSoBenhAnDialog extends JDialog {
     private Color borderColor = new Color(222, 226, 230);    // Light gray borders
 
     // Font settings - reduced sizes for better fit
-    private Font titleFont = new Font("Segoe UI", Font.BOLD, 15);
+    private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 12);
     private Font smallFont = new Font("Segoe UI", Font.PLAIN, 11);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14); // Updated to match HoSoBenhAnUI

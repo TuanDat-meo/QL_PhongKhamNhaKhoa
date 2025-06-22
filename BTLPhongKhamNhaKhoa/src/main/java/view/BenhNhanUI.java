@@ -20,7 +20,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -158,25 +157,31 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         tableModel.addColumn("Địa chỉ");        
         
         tableBenhNhan = new JTable(tableModel) {
-            @Override
-            public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
-                Component comp = super.prepareRenderer(renderer, row, column);                
-                if (comp instanceof JLabel) {
-                    ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
-                }                
-                // Kiểm tra xem có phải hàng cần highlight không
-                int modelRow = convertRowIndexToModel(row);
-                int rowId = (Integer) tableModel.getValueAt(modelRow, 0);
-                
-                if (!comp.getBackground().equals(getSelectionBackground())) {
-                    if (highlightedRowId > 0 && rowId == highlightedRowId) {
-                        comp.setBackground(highlightColor); // Màu highlight
-                    } else {
-                        comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
-                    }
-                }
-                return comp;
-            }
+        	 @Override
+        	    public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int column) {
+        	        Component comp = super.prepareRenderer(renderer, row, column);                
+        	        if (comp instanceof JLabel) {
+        	            ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
+        	        }                
+        	        
+        	        // Kiểm tra xem có phải hàng cần highlight không
+        	        int modelRow = convertRowIndexToModel(row);
+        	        int rowId = (Integer) tableModel.getValueAt(modelRow, 0);
+        	        
+        	        // Xử lý màu background - ưu tiên highlight hơn selection
+        	        if (highlightedRowId > 0 && rowId == highlightedRowId) {
+        	            // Nếu là hàng được highlight, luôn dùng màu highlight
+        	            comp.setBackground(highlightColor);
+        	        } else if (isRowSelected(row)) {
+        	            // Nếu hàng được chọn (nhưng không phải highlight), dùng màu selection
+        	            comp.setBackground(getSelectionBackground());
+        	        } else {
+        	            // Hàng bình thường, dùng màu stripe
+        	            comp.setBackground(row % 2 == 0 ? Color.WHITE : tableStripeColor);
+        	        }
+        	        
+        	        return comp;
+        	    }
         };        
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
@@ -869,6 +874,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
         Dimension buttonSize = new Dimension(90, 36);
+        
         JButton btnLuu = createRoundedButton("Lưu", successColor, buttonTextColor, 10,false);
         btnLuu.setPreferredSize(buttonSize);
         btnLuu.setMinimumSize(buttonSize);
@@ -877,7 +883,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         btnLuu.setBorderPainted(false);
         btnLuu.addActionListener(e -> luuBenhNhan());
 
-        JButton btnHuy = createRoundedButton("Hủy", Color.WHITE, textColor, 10, false);
+        JButton btnHuy = createRoundedButton("Hủy", accentColor, buttonTextColor, 10, false);
         btnHuy.setBorder(new LineBorder(borderColor, 1));
         btnHuy.setPreferredSize(buttonSize);
         btnHuy.setMinimumSize(buttonSize);
@@ -888,8 +894,8 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
             resetAllValidationErrors();
             inputDialog.setVisible(false);
         });
-        buttonPanel.add(btnHuy);
         buttonPanel.add(btnLuu);
+        buttonPanel.add(btnHuy);;
 
         // Add panels to main panel
         mainPanel.add(headerPanel, BorderLayout.NORTH);
@@ -1107,7 +1113,7 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
                 // Cập nhật bệnh nhân
                 qlBenhNhan.capNhatBenhNhan(benhNhan);
                 showSuccessToast("Thông tin bệnh nhân đã được cập nhật thành công!");
-                loadDanhSachBenhNhan(); // Load bình thường
+                loadDanhSachBenhNhan(idBenhNhan); // Load và highlight bản ghi đã chỉnh sửa
             } else {
                 // Thêm bệnh nhân mới
                 int newId = qlBenhNhan.themBenhNhan(benhNhan);
@@ -1124,10 +1130,18 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
     private void setupScrollListener() {
         Timer scrollEndTimer = new Timer(300, (ActionListener) new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                highlightedRowId = -1;
-                tableBenhNhan.repaint();
-                loadDanhSachBenhNhan();
+            public void actionPerformed(ActionEvent e) {               
+                if (highlightedRowId > 0) {
+                    highlightedRowId = -1;
+                    tableBenhNhan.repaint();
+                    
+                    SwingUtilities.invokeLater(() -> {
+                    	loadDanhSachBenhNhan();
+                    });
+                    if (highlightTimer != null && highlightTimer.isRunning()) {
+                        highlightTimer.stop();
+                    }
+                }
             }
         });
         scrollEndTimer.setRepeats(false); // Chỉ chạy một lần sau khi user ngừng cuộn
@@ -1135,13 +1149,6 @@ public class BenhNhanUI extends JPanel implements ExportManager.MessageCallback 
         scrollListener = new MouseWheelListener() {
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
-//                if (highlightedRowId > 0) {
-//                    if (highlightTimer != null && highlightTimer.isRunning()) {
-//                        highlightTimer.stop();
-//                    }
-//                    // Reset lại timer đợi người dùng ngừng cuộn
-//                    scrollEndTimer.restart();
-//                }
             }
         };
     }

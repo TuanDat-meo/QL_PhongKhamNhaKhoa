@@ -25,17 +25,32 @@ public class GiaoDienChinh extends JFrame {
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 16);
     private final Font MENU_FONT = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Segoe UI", Font.PLAIN, 13);
+    private final Font BUTTON_FONT_DIALOG = new Font("Segoe UI", Font.BOLD, 14);
+    private final Color LOGOUT_ACCENT_COLOR = new Color(192, 80, 77); // Refined red for logout
+    private final Color LOGOUT_CANCEL_COLOR = new Color(158, 158, 158); // Grey for cancel
+    private final Color DIALOG_BACKGROUND_COLOR = new Color(248, 249, 250); // Extremely light gray background
+    private final Color DIALOG_TEXT_COLOR = new Color(33, 37, 41); // Near-black text
+    private final Color DIALOG_PANEL_COLOR = Color.WHITE; // White panels
+    private final Color DIALOG_BUTTON_TEXT_COLOR = Color.WHITE;
+    private final Color BORDER_COLOR_DIALOG = new Color(222, 226, 230); // Light gray borders
 
-    // Base menu items for all users
-    private String[] baseMenuItems = {
-            "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn",
-            "Quản lý Hồ Sơ", "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn",
-            "Quản lý Lương", "Quản lý Nhà Cung Cấp", "Thống Kê"
+    // Menu items for each role
+    private static final String[] ADMIN_MENU = {
+        "Quản lý Bệnh Nhân", "Quản lý Doanh Thu", "Quản lý Hóa Đơn", "Quản lý Hồ Sơ",
+        "Quản lý Kho Vật Tư", "Quản lý Lịch Hẹn", "Quản lý Lương", "Quản lý Nhà Cung Cấp",
+        "Thống Kê", "Quản lý Bác Sĩ", "Quản lý Người Dùng"
     };
-    
-    // Admin-only menu items
-    private String[] adminMenuItems = {
-            "Quản lý Bác Sĩ", "Quản lý Người Dùng"
+    private static final String[] BACSI_MENU = {
+        "Quản lý Bệnh Nhân", "Quản lý Hồ Sơ", "Quản lý Lịch Hẹn", "Quản lý Bác Sĩ"
+    };
+    private static final String[] LETAN_MENU = {
+        "Quản lý Hóa Đơn", "Quản lý Lịch Hẹn"
+    };
+    private static final String[] KETOAN_MENU = {
+        "Quản lý Doanh Thu", "Quản lý Hóa Đơn", "Quản lý Lương", "Thống Kê"
+    };
+    private static final String[] QUANKHO_MENU = {
+        "Quản lý Kho Vật Tư", "Quản lý Nhà Cung Cấp", "Thống Kê"
     };
     
     // Combined menu items to be populated based on user role
@@ -90,16 +105,31 @@ public class GiaoDienChinh extends JFrame {
     
     // Initialize menu items based on user role
     private void initializeMenuItems(NguoiDung user) {
-        boolean isAdmin = user.getVaiTro() != null && user.getVaiTro().equalsIgnoreCase("admin");
-        
-        if (isAdmin) {
-            // Combine base and admin menu items for admin users
-            menuItems = new String[baseMenuItems.length + adminMenuItems.length];
-            System.arraycopy(baseMenuItems, 0, menuItems, 0, baseMenuItems.length);
-            System.arraycopy(adminMenuItems, 0, menuItems, baseMenuItems.length, adminMenuItems.length);
-        } else {
-            // Only use base menu items for regular users
-            menuItems = baseMenuItems;
+        String role = user.getVaiTro() != null ? user.getVaiTro().trim().toLowerCase() : "";
+        System.out.println("ROLE: " + role);
+        switch (role) {
+            case "admin":
+            case "quản trị viên":
+                menuItems = ADMIN_MENU;
+                break;
+            case "bác sĩ":
+            case "bacsi":
+                menuItems = BACSI_MENU;
+                break;
+            case "lễ tân":
+            case "letan":
+                menuItems = LETAN_MENU;
+                break;
+            case "kế toán":
+            case "ketoan":
+                menuItems = KETOAN_MENU;
+                break;
+            case "quản kho":
+            case "quan kho":
+                menuItems = QUANKHO_MENU;
+                break;
+            default:
+                menuItems = new String[]{}; // Không có menu nào ngoài logout
         }
     }
 
@@ -443,77 +473,161 @@ public class GiaoDienChinh extends JFrame {
     }
     
     private void initializeContentPanels() throws SQLException {
-        // Thêm các panel cho từng chức năng
-        BenhNhanUI benhNhanPanel = new BenhNhanUI();
-        contentPanel.add(benhNhanPanel, "Quản lý Bệnh Nhân");
-
-        LichHenGUI lichHenPanel = new LichHenGUI();
-        contentPanel.add(lichHenPanel, "Quản lý Lịch Hẹn");
-        
-        HoSoBenhAnUI hoSoBenhAnPanel = new HoSoBenhAnUI();
-        contentPanel.add(hoSoBenhAnPanel, "Quản lý Hồ Sơ");
-        
-        HoaDonUI hoaDonPanel = new HoaDonUI();
-        contentPanel.add(hoaDonPanel, "Quản lý Hóa Đơn");
-        
-        DoanhThuUI doanhThuPanel = new DoanhThuUI();
-        contentPanel.add(doanhThuPanel, "Quản lý Doanh Thu");
-        
-        NhaCungCapUI nhaCungCapPanel = new NhaCungCapUI();
-        contentPanel.add(nhaCungCapPanel, "Quản lý Nhà Cung Cấp");
-        
-        KhoVatTuUI khoVatTuPanel = new KhoVatTuUI();
-        contentPanel.add(khoVatTuPanel, "Quản lý Kho Vật Tư");
-        
-        LuongUI luongPanel = new LuongUI();
-        contentPanel.add(luongPanel, "Quản lý Lương");
-        
-        ThongKeUI thongKePanel = new ThongKeUI();
-        contentPanel.add(thongKePanel, "Thống Kê");
-
-        // Only add admin-only panels if user is admin
-        boolean isAdmin = loggedInUser.getVaiTro() != null && loggedInUser.getVaiTro().equalsIgnoreCase("admin");
-        if (isAdmin) {
-            // Add the new admin panels
-            BacSiUI bacSiPanel = new BacSiUI();
-            contentPanel.add(bacSiPanel, "Quản lý Bác Sĩ");
-            
-            NguoiDungUI nguoiDungPanel = new NguoiDungUI();
-            contentPanel.add(nguoiDungPanel, "Quản lý Người Dùng");
+        // Xóa tất cả panel cũ (nếu có)
+        contentPanel.removeAll();
+        // Thêm các panel cho từng chức năng nếu có trong menuItems
+        for (String menu : menuItems) {
+            switch (menu) {
+                case "Quản lý Bệnh Nhân":
+                    contentPanel.add(new BenhNhanUI(), menu);
+                    break;
+                case "Quản lý Doanh Thu":
+                    contentPanel.add(new DoanhThuUI(), menu);
+                    break;
+                case "Quản lý Hóa Đơn":
+                    contentPanel.add(new HoaDonUI(), menu);
+                    break;
+                case "Quản lý Hồ Sơ":
+                    contentPanel.add(new HoSoBenhAnUI(), menu);
+                    break;
+                case "Quản lý Kho Vật Tư":
+                    contentPanel.add(new KhoVatTuUI(), menu);
+                    break;
+                case "Quản lý Lịch Hẹn":
+                    contentPanel.add(new LichHenGUI(), menu);
+                    break;
+                case "Quản lý Lương":
+                    contentPanel.add(new LuongUI(), menu);
+                    break;
+                case "Quản lý Nhà Cung Cấp":
+                    contentPanel.add(new NhaCungCapUI(), menu);
+                    break;
+                case "Thống Kê":
+                    contentPanel.add(new ThongKeUI(), menu);
+                    break;
+                case "Quản lý Bác Sĩ":
+                    contentPanel.add(new BacSiUI(), menu);
+                    break;
+                case "Quản lý Người Dùng":
+                    contentPanel.add(new NguoiDungUI(), menu);
+                    break;
+                default:
+                    // Không thêm panel nào nếu menu không khớp
+                    break;
+            }
         }
-
-        // Set default panel
-        CardLayout cl = (CardLayout) contentPanel.getLayout();
-        cl.show(contentPanel, "Quản lý Bệnh Nhân");
+        // Nếu có menu thì show panel đầu tiên, không thì không show gì
+        if (menuItems.length > 0) {
+            CardLayout cl = (CardLayout) contentPanel.getLayout();
+            cl.show(contentPanel, menuItems[0]);
+        }
     }
 
-    private void logout() {
-        int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Bạn có chắc muốn đăng xuất?",
-            "Xác nhận đăng xuất",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE
-        );
+    private void showLogoutConfirmationDialog() {
+        JDialog confirmDialog = new JDialog(this, "Xác nhận đăng xuất", true);
+        confirmDialog.setSize(400, 200);
+        confirmDialog.setLocationRelativeTo(this);
+        confirmDialog.setResizable(false);
 
-        if (confirm == JOptionPane.YES_OPTION) {
+        JPanel panel = new JPanel(new BorderLayout(10, 15));
+        panel.setBackground(DIALOG_PANEL_COLOR);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+        messagePanel.setBackground(DIALOG_PANEL_COLOR);
+
+        JLabel messageLabel = new JLabel("<html>Bạn có chắc chắn muốn đăng xuất?</html>");
+        messageLabel.setFont(MENU_FONT);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+
+        panel.add(messagePanel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(DIALOG_PANEL_COLOR);
+
+        JButton cancelButton = createRoundedButton("Hủy", LOGOUT_CANCEL_COLOR, DIALOG_BUTTON_TEXT_COLOR, 8, false);
+        cancelButton.addActionListener(e -> confirmDialog.dispose());
+
+        JButton logoutButton = createRoundedButton("Đăng Xuất", LOGOUT_ACCENT_COLOR, DIALOG_BUTTON_TEXT_COLOR, 8, false);
+        logoutButton.addActionListener(e -> {
+            confirmDialog.dispose();
             this.dispose();
 
-            // Create and show LoginFrame on the Event Dispatch Thread
             SwingUtilities.invokeLater(() -> {
                 try {
                     new LoginFrame().setVisible(true);
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                     JOptionPane.showMessageDialog(
                         null,
-                        "Lỗi khởi tạo LoginFrame: " + e.getMessage(),
+                        "Lỗi khởi tạo LoginFrame: " + ex.getMessage(),
                         "Lỗi",
                         JOptionPane.ERROR_MESSAGE
                     );
                 }
             });
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(logoutButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        confirmDialog.setContentPane(panel);
+        confirmDialog.setVisible(true);
+    }
+    
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(BUTTON_FONT_DIALOG);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         }
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0, hsb[2] - 0.1f));
+    }
+
+    private void logout() {
+        showLogoutConfirmationDialog();
     }
 
     public static void main(String[] args) {
