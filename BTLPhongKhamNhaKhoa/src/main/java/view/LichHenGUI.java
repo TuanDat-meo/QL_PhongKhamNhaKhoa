@@ -1,21 +1,23 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.border.TitledBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.PlainDocument;
 
 import com.toedter.calendar.JDateChooser;
-
 import controller.LichHenController;
-import model.KhoVatTu;
 import model.LichHen;
 import util.RoundedPanel;
-
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.sql.Date;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -24,12 +26,17 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -52,185 +59,216 @@ public class LichHenGUI extends JPanel {
     private JPanel searchResultsContainer; // Container for search results header and content
     
     // Colors for UI styling
+    private Color warningColor = new Color(237, 187, 85);
+    private Color backgroundColor = new Color(248, 249, 250);
+    private Color buttonTextColor = Color.WHITE;
     private Color accentColor = new Color(192, 80, 77); // For delete button
     private Color borderColor = new Color(222, 226, 230); // Border color
     private Color primaryColor = new Color(41, 128, 185);    // Màu xanh dương hiện đại
-    private Color secondaryColor = new Color(245, 248, 250); // Màu nền nhẹ nhàng
-    private Color headerBgColor = new Color(41, 128, 185);   // Màu nền cho header
+    private Color secondaryColor = new Color(245, 248, 250);
+    private Color successColor = new Color(86, 156, 104);
+    private JPanel errorPanel;
+    private JLabel errorLabel;
+    private Map<JComponent, JLabel> fieldErrorLabels = new HashMap<>();
+    private Map<JComponent, Timer> fieldErrorTimers = new HashMap<>();
+    private Color errorBorderColor = new Color(231, 76, 60); // Màu đỏ cho viền lỗi
+    private Color normalBorderColor = new Color(200, 200, 200); // Màu viền bình thường
     private Color headerTextColor = Color.WHITE;             // Màu chữ header
     private int cornerRadius = 10;
     // Font for buttons
     private Font buttonFont = new Font("Segoe UI", Font.PLAIN, 12);
-    
+    private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     public LichHenGUI() {
         qlLichHen = new LichHenController();
         currentWeekStart = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
         initialize();
         setupPopupMenu();
     }
-
     private void initialize() {
         setLayout(new BorderLayout());
-
         // Tạo panel chính
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(secondaryColor);
-        
-        // ========== 1. HEADER PANEL ==========
-        // Header với nền màu và chữ trắng - hiện đại hơn
-        JPanel headerPanel = new JPanel();
-        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
-        headerPanel.setBackground(headerTextColor);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        
-        // 1.1 Panel dòng đầu tiên - có tiêu đề và nút thêm lịch hẹn
-        JPanel headerTopRow = new JPanel(new BorderLayout(10, 0));
-        headerTopRow.setOpaque(false);
-        
-        // Tiêu đề chính với font đẹp
-        JLabel titleLabel = new JLabel("LỊCH HẸN KHÁM BỆNH");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        mainPanel.setBackground(secondaryColor);        
+        JPanel combinedPanel = new JPanel(new BorderLayout());
+        combinedPanel.setBackground(headerTextColor);
+        combinedPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
+            BorderFactory.createEmptyBorder(8, 20, 8, 20) // giảm padding trên-dưới
+        ));
+        combinedPanel.setPreferredSize(new Dimension(0, 60)); // tăng chiều cao tổng thể một chút
+
+        // ========== 1. HEADER SECTION (LEFT SIDE) ==========
+        JPanel headerSection = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        headerSection.setOpaque(false);
+        headerSection.setPreferredSize(new Dimension(110, 40));
+
+        JLabel titleLabel = new JLabel("LỊCH HẸN");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         titleLabel.setForeground(primaryColor);
-        
-        // Nút thêm lịch hẹn - thiết kế hiện đại với góc bo tròn
-        addAppointmentButton = createRoundedButton("+ Thêm lịch hẹn", primaryColor, headerTextColor, cornerRadius);
+
+        // Nút "Thêm" sẽ được di chuyển xuống navigationSection
+        addAppointmentButton = createRoundedButton("Thêm", primaryColor, headerTextColor, cornerRadius);
+        addAppointmentButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        addAppointmentButton.setPreferredSize(new Dimension(65, 30));
         addAppointmentButton.addActionListener(e -> addAppointment());
-        
-        headerTopRow.add(titleLabel, BorderLayout.WEST);
-        headerTopRow.add(addAppointmentButton, BorderLayout.EAST);
-        
-        headerPanel.add(headerTopRow);
-        headerPanel.add(Box.createVerticalStrut(1));
-       
-        // ========== 2. TOOLBAR PANEL ==========
-        JPanel toolbarPanel = new JPanel();
-        toolbarPanel.setLayout(new BoxLayout(toolbarPanel, BoxLayout.Y_AXIS));
-        toolbarPanel.setBackground(Color.WHITE);
-        toolbarPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)));
-        
-        // 2.1 Panel chứa các nút chuyển tuần và ngày
-        JPanel navigationRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        navigationRow.setOpaque(false);
-        
-        // Tạo các nút điều hướng với góc bo tròn
-        prevWeekButton = createRoundedButton("<", primaryColor, Color.WHITE, cornerRadius);
+
+        headerSection.add(titleLabel);
+        // ========== 2. NAVIGATION SECTION (CENTER) ==========
+        JPanel navigationSection = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5)); // Giảm gap từ 10 xuống 5
+        navigationSection.setOpaque(false);
+
+        prevWeekButton = createRoundedButton("‹", primaryColor, Color.WHITE, cornerRadius);
+        prevWeekButton.setPreferredSize(new Dimension(35, 30));
+        prevWeekButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         prevWeekButton.addActionListener(e -> changeWeek(-1));
-        
-        nextWeekButton = createRoundedButton(">", primaryColor, Color.WHITE, cornerRadius);
+
+        nextWeekButton = createRoundedButton("›", primaryColor, Color.WHITE, cornerRadius);
+        nextWeekButton.setPreferredSize(new Dimension(35, 30));
+        nextWeekButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         nextWeekButton.addActionListener(e -> changeWeek(1));
-        
-        // Label hiển thị tuần
-        weekLabel = new JLabel(getFormattedWeek(), SwingConstants.LEFT);
-        weekLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
+        weekLabel = new JLabel(getFormattedWeek(), SwingConstants.CENTER);
+        weekLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         weekLabel.setForeground(primaryColor);
-        weekLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-        
-        // Chọn ngày với thiết kế đẹp hơn
+        weekLabel.setPreferredSize(new Dimension(200, 30));
+        weekLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        weekLabel.setOpaque(true);
+        weekLabel.setBackground(Color.WHITE);
+
         dateChooser = new JDateChooser();
         dateChooser.setDateFormatString("dd/MM/yyyy");
         dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
-        dateChooser.setPreferredSize(new Dimension(100, 25));
+        dateChooser.setPreferredSize(new Dimension(110, 30));
         dateChooser.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(borderColor, 1),
-                BorderFactory.createEmptyBorder(2, 2, 2, 2)));
-        
-        // Tùy chỉnh text field trong date chooser
+            BorderFactory.createLineBorder(borderColor, 1),
+            BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+
         JTextField dateField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateField.setHorizontalAlignment(JTextField.CENTER);
         dateField.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         dateField.setBorder(BorderFactory.createEmptyBorder());
-        
+
         dateChooser.addPropertyChangeListener(evt -> {
             if ("date".equals(evt.getPropertyName())) {
                 LocalDate selectedDate = ((java.util.Date) evt.getNewValue()).toInstant()
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDate();
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
                 currentWeekStart = selectedDate.with(java.time.DayOfWeek.MONDAY);
                 updateCalendar();
             }
         });
-        
-        // Button hiện ngày hôm nay với góc bo tròn
         JButton todayButton = createRoundedButton("Hôm nay", primaryColor, headerTextColor, cornerRadius);
+        todayButton.setPreferredSize(new Dimension(80, 30));
+        todayButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
         todayButton.addActionListener(e -> {
             currentWeekStart = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
             dateChooser.setDate(java.sql.Date.valueOf(LocalDate.now()));
             updateCalendar();
         });
-        
-        navigationRow.add(prevWeekButton);
-        navigationRow.add(weekLabel);
-        navigationRow.add(nextWeekButton);
-        navigationRow.add(Box.createHorizontalStrut(10));
-        navigationRow.add(dateChooser);
-        navigationRow.add(Box.createHorizontalStrut(5));
-        navigationRow.add(todayButton);
-        
-        // 2.2 Tìm kiếm được thiết kế lại với bo góc
-        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        searchRow.setOpaque(false);
 
-        // Custom border color for search field
-        Color searchBorderColor = new Color(41, 128, 185); // Use primary color for border
+        // Thêm các thành phần với khoảng cách nhỏ hơn
+        navigationSection.add(prevWeekButton);
+        navigationSection.add(Box.createHorizontalStrut(2)); // Giảm từ 5 xuống 2
+        navigationSection.add(weekLabel);
+        navigationSection.add(Box.createHorizontalStrut(2)); // Giảm từ 5 xuống 2
+        navigationSection.add(nextWeekButton);
+        navigationSection.add(Box.createHorizontalStrut(8)); // Giảm từ 15 xuống 8
+        navigationSection.add(dateChooser);
+        navigationSection.add(Box.createHorizontalStrut(5)); // Giảm từ 8 xuống 5
+        navigationSection.add(todayButton);
+        navigationSection.add(Box.createHorizontalStrut(5)); // Giảm từ 8 xuống 5
+        navigationSection.add(addAppointmentButton);
 
-        // Tạo search field với button tìm kiếm và bo góc
+        // ========== 3. SEARCH SECTION (RIGHT SIDE) ==========
+        JPanel searchSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 5));
+        searchSection.setOpaque(false);
+        searchSection.setPreferredSize(new Dimension(240, 50)); // Tăng từ 180 lên 240
+
+        Color searchBorderColor = new Color(41, 128, 185);
+
         JPanel searchFieldPanel = new RoundedPanel(cornerRadius, new BorderLayout());
         searchFieldPanel.setBackground(Color.WHITE);
-        searchFieldPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
-        searchFieldPanel.setPreferredSize(new Dimension(230, 28));
+        searchFieldPanel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 0)); // Tăng padding trở lại
+        searchFieldPanel.setPreferredSize(new Dimension(220, 30)); // Tăng từ 160 lên 220
 
-        // Add a border effect by creating a custom panel with border
-        RoundedPanel searchOuterPanel = new RoundedPanel(cornerRadius + 2, new BorderLayout());
+        RoundedPanel searchOuterPanel = new RoundedPanel(cornerRadius + 1, new BorderLayout());
         searchOuterPanel.setBackground(searchBorderColor);
         searchOuterPanel.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
         searchOuterPanel.add(searchFieldPanel);
 
-        JTextField searchField = new JTextField(18);
-        searchField.setOpaque(false); // nền trong
-        searchField.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1, true)); // vẫn hiển thị viền
-        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        JTextField searchField = new JTextField(15); // Tăng từ 12 lên 15 columns
         searchField.setOpaque(false);
+        searchField.setBorder(BorderFactory.createEmptyBorder());
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 11)); // Tăng font size trở lại 12
+        searchField.setBackground(Color.WHITE);
+        searchField.setForeground(Color.GRAY);
+        searchField.setText("Tìm kiếm lịch hẹn...");  // Dùng lại text đầy đủ
+        searchField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                if (searchField.getText().equals("Tìm kiếm lịch hẹn...")) {
+                    searchField.setText("");
+                    searchField.setForeground(Color.BLACK);
+                }
+            }
 
-        // Nút tìm kiếm với góc bo tròn
-        JButton searchButton = createRoundedButton("Tìm", primaryColor, Color.WHITE, cornerRadius);
-        searchButton.addActionListener(e -> performSearch(searchField.getText()));
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                if (searchField.getText().isEmpty()) {
+                    searchField.setText("Tìm kiếm lịch hẹn...");
+                    searchField.setForeground(Color.GRAY);
+                }
+            }
+        });
+        JButton searchButton = createRoundedButton("Tìm", primaryColor, headerTextColor, cornerRadius);
+        searchButton.setPreferredSize(new Dimension(55, 28));
+        searchButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        searchButton.setMargin(new Insets(2, 8, 2, 8));
+        searchButton.setFocusPainted(false);
+        searchButton.addActionListener(e -> {
+            String searchText = searchField.getText();
+            if (!searchText.equals("Tìm kiếm lịch hẹn...") && !searchText.trim().isEmpty()) {
+                performSearch(searchText);
+            }
+        });
 
-        searchFieldPanel.add(searchField, BorderLayout.CENTER);
-        searchFieldPanel.add(searchButton, BorderLayout.EAST);
-        
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    performSearch(searchField.getText());
+                    String searchText = searchField.getText();
+                    if (!searchText.equals("Tìm kiếm lịch hẹn...") && !searchText.trim().isEmpty()) {
+                        performSearch(searchText);
+                    }
                 }
             }
         });
-        
-        searchRow.add(searchFieldPanel);
-        
-        // Panel chứa 2 hàng của toolbar
-        JPanel toolbarContent = new JPanel(new BorderLayout());
-        toolbarContent.setOpaque(false);
-        toolbarContent.add(navigationRow, BorderLayout.WEST);
-        toolbarContent.add(searchRow, BorderLayout.EAST);
-        
-        toolbarPanel.add(toolbarContent);
-        
-        // Thêm các panel vào mainPanel
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-        mainPanel.add(toolbarPanel, BorderLayout.CENTER);
-        
+        searchFieldPanel.add(searchField, BorderLayout.CENTER);
+        searchFieldPanel.add(searchButton, BorderLayout.EAST);
+        searchSection.add(searchOuterPanel);
+        // ========== COMBINE ALL SECTIONS ==========
+        JPanel headerWrapper = new JPanel(new BorderLayout());
+        headerWrapper.setOpaque(false);
+
+        JPanel centerWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerWrapper.setOpaque(false);
+        centerWrapper.add(navigationSection);
+
+        headerWrapper.add(headerSection, BorderLayout.WEST);
+        headerWrapper.add(centerWrapper, BorderLayout.CENTER);
+        headerWrapper.add(searchSection, BorderLayout.EAST);
+
+        combinedPanel.add(headerWrapper, BorderLayout.CENTER);        
+        // Thêm combined panel vào mainPanel
+        mainPanel.add(combinedPanel, BorderLayout.NORTH);        
         // Thêm mainPanel vào top của giao diện
         add(mainPanel, BorderLayout.NORTH);
         
-        // ========== 3. CONTENT AREA ==========
-        // Cấu hình calendar panel
-        calendarPanel = new JPanel(new GridLayout(1, 7, 2, 2));
-        calendarPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        // ========== 4. CONTENT AREA ==========
+        // Cấu hình calendar panel với horizontal scrolling nếu cần
+        calendarPanel = new JPanel(new GridLayout(1, 7, 1, 1));
+        calendarPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         calendarPanel.setBackground(secondaryColor);
+        calendarPanel.setPreferredSize(new Dimension(850, 580));
         
         // Panel kết quả tìm kiếm
         searchResultsPanel = new JPanel();
@@ -243,10 +281,13 @@ public class LichHenGUI extends JPanel {
         searchResultsContainer.setBackground(secondaryColor);
         searchResultsContainer.add(searchResultsPanel, BorderLayout.CENTER);
         
-        // Create scroll panes
+        // Create scroll panes - enable horizontal scrolling for calendar
         calendarScrollPane = new JScrollPane(calendarPanel);
         calendarScrollPane.setBorder(BorderFactory.createEmptyBorder());
         calendarScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        calendarScrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+        calendarScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        calendarScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         calendarScrollPane.setBackground(secondaryColor);
         
         searchScrollPane = new JScrollPane(searchResultsContainer);
@@ -256,8 +297,8 @@ public class LichHenGUI extends JPanel {
         // Create split pane to manage the space between calendar and search results
         splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, calendarScrollPane, searchScrollPane);
         splitPane.setOneTouchExpandable(true);
-        splitPane.setDividerLocation(400); // Default divider location
-        splitPane.setResizeWeight(0.7); // Calendar gets 70% of resize weight
+        splitPane.setDividerLocation(400);
+        splitPane.setResizeWeight(0.7);
         splitPane.setBorder(null);
         splitPane.setDividerSize(5);
         
@@ -276,111 +317,1193 @@ public class LichHenGUI extends JPanel {
         
         // Cập nhật lịch
         updateCalendar();
-    }
-    
-     private void adjustSplitPane() {
-        if (searchResultsPanel.getComponentCount() == 0) {
-            // No search results, give all space to calendar
-            splitPane.setDividerLocation(1.0);
-        } else {
-            // Search results exist, allocate space proportionally
-            int totalHeight = getHeight() - 100; // Accounting for header
-            int calendarHeight = (int)(totalHeight * 0.7);
-            int searchHeight = totalHeight - calendarHeight;
-            
-            // Ensure minimum heights
-            if (calendarHeight < 200) calendarHeight = 200;
-            if (searchHeight < 100) searchHeight = 100;
-            
-            splitPane.setDividerLocation(calendarHeight);
+    }    
+    private void updateCalendarWithSearchResults(List<LichHen> searchResults) {
+        calendarPanel.removeAll();
+        LocalDate date = currentWeekStart;
+        String[] days = {"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"};
+
+        for (int i = 0; i < 7; i++) {
+            JPanel dayPanel = new JPanel(new BorderLayout());
+            dayPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+            JLabel dayLabel = new JLabel(days[i] + " (" + date.format(DateTimeFormatter.ofPattern("d/M")) + ")", SwingConstants.CENTER);
+            dayLabel.setOpaque(true);
+            dayLabel.setBackground(new Color(173, 216, 230));
+            dayPanel.add(dayLabel, BorderLayout.NORTH);
+
+            JPanel morningPanel = new JPanel(new GridLayout(0, 1));
+            morningPanel.setBorder(BorderFactory.createTitledBorder("Sáng"));
+            JPanel afternoonPanel = new JPanel(new GridLayout(0, 1));
+            afternoonPanel.setBorder(BorderFactory.createTitledBorder("Chiều"));
+
+            // Lọc các lịch hẹn theo ngày
+            for (LichHen lichHen : searchResults) {
+                if (Date.valueOf(date).equals(lichHen.getNgayHen())) {
+                    JTextArea eventText = new JTextArea(
+                            "BS:" + lichHen.getHoTenBacSi() + "\n" +
+                            "BN:" + lichHen.getHoTenBenhNhan() + "\n" +
+                            "Phòng:" + lichHen.getTenPhong() + "\n" +
+                            "Giờ:" + lichHen.getGioHen().toString()
+                    );
+                    eventText.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override
+                        public void mouseClicked(java.awt.event.MouseEvent evt) {
+                            showPopupMenu(evt, lichHen);
+                        }
+                    });
+                    eventText.setFont(new Font("Arial", Font.PLAIN, 10));
+                    eventText.setEditable(false);
+                    eventText.setOpaque(true);
+                    eventText.setBackground(getColorByStatus(lichHen.getTrangThai()));
+
+                    eventText.setName(lichHen.getHoTenBenhNhan());
+                    dayPanel.setName(lichHen.getHoTenBenhNhan());
+
+                    LocalTime gioHen = lichHen.getGioHen().toLocalTime();
+                    if (gioHen.isBefore(LocalTime.of(12, 0))) {
+                        morningPanel.add(eventText);
+                    } else {
+                        afternoonPanel.add(eventText);
+                    }
+                }
+            }
+
+            JPanel contentPanel = new JPanel(new GridLayout(2, 1));
+            contentPanel.add(morningPanel);
+            contentPanel.add(afternoonPanel);
+            dayPanel.add(contentPanel, BorderLayout.CENTER);
+            calendarPanel.add(dayPanel);
+            date = date.plusDays(1);
         }
-    }
 
-    // Thay thế phương thức tạo nút tròn bằng phương thức tạo nút hình chữ nhật
-    private JButton createRectangleButton(String text, Color color) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        button.setForeground(Color.WHITE);
-        button.setBackground(color);
-        button.setFocusPainted(false);
-        button.setBorderPainted(true);
-        button.setContentAreaFilled(true);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(color, 1),
-                BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+        weekLabel.setText(getFormattedWeek());
+        calendarPanel.revalidate();
+        calendarPanel.repaint();
+    }        
+    private void updateCalendar() {
+        calendarPanel.removeAll();
+        LocalDate date = currentWeekStart;
+        LocalDate today = LocalDate.now();
+        String[] days = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"}; // Rút gọn tên ngày
+
+        // Keep the same color scheme
+        Color headerBgColor = new Color(41, 128, 185);      // Bright blue for headers
+        Color todayHeaderBgColor = new Color(52, 152, 219); // Lighter blue for today's header
+        Color headerTextColor = Color.WHITE;                // White text for headers
+        Color morningHeaderColor = new Color(241, 196, 15); // Warm yellow for morning
+        Color afternoonHeaderColor = new Color(230, 126, 34); // Warm orange for afternoon
+        Color borderColor = new Color(189, 195, 199);       // Light gray borders
+        Color panelBgColor = new Color(250, 250, 250);      // Almost white background
+        Color todayPanelBgColor = new Color(240, 248, 255); // Light blue background for today
+
+        for (int i = 0; i < 7; i++) {
+            boolean isToday = date.equals(today);
+            
+            JPanel dayPanel = new JPanel(new BorderLayout());
+            // Sử dụng màu nền khác cho ngày hôm nay
+            dayPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            dayPanel.setBorder(BorderFactory.createLineBorder(borderColor, 1, true));
+            dayPanel.setMinimumSize(new Dimension(120, 0)); // Đảm bảo width tối thiểu
+
+            // Create day header - tối ưu kích thước
+            JPanel headerPanel = new JPanel(new BorderLayout());
+            headerPanel.setBackground(isToday ? todayHeaderBgColor : headerBgColor);
+            headerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Giảm padding
+            
+            // Format day header với tên ngày ngắn hơn
+            String formattedDate = date.format(DateTimeFormatter.ofPattern("d/M"));
+            JLabel dayLabel = new JLabel("<html><center>" + days[i] + " " + formattedDate + "</center></html>", SwingConstants.CENTER);
+            dayLabel.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Giảm font size
+            dayLabel.setForeground(headerTextColor);
+            
+            // Bỏ phần thêm dấu chấm cho ngày hôm nay
+            headerPanel.add(dayLabel, BorderLayout.CENTER);
+            dayPanel.add(headerPanel, BorderLayout.NORTH);
+
+            // Morning panel với styling tối ưu
+            JPanel morningPanel = new JPanel(new BorderLayout());
+            morningPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            
+            // Morning header - thu gọn
+            JLabel morningLabel = new JLabel("Sáng", SwingConstants.CENTER);
+            morningLabel.setOpaque(true);
+            morningLabel.setBackground(morningHeaderColor);
+            morningLabel.setForeground(Color.WHITE);
+            morningLabel.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Font nhỏ hơn
+            morningLabel.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5)); // Padding nhỏ hơn
+            morningPanel.add(morningLabel, BorderLayout.NORTH);
+            
+            // Morning content area
+            JPanel morningContentPanel = new JPanel();
+            morningContentPanel.setLayout(new BoxLayout(morningContentPanel, BoxLayout.Y_AXIS));
+            morningContentPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            morningContentPanel.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2)); // Padding nhỏ
+            morningPanel.add(morningContentPanel, BorderLayout.CENTER);
+            
+            // Afternoon panel với styling tối ưu
+            JPanel afternoonPanel = new JPanel(new BorderLayout());
+            afternoonPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            
+            // Afternoon header - thu gọn
+            JLabel afternoonLabel = new JLabel("Chiều", SwingConstants.CENTER);
+            afternoonLabel.setOpaque(true);
+            afternoonLabel.setBackground(afternoonHeaderColor);
+            afternoonLabel.setForeground(Color.WHITE);
+            afternoonLabel.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Font nhỏ hơn
+            afternoonLabel.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5)); // Padding nhỏ hơn
+            afternoonPanel.add(afternoonLabel, BorderLayout.NORTH);
+            
+            // Afternoon content area
+            JPanel afternoonContentPanel = new JPanel();
+            afternoonContentPanel.setLayout(new BoxLayout(afternoonContentPanel, BoxLayout.Y_AXIS));
+            afternoonContentPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            afternoonContentPanel.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2)); // Padding nhỏ
+            afternoonPanel.add(afternoonContentPanel, BorderLayout.CENTER);
+
+            // Get appointments for this day
+            List<LichHen> lichHenList = qlLichHen.getLichHenByDate(Date.valueOf(date));
+
+            if (lichHenList != null && !lichHenList.isEmpty()) {
+                lichHenList.sort(Comparator.comparing(LichHen::getGioHen));
+
+                for (LichHen info : lichHenList) {
+                    // Tối ưu appointment panel để tiết kiệm không gian
+                    JPanel appointmentPanel = new JPanel();
+                    appointmentPanel.setLayout(new BorderLayout());
+                    appointmentPanel.setBackground(getColorByStatus(info.getTrangThai()));
+                    appointmentPanel.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                        BorderFactory.createEmptyBorder(4, 5, 4, 5) // Giảm padding
+                    ));
+                    appointmentPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                    appointmentPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70)); // Giảm chiều cao
+                    appointmentPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    
+                    // Tạo content panel với layout tối ưu
+                    JPanel contentPanel = new JPanel();
+                    contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+                    contentPanel.setBackground(getColorByStatus(info.getTrangThai()));
+                    
+                    // Time label - compact
+                    JLabel timeLabel = new JLabel(info.getGioHen().toString().substring(0, 5));
+                    timeLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                    timeLabel.setForeground(new Color(44, 62, 80));
+                    timeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    
+                    // Patient label - rút gọn
+                    String patientName = info.getHoTenBenhNhan();
+                    if (patientName.length() > 15) {
+                        patientName = patientName.substring(0, 12) + "...";
+                    }
+                    JLabel patientLabel = new JLabel(patientName);
+                    patientLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+                    patientLabel.setForeground(new Color(44, 62, 80));
+                    patientLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    
+                    // Doctor label - rút gọn
+                    String doctorName = info.getHoTenBacSi();
+                    if (doctorName.length() > 15) {
+                        doctorName = doctorName.substring(0, 12) + "...";
+                    }
+                    JLabel doctorLabel = new JLabel("BS:" + doctorName);
+                    doctorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+                    doctorLabel.setForeground(new Color(44, 62, 80));
+                    doctorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    
+                    // Room label - rút gọn
+                    JLabel roomLabel = new JLabel("P:" + info.getTenPhong());
+                    roomLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+                    roomLabel.setForeground(new Color(44, 62, 80));
+                    roomLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    
+                    contentPanel.add(timeLabel);
+                    contentPanel.add(patientLabel);
+                    contentPanel.add(doctorLabel);
+                    contentPanel.add(roomLabel);                    
+                    appointmentPanel.add(contentPanel, BorderLayout.CENTER);                    
+                    // Add mouse listener for popup menu and hover effects
+                    appointmentPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override
+                        public void mouseClicked(java.awt.event.MouseEvent evt) {
+                            showPopupMenu(evt, info);
+                        }                        
+                        @Override
+                        public void mouseEntered(MouseEvent e) {
+                            appointmentPanel.setBackground(brightenColor(getColorByStatus(info.getTrangThai())));
+                            contentPanel.setBackground(brightenColor(getColorByStatus(info.getTrangThai())));
+                        }                        
+                        @Override
+                        public void mouseExited(MouseEvent e) {
+                            appointmentPanel.setBackground(getColorByStatus(info.getTrangThai()));
+                            contentPanel.setBackground(getColorByStatus(info.getTrangThai()));
+                        }
+                    });                    
+                    appointmentPanel.setName(info.getHoTenBenhNhan());
+                    
+                    // Add appointment to appropriate panel based on time
+                    LocalTime gioHen = info.getGioHen().toLocalTime();
+                    if (gioHen.isBefore(LocalTime.of(12, 0))) {
+                        morningContentPanel.add(appointmentPanel);
+                        morningContentPanel.add(Box.createVerticalStrut(2)); // Giảm khoảng cách
+                    } else {
+                        afternoonContentPanel.add(appointmentPanel);
+                        afternoonContentPanel.add(Box.createVerticalStrut(2)); // Giảm khoảng cách
+                    }
+                }
+            }            
+            // Add placeholders for empty sections - tối ưu
+            if (morningContentPanel.getComponentCount() == 0) {
+                JLabel placeholder = new JLabel("<html><center>Trống</center></html>", SwingConstants.CENTER);
+                placeholder.setFont(new Font("Segoe UI", Font.ITALIC, 9));
+                placeholder.setForeground(new Color(150, 150, 150));
+                placeholder.setAlignmentX(Component.CENTER_ALIGNMENT);
+                morningContentPanel.add(placeholder);
+            }            
+            if (afternoonContentPanel.getComponentCount() == 0) {
+                JLabel placeholder = new JLabel("<html><center>Trống</center></html>", SwingConstants.CENTER);
+                placeholder.setFont(new Font("Segoe UI", Font.ITALIC, 9));
+                placeholder.setForeground(new Color(150, 150, 150));
+                placeholder.setAlignmentX(Component.CENTER_ALIGNMENT);
+                afternoonContentPanel.add(placeholder);
+            }
+            
+            // Create a panel to hold morning and afternoon sections
+            JPanel contentPanel = new JPanel(new GridLayout(2, 1, 0, 1)); // Thêm gap nhỏ
+            contentPanel.setBackground(isToday ? todayPanelBgColor : panelBgColor);
+            contentPanel.add(morningPanel);
+            contentPanel.add(afternoonPanel);
+            
+            dayPanel.add(contentPanel, BorderLayout.CENTER);
+            calendarPanel.add(dayPanel);
+            date = date.plusDays(1);
+        }
         
-        // Thêm hiệu ứng hover
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(darkenColor(color));
-            }
+        weekLabel.setText(getFormattedWeek());
+        calendarPanel.revalidate();
+        calendarPanel.repaint();
+    }
+    private void setupPopupMenu() {
+        popupMenu = new JPopupMenu();
+        popupMenu.setBorder(new LineBorder(borderColor, 1));
+        
+        menuItemXemChiTiet = createStyledMenuItem("Xem Chi Tiết");
+        menuItemChinhSua = createStyledMenuItem("Chỉnh Sửa");
+        menuItemXoa = createStyledMenuItem("Xóa");
+        
+        menuItemXoa.setForeground(accentColor); // Đặt màu đỏ cho nút xóa
+        
+        popupMenu.add(menuItemXemChiTiet);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemChinhSua);
+        popupMenu.addSeparator();
+        popupMenu.add(menuItemXoa);
+    }    
+    private void showPopupMenu(MouseEvent evt, LichHen lichHen) {
+        // Xóa tất cả ActionListener cũ
+        for (ActionListener al : menuItemXemChiTiet.getActionListeners()) {
+            menuItemXemChiTiet.removeActionListener(al);
+        }
+        for (ActionListener al : menuItemChinhSua.getActionListeners()) {
+            menuItemChinhSua.removeActionListener(al);
+        }
+        for (ActionListener al : menuItemXoa.getActionListeners()) {
+            menuItemXoa.removeActionListener(al);
+        }
+        
+        // Thêm ActionListener mới
+        menuItemXemChiTiet.addActionListener(e -> showAppointmentDetails(lichHen));
+        menuItemChinhSua.addActionListener(e -> editAppointment(lichHen));
+        menuItemXoa.addActionListener(e -> deleteAppointment(lichHen));
+        
+        popupMenu.show(evt.getComponent(), evt.getX(), evt.getY());
+    }
+    private void showAppointmentDetails(LichHen lichHen) {
+        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chi Tiết Lịch Hẹn", true);
+        dialog.setSize(650, 490); // Tăng chiều cao từ 480 lên 500
+        dialog.setLayout(new BorderLayout());
+        dialog.setResizable(false);
 
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(color);
-            }
+        // ========== HEADER PANEL ==========
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(primaryColor);
+        headerPanel.setBorder(new EmptyBorder(12, 20, 12, 20)); // Tăng padding
+        headerPanel.setPreferredSize(new Dimension(650, 60)); // Tăng chiều cao lên 60
+
+        JLabel titleLabel = new JLabel("CHI TIẾT LỊCH HẸN");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16)); // Tăng font size lên 16
+        titleLabel.setForeground(Color.WHITE);
+
+        // Lấy thông tin từ lichHen để tạo subtitle
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+        String ngayHenString = dateFormat.format(lichHen.getNgayHen());
+        String gioHenString = timeFormat.format(lichHen.getGioHen());
+        
+        JLabel subtitleLabel = new JLabel("Ngày " + ngayHenString + " lúc " + gioHenString);
+        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12)); // Tăng font size lên 12
+        subtitleLabel.setForeground(new Color(236, 240, 241));
+
+        JPanel titlePanelWrapper = new JPanel(new BorderLayout());
+        titlePanelWrapper.setBackground(primaryColor);
+        titlePanelWrapper.add(titleLabel, BorderLayout.NORTH);
+        titlePanelWrapper.add(Box.createVerticalStrut(3), BorderLayout.CENTER); // Thêm khoảng cách
+        titlePanelWrapper.add(subtitleLabel, BorderLayout.SOUTH);
+
+        headerPanel.add(titlePanelWrapper, BorderLayout.CENTER);
+
+        // ========== MAIN CONTENT PANEL ==========
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(new Color(248, 249, 250));
+        mainPanel.setBorder(new EmptyBorder(10, 10, 0, 10)); // Tăng padding
+
+        // Lấy thông tin từ lichHen
+        String hoTenBacSi = lichHen.getHoTenBacSi();
+        String hoTenBenhNhan = lichHen.getHoTenBenhNhan();
+        String tenPhongKham = lichHen.getTenPhong();
+        String trangThai = lichHen.getTrangThai();
+        String moTa = lichHen.getMoTa();
+
+        // ========== TOP SECTION - 2 COLUMNS ==========
+        JPanel topSection = new JPanel(new GridLayout(1, 2, 15, 0)); // Tăng gap lên 15
+        topSection.setBackground(new Color(248, 249, 250));
+        topSection.setPreferredSize(new Dimension(610, 140)); // Tăng chiều cao lên 140
+
+        // Left column - Thông tin cơ bản
+        JPanel leftCard = createBalancedCard("Thông Tin Cơ Bản");
+        addBalancedField(leftCard, "Bác Sĩ", hoTenBacSi);
+        addBalancedField(leftCard, "Bệnh Nhân", hoTenBenhNhan);
+        addBalancedField(leftCard, "Phòng Khám", tenPhongKham);
+
+        // Right column - Thông tin lịch hẹn
+        JPanel rightCard = createBalancedCard("Thông Tin Lịch Hẹn");
+        addBalancedField(rightCard, "Ngày Khám", ngayHenString);
+        addBalancedField(rightCard, "Thời Gian", gioHenString);
+        addStatusField(rightCard, "Trạng Thái", trangThai);
+
+        topSection.add(leftCard);
+        topSection.add(rightCard);
+
+        // ========== BOTTOM SECTION - MÔ TẢ ==========
+        JPanel bottomSection = new JPanel(new BorderLayout());
+        bottomSection.setBackground(new Color(248, 249, 250));
+        bottomSection.setPreferredSize(new Dimension(610, 160)); // Giảm xuống 160 để cân bằng
+
+        if (moTa != null && !moTa.trim().isEmpty()) {
+            JPanel descriptionCard = createDescriptionCard("Mô Tả Chi Tiết", moTa);
+            bottomSection.add(descriptionCard, BorderLayout.CENTER);
+        } else {
+            JPanel emptyCard = createBalancedCard("Mô Tả Chi Tiết");
+            JLabel emptyLabel = new JLabel("Không có mô tả");
+            emptyLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+            emptyLabel.setForeground(new Color(108, 117, 125));
+            emptyLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
+            emptyLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            emptyCard.add(emptyLabel);
+            bottomSection.add(emptyCard, BorderLayout.CENTER);
+        }
+
+        // ========== ASSEMBLY MAIN CONTENT ==========
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setBackground(new Color(248, 249, 250));
+        contentPanel.add(topSection, BorderLayout.NORTH);
+        contentPanel.add(Box.createVerticalStrut(15), BorderLayout.CENTER); // Tăng spacing lên 15
+        contentPanel.add(bottomSection, BorderLayout.SOUTH);
+
+        // Tạo wrapper panel với khoảng cách bottom
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.setBackground(new Color(248, 249, 250));
+        wrapperPanel.add(contentPanel, BorderLayout.CENTER);
+        wrapperPanel.add(Box.createVerticalStrut(10), BorderLayout.SOUTH); // Tăng spacing lên 10
+        
+        mainPanel.add(wrapperPanel, BorderLayout.CENTER);
+
+        // ========== BUTTON PANEL ==========
+        JPanel buttonPanel = new JPanel(new BorderLayout());
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createCompoundBorder(
+            new MatteBorder(1, 0, 0, 0, new Color(230, 230, 230)),
+            new EmptyBorder(15, 25, 15, 25) // Tăng padding đều các phía
+        ));
+        buttonPanel.setPreferredSize(new Dimension(650, 65)); // Tăng chiều cao lên 60
+        
+        // Tạo panel con để chứa buttons với spacing tốt hơn
+        JPanel buttonsContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        buttonsContainer.setBackground(Color.WHITE);
+        
+        Dimension buttonSize = new Dimension(100, 35); // Tăng chiều cao button lên 35
+        
+        JButton editButton = createRoundedButton("Chỉnh Sửa", warningColor, Color.WHITE, 8, true);
+        editButton.setPreferredSize(buttonSize);
+        editButton.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        editButton.addActionListener(e -> {
+            dialog.dispose();
+            editAppointment(lichHen);
         });
         
-        // Kích thước nút
-        button.setPreferredSize(new Dimension(30, 24));
-        
-        return button;
-    }
-    
-    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
-        JButton button = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                g2.dispose();
-                super.paintComponent(g);
-            }
+        JButton closeButton = createRoundedButton("Đóng", new Color(108, 117, 125), Color.WHITE, 8, false);
+        closeButton.setPreferredSize(buttonSize);
+        closeButton.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        closeButton.addActionListener(e -> dialog.dispose());
 
-            @Override
-            public boolean isOpaque() {
+        // Thêm buttons với khoảng cách 12px giữa chúng
+        buttonsContainer.add(editButton);
+        buttonsContainer.add(Box.createHorizontalStrut(12)); // Khoảng cách giữa 2 button
+        buttonsContainer.add(closeButton);
+        
+        buttonPanel.add(buttonsContainer, BorderLayout.EAST);
+
+        // ========== FINAL ASSEMBLY ==========
+        dialog.add(headerPanel, BorderLayout.NORTH);
+        dialog.add(mainPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setLocationRelativeTo((JFrame) SwingUtilities.getWindowAncestor(this));
+        dialog.setVisible(true);
+    }
+
+    // Helper method để tạo card với spacing cân bằng
+    private JPanel createBalancedCard(String title) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(12, 12, 12, 12) // Tăng padding
+        ));
+        
+        // Header
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 13)); // Tăng font size lên 13
+        titleLabel.setForeground(new Color(52, 73, 94));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 8, 0)); // Tăng padding xuống 8
+        
+        card.add(titleLabel);
+        
+        return card;
+    }
+
+    // Helper method để tạo card mô tả với spacing cân bằng
+    private JPanel createDescriptionCard(String title, String description) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(12, 15, 12, 15) // Tăng padding
+        ));
+        
+        // Header
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 13)); // Tăng font size lên 13
+        titleLabel.setForeground(new Color(52, 73, 94));
+        titleLabel.setBorder(new EmptyBorder(0, 0, 10, 0)); // Tăng padding xuống 10
+        
+        // Text area
+        JTextArea textArea = new JTextArea(description);
+        textArea.setFont(new Font("Segoe UI", Font.PLAIN, 12)); // Tăng font size lên 12
+        textArea.setForeground(new Color(44, 62, 80));
+        textArea.setBackground(new Color(248, 249, 250));
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setBorder(new EmptyBorder(8, 10, 8, 10)); // Tăng padding
+        
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setBorder(new LineBorder(new Color(220, 220, 220), 1));
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setPreferredSize(new Dimension(580, 110)); // Giảm xuống 110 để cân bằng
+        
+        card.add(titleLabel, BorderLayout.NORTH);
+        card.add(scrollPane, BorderLayout.CENTER);
+        
+        return card;
+    }
+
+    // Helper method để thêm field với spacing cân bằng
+    private void addBalancedField(JPanel card, String labelText, String valueText) {
+        JPanel fieldPanel = new JPanel(new BorderLayout());
+        fieldPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); // Tăng chiều cao lên 30
+        fieldPanel.setBorder(new EmptyBorder(0, 0, 6, 0)); // Tăng padding xuống 6
+        fieldPanel.setBackground(Color.WHITE);
+        fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Label
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Tăng font size lên 10
+        label.setForeground(new Color(52, 73, 94));
+        label.setPreferredSize(new Dimension(80, 24)); // Tăng kích thước
+
+        // Value
+        JPanel valuePanel = new JPanel(new BorderLayout());
+        valuePanel.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(200, 200, 200), 1),
+            new EmptyBorder(4, 8, 4, 8) // Tăng padding
+        ));
+        valuePanel.setBackground(new Color(248, 249, 250));
+
+        JLabel valueLabel = new JLabel(valueText != null ? valueText : "Không xác định");
+        valueLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10)); // Tăng font size lên 10
+        valueLabel.setForeground(new Color(44, 62, 80));
+
+        valuePanel.add(valueLabel, BorderLayout.CENTER);
+        fieldPanel.add(label, BorderLayout.WEST);
+        fieldPanel.add(valuePanel, BorderLayout.CENTER);
+
+        card.add(fieldPanel);
+    }
+
+    // Helper method để thêm status field với spacing cân bằng
+    private void addStatusField(JPanel card, String labelText, String status) {
+        JPanel fieldPanel = new JPanel(new BorderLayout());
+        fieldPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32)); // Tăng chiều cao
+        fieldPanel.setBorder(new EmptyBorder(0, 0, 6, 0)); // Tăng padding
+        fieldPanel.setBackground(Color.WHITE);
+        fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Label
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Tăng font size lên 10
+        label.setForeground(new Color(52, 73, 94));
+        label.setPreferredSize(new Dimension(80, 26)); // Tăng kích thước
+
+        // Status panel
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setBorder(new EmptyBorder(4, 8, 4, 8)); // Tăng padding
+        
+        // Sử dụng method getStatusTextColor để lấy màu
+        Color statusColor = getStatusTextColor(status != null ? status : "");
+        Color textColor = Color.WHITE;
+        
+        // Điều chỉnh màu text cho trạng thái "Chờ xác nhận" (màu vàng)
+        if (status != null && status.equals("Chờ xác nhận")) {
+            textColor = new Color(52, 58, 64); // Màu text tối cho nền vàng
+        }
+        
+        statusPanel.setBackground(statusColor);
+
+        JLabel statusLabel = new JLabel(status != null ? status : "Không xác định");
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Tăng font size lên 10
+        statusLabel.setForeground(textColor);
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        statusPanel.add(statusLabel, BorderLayout.CENTER);
+        fieldPanel.add(label, BorderLayout.WEST);
+        fieldPanel.add(statusPanel, BorderLayout.CENTER);
+
+        card.add(fieldPanel);
+    }
+
+private void addAppointment() {
+        // Tạo panel chính với BorderLayout để tổ chức các thành phần
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        mainPanel.setBackground(Color.WHITE);
+
+        // Tạo tiêu đề với màu sắc nổi bật
+        JLabel titleLabel = new JLabel("Thêm Lịch Hẹn Mới");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setForeground(primaryColor);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        mainPanel.add(titleLabel, BorderLayout.NORTH);
+
+        // Panel chính để nhập thông tin với GridBagLayout cho bố cục linh hoạt
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(6, 5, 6, 5); // Tăng khoảng cách đều
+        gbc.weightx = 1.0;
+
+        // Lấy danh sách dữ liệu
+        List<String> bacSiList = qlLichHen.danhSachBacSi();
+        List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
+        List<String> phongKhamList = qlLichHen.danhSachPhongKham();
+
+        // Tạo combo box thông thường cho bác sĩ và bệnh nhân
+        bacSiList.add(0, "Lựa chọn");
+        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
+        comboBacSi.setPreferredSize(new Dimension(250, 35));
+        comboBacSi.setSelectedIndex(0);
+        
+        benhNhanList.add(0, "Lựa chọn");
+        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
+        comboBenhNhan.setPreferredSize(new Dimension(250, 35));
+        comboBenhNhan.setSelectedIndex(0);
+        
+        // Phòng khám
+        phongKhamList.add(0, "Lựa chọn");
+        JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
+        comboPhongKham.setPreferredSize(new Dimension(250, 35));
+        comboPhongKham.setSelectedIndex(0);
+
+        // DateChooser với style nhất quán và kích thước lớn hơn - LOGIC MỚI CHO NGÀY MẶC ĐỊNH
+        JDateChooser dateChooserNgayHen = createStyledDateChooser();
+        dateChooserNgayHen.setPreferredSize(new Dimension(250, 35));
+        
+        // Tính toán ngày mặc định thông minh
+        java.util.Date defaultDate = getNextAvailableWorkingDate();
+        dateChooserNgayHen.setMinSelectableDate(new java.util.Date());
+        dateChooserNgayHen.setDate(defaultDate);
+
+        // Tạo time picker hiện đại với JSpinner - kích thước lớn hơn
+        JPanel timePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        timePanel.setBackground(Color.WHITE);
+        timePanel.setPreferredSize(new Dimension(250, 35));
+        timePanel.setName("timePanel");
+        
+        // Spinner cho giờ (7-17) - kích thước lớn hơn
+        SpinnerNumberModel hourModel = new SpinnerNumberModel(8, 7, 17, 1);
+        JSpinner hourSpinner = new JSpinner(hourModel);
+        hourSpinner.setPreferredSize(new Dimension(60, 32));
+        hourSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(normalBorderColor, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        hourSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        
+        // Spinner cho phút (0, 15, 30, 45) - kích thước lớn hơn
+        String[] minutes = {"00", "15", "30", "45"};
+        SpinnerListModel minuteModel = new SpinnerListModel(minutes);
+        JSpinner minuteSpinner = new JSpinner(minuteModel);
+        minuteSpinner.setPreferredSize(new Dimension(60, 32));
+        minuteSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(normalBorderColor, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        minuteSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        
+        // Labels cho time picker
+        JLabel hourLabel = new JLabel("Giờ:");
+        hourLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        hourLabel.setForeground(new Color(100, 100, 100));
+        
+        JLabel minuteLabel = new JLabel("Phút:");
+        minuteLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        minuteLabel.setForeground(new Color(100, 100, 100));
+        
+        JLabel colonLabel = new JLabel(":");
+        colonLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        colonLabel.setForeground(new Color(100, 100, 100));
+        
+        // Thêm các component vào timePanel
+        timePanel.add(hourLabel);
+        timePanel.add(hourSpinner);
+        timePanel.add(colonLabel);
+        timePanel.add(minuteLabel);
+        timePanel.add(minuteSpinner);
+        
+        String[] statuses = {"Chờ xác nhận", "Đã xác nhận", "Đã hủy"};
+        JComboBox<String> statusComboBox = createStyledComboBox(statuses);
+        statusComboBox.setPreferredSize(new Dimension(250, 35));
+        JTextField txtMoTa = createStyledTextField("");
+        txtMoTa.setPreferredSize(new Dimension(250, 35));
+
+        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN
+        JPanel infoPanel = new JPanel(new BorderLayout());
+        infoPanel.setBackground(new Color(240, 248, 255));
+        infoPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b><br/>• <b>Ngày mặc định được tự động chọn ngày làm việc gần nhất</b></html>");
+        lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
+        lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
+        
+        // Tạo error panel
+        errorPanel = createErrorPanel();
+        // Khởi tạo error labels cho từng field
+        initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
+
+        // Validation cho combo box bác sĩ
+        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
+            String selected = (String) comboBacSi.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
+
+        // Validation cho combo box bệnh nhân
+        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
+            String selected = (String) comboBenhNhan.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
+        
+        comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
+            String selected = (String) comboPhongKham.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));        
+        
+        // THÊM VALIDATION CHO NGÀY - KIỂM TRA KHÔNG ĐƯỢC CHỌN QUÁ KHỨ VÀ NGÀY NGHỈ
+        dateChooserNgayHen.addPropertyChangeListener("date", e -> validateAndClearError(dateChooserNgayHen, () -> {
+            java.util.Date selectedDate = dateChooserNgayHen.getDate();
+            if (selectedDate == null) return false;
+            
+            // Kiểm tra ngày không được ở quá khứ
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            Calendar selectedCal = Calendar.getInstance();
+            selectedCal.setTime(selectedDate);
+            selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+            selectedCal.set(Calendar.MINUTE, 0);
+            selectedCal.set(Calendar.SECOND, 0);
+            selectedCal.set(Calendar.MILLISECOND, 0);
+            
+            if (selectedCal.before(today)) return false;
+            
+            // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
+            int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+            return dayOfWeek != Calendar.SUNDAY;
+        }));        
+        
+        // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
+        ChangeListener timeChangeListener = e -> validateAndClearError(timePanel, () -> {
+            try {
+                int hour = (Integer) hourSpinner.getValue();
+                String minute = (String) minuteSpinner.getValue();
+                java.util.Date selectedDate = dateChooserNgayHen.getDate();
+                
+                if (selectedDate == null || hour < 7 || hour > 17 || minute == null) {
+                    return false;
+                }
+                
+                // Kiểm tra nếu là ngày hôm nay, thời gian phải sau thời điểm hiện tại
+                Calendar today = Calendar.getInstance();
+                Calendar selectedCal = Calendar.getInstance();
+                selectedCal.setTime(selectedDate);
+                
+                // Nếu là cùng ngày
+                if (today.get(Calendar.DATE) == selectedCal.get(Calendar.DATE) &&
+                    today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
+                    today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR)) {
+                    
+                    int currentHour = today.get(Calendar.HOUR_OF_DAY);
+                    int currentMinute = today.get(Calendar.MINUTE);
+                    int selectedMinuteInt = Integer.parseInt(minute);
+                    
+                    // Thời gian phải sau thời điểm hiện tại ít nhất 15 phút
+                    if (hour < currentHour || 
+                        (hour == currentHour && selectedMinuteInt <= currentMinute + 15)) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            } catch (Exception ex) {
                 return false;
             }
-        };
+        });
+        hourSpinner.addChangeListener(timeChangeListener);
+        minuteSpinner.addChangeListener(timeChangeListener);
+        
+        // Thêm các thành phần vào form với GridBagLayout
+        int currentRow = 0;        
+        // Cột nhãn và điều khiển
+        addFormRow(formPanel, gbc, currentRow++, "Tên bác sĩ:", comboBacSi);
+        addFormRow(formPanel, gbc, currentRow++, "Tên bệnh nhân:", comboBenhNhan);
+        addFormRow(formPanel, gbc, currentRow++, "Ngày hẹn:", dateChooserNgayHen);
+        addFormRow(formPanel, gbc, currentRow++, "Giờ hẹn:", timePanel);
+        addFormRow(formPanel, gbc, currentRow++, "Phòng khám:", comboPhongKham);
+        addFormRow(formPanel, gbc, currentRow++, "Trạng thái:", statusComboBox);
+        addFormRow(formPanel, gbc, currentRow++, "Mô tả:", txtMoTa);
+        
+        // Thêm error panel
+        gbc.gridx = 0;
+        gbc.gridy = currentRow++;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(5, 5, 5, 5);
+        formPanel.add(errorPanel, gbc);        
+        // Thêm info panel
+        gbc.gridy = currentRow++;
+        gbc.insets = new Insets(10, 5, 8, 5);
+        formPanel.add(infoPanel, gbc);        
+        // Tạo scroll pane với kích thước lớn hơn
+        JScrollPane scrollPane = new JScrollPane(formPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(null);
+        scrollPane.setPreferredSize(new Dimension(480, 520)); // Tăng kích thước để hiển thị info thêm        
+        // Thêm formPanel vào phần trung tâm của mainPanel
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        button.setFont(buttonFont);
-        button.setBackground(bgColor);
-        button.setForeground(fgColor);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(false);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        // Tạo panel nút với FlowLayout
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
-        // Add hover effect
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(darkenColor(bgColor));
-            }
+        JButton cancelButton = createRoundedButton("Hủy", Color.LIGHT_GRAY, Color.BLACK, cornerRadius);
+        cancelButton.setPreferredSize(new Dimension(90, 35));
+        JButton saveButton = createRoundedButton("Lưu", primaryColor, Color.WHITE, cornerRadius);
+        saveButton.setPreferredSize(new Dimension(90, 35));
 
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(bgColor);
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // Hiển thị dialog với panel chính - kích thước lớn hơn
+        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thêm Lịch Hẹn", true);
+        dialog.setContentPane(mainPanel);
+        dialog.setSize(550, 640); // Tăng kích thước dialog
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        
+        // Xử lý sự kiện nút hủy
+        cancelButton.addActionListener(e -> {
+            clearAllFieldErrors();
+            dialog.dispose();
+        });
+        
+        // Xử lý sự kiện nút lưu với validation
+        saveButton.addActionListener(e -> {
+            try {
+                clearAllFieldErrors();                
+                boolean hasErrors = false;                
+                
+                // Validate bác sĩ
+                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.isEmpty()) {
+                    showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
+                    hasErrors = true;
+                }
+                
+                // Validate bệnh nhân
+                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.isEmpty()) {
+                    showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
+                    hasErrors = true;
+                }
+                
+                String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
+                if ("Lựa chọn".equals(tenPhongKham)) {
+                    showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
+                    hasErrors = true;
+                }                
+                java.util.Date ngayHenDate = dateChooserNgayHen.getDate();
+                if (ngayHenDate == null) {
+                    showPersistentFieldError(dateChooserNgayHen, "Vui lòng chọn ngày hẹn");
+                    hasErrors = true;
+                } else {
+                    // VALIDATION NGÀY KHÔNG ĐƯỢC Ở QUÁ KHỨ
+                    Calendar today = Calendar.getInstance();
+                    today.set(Calendar.HOUR_OF_DAY, 0);
+                    today.set(Calendar.MINUTE, 0);
+                    today.set(Calendar.SECOND, 0);
+                    today.set(Calendar.MILLISECOND, 0);
+                    
+                    Calendar selectedCal = Calendar.getInstance();
+                    selectedCal.setTime(ngayHenDate);
+                    selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+                    selectedCal.set(Calendar.MINUTE, 0);
+                    selectedCal.set(Calendar.SECOND, 0);
+                    selectedCal.set(Calendar.MILLISECOND, 0);
+                    
+                    if (selectedCal.before(today)) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn trong quá khứ");
+                        hasErrors = true;
+                    }
+                    
+                    // VALIDATION NGÀY NGHỈ
+                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                        hasErrors = true;
+                    }
+                }
+                
+                // Validate time
+                int selectedHour = (Integer) hourSpinner.getValue();
+                String selectedMinute = (String) minuteSpinner.getValue();
+                if (selectedHour < 7 || selectedHour > 17) {
+                    showPersistentFieldError(timePanel, "Giờ hẹn phải trong khoảng 7:00 - 17:00");
+                    hasErrors = true;
+                } else if (ngayHenDate != null) {
+                    // VALIDATION THỜI GIAN KHÔNG ĐƯỢC Ở QUÁ KHỨ NÕU LÀ HÔM NAY
+                    Calendar now = Calendar.getInstance();
+                    Calendar selectedDateTime = Calendar.getInstance();
+                    selectedDateTime.setTime(ngayHenDate);
+                    selectedDateTime.set(Calendar.HOUR_OF_DAY, selectedHour);
+                    selectedDateTime.set(Calendar.MINUTE, Integer.parseInt(selectedMinute));
+                    selectedDateTime.set(Calendar.SECOND, 0);
+                    selectedDateTime.set(Calendar.MILLISECOND, 0);
+                    
+                    // Kiểm tra nếu là ngày hôm nay và thời gian đã qua hoặc quá gần
+                    if (selectedDateTime.get(Calendar.DATE) == now.get(Calendar.DATE) &&
+                        selectedDateTime.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                        selectedDateTime.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                        
+                        // Thêm 15 phút buffer để đảm bảo có thời gian chuẩn bị
+                        now.add(Calendar.MINUTE, 15);
+                        
+                        if (selectedDateTime.before(now) || selectedDateTime.equals(now)) {
+                            showPersistentFieldError(timePanel, "Thời gian hẹn phải sau thời điểm hiện tại ít nhất 15 phút");
+                            hasErrors = true;
+                        }
+                    }
+                }
+                
+                if (hasErrors) {
+                    return;
+                }
+                // Tiếp tục xử lý logic lưu dữ liệu
+                int idBacSi = qlLichHen.getBacSiIdFromName(hoTenBacSi);
+                int idBenhNhan = qlLichHen.getBenhNhanIdFromName(hoTenBenhNhan);
+                int idPhongKham = qlLichHen.getPhongKhamIdFromName(tenPhongKham);
+
+                if (idBacSi == -1) {
+                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không hợp lệ");
+                    return;
+                }
+                if (idBenhNhan == -1) {
+                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không hợp lệ");
+                    return;
+                }
+                if (idPhongKham == -1) {
+                    showPersistentFieldError(comboPhongKham, "Tên phòng khám không hợp lệ");
+                    return;
+                }       
+                java.sql.Date ngayHen = new java.sql.Date(ngayHenDate.getTime());
+                String timeString = String.format("%02d:%s", selectedHour, selectedMinute);
+                LocalTime gioHen = LocalTime.parse(timeString);
+                java.sql.Time timeGioHen = java.sql.Time.valueOf(gioHen);
+                
+                String selectedStatus = (String) statusComboBox.getSelectedItem();
+                LichHen.TrangThaiLichHen trangThaiEnum;
+                switch(selectedStatus) {
+                    case "Chờ xác nhận":
+                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                        break;
+                    case "Đã xác nhận":
+                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_XAC_NHAN;
+                        break;
+                    case "Đã hủy":
+                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_HUY;
+                        break;
+                    default:
+                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                }                
+                String moTa = txtMoTa.getText();
+                
+                // Kiểm tra thời gian hợp lệ
+                String validationError = util.TimeValidator.validateAppointmentTime(
+                    ngayHen, 
+                    timeGioHen, 
+                    qlLichHen.getAllLichHen(), 
+                    idBacSi, 
+                    idPhongKham
+                );
+                if (validationError != null) {
+                    showPersistentFieldError(timePanel, validationError);
+                    return;
+                }                
+                // Tạo đối tượng lịch hẹn mới
+                LichHen lichHen = new LichHen(0, idBacSi, hoTenBacSi, idBenhNhan, hoTenBenhNhan, 
+                        ngayHen, idPhongKham, tenPhongKham, timeGioHen, trangThaiEnum, moTa);
+                // Thực hiện lưu và kiểm tra kết quả
+                boolean success = qlLichHen.datLichHen(lichHen);
+                if (success) {
+                    // Clear tất cả errors trước khi đóng
+                    clearAllFieldErrors();
+                    dialog.dispose();
+                    updateCalendar();
+                    showSuccessToast("Thêm lịch hẹn thành công!");
+                } else {
+                    showPersistentFieldError(saveButton, "Không thể thêm lịch hẹn. Vui lòng thử lại");
+                }
+            } catch (DateTimeParseException ex) {
+                showPersistentFieldError(timePanel, "Lỗi định dạng thời gian");
+            } catch (Exception ex) {
+                showPersistentFieldError(saveButton, "Lỗi nhập liệu! Vui lòng thử lại");
+                ex.printStackTrace();
             }
         });
-
-        return button;
+        
+        dialog.setVisible(true);
     }
-    
-    private Color darkenColor(Color color) {
-        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
-        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
+    // Remove the old updateComboBoxItems methods as they're no longer needed
+    private java.util.Date getNextAvailableWorkingDate() {
+        Calendar cal = Calendar.getInstance();
+        
+        // Kiểm tra xem hôm nay có thể đặt lịch được không
+        if (isTodayBookable()) {
+            return cal.getTime();
+        }
+        
+        // Nếu hôm nay không thể đặt lịch, tìm ngày làm việc tiếp theo
+        cal.add(Calendar.DAY_OF_MONTH, 1); // Chuyển sang ngày mai
+        
+        // Tìm ngày làm việc tiếp theo (không phải thứ 7, chủ nhật)
+        while (true) {
+            int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+            
+            // Nếu là ngày làm việc (thứ 2-6)
+            if (dayOfWeek != Calendar.SUNDAY) {
+                return cal.getTime();
+            }
+            
+            // Nếu là ngày nghỉ, chuyển sang ngày tiếp theo
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            
+            // Tránh vòng lặp vô hạn (tối đa 7 ngày)
+            if (cal.get(Calendar.DAY_OF_MONTH) > Calendar.getInstance().get(Calendar.DAY_OF_MONTH) + 7) {
+                break;
+            }
+        }
+        
+        return cal.getTime();
     }
-    
+    private boolean isTodayBookable() {
+        Calendar now = Calendar.getInstance();
+        int dayOfWeek = now.get(Calendar.DAY_OF_WEEK);
+        if (dayOfWeek == Calendar.SUNDAY) {
+            return false;
+        }
+        int currentHour = now.get(Calendar.HOUR_OF_DAY);
+        int currentMinute = now.get(Calendar.MINUTE);
+        if (currentHour < 11 || (currentHour == 11 && currentMinute <= 30)) {
+            return true;
+        }
+        if (currentHour >= 13 && (currentHour < 16 || (currentHour == 16 && currentMinute <= 30))) {
+            return true;
+        }
+        return false;
+    }
+    private void deleteAppointment(LichHen lichHen) {
+        // Tạo dialog xác nhận tùy chỉnh
+        JDialog confirmDialog = new JDialog();
+        confirmDialog.setTitle("Xác nhận xóa");
+        confirmDialog.setModal(true);
+        confirmDialog.setSize(400, 200);
+        confirmDialog.setLocationRelativeTo(this);
+        
+        // Panel chính
+        JPanel panel = new JPanel(new BorderLayout(10, 15));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        // Panel thông điệp
+        JPanel messagePanel = new JPanel(new BorderLayout(15, 0));
+        messagePanel.setBackground(Color.WHITE);
+        
+        JLabel messageLabel = new JLabel("<html>Bạn có chắc muốn xóa lịch hẹn này?</html>");
+        messageLabel.setFont(regularFont);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+        
+        panel.add(messagePanel, BorderLayout.CENTER);
+        
+        // Panel nút bấm
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        
+        // Nút Hủy
+        JButton cancelButton = createRoundedButton("Hủy", new Color(158, 158, 158), Color.WHITE, 8, false);
+        cancelButton.addActionListener(e -> confirmDialog.dispose());
+        
+        // Nút Xóa
+        JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, 8, false);
+        deleteButton.addActionListener(e -> {
+            confirmDialog.dispose();
+            try {
+                boolean success = qlLichHen.deleteLichHen(lichHen.getIdLichHen());
+                if (success) {
+                    // Cập nhật lịch trước
+                    updateCalendar();
+                    showSuccessToast("Lịch hẹn đã được xóa thành công!");                    
+                } else {
+                    JOptionPane.showMessageDialog(this, "Không thể xóa lịch hẹn. Vui lòng thử lại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi khi xóa lịch hẹn: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        });
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(deleteButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        confirmDialog.setContentPane(panel);
+        confirmDialog.setVisible(true);
+    }    
+    private void clearAllFieldErrors() {
+        for (JComponent field : fieldErrorLabels.keySet()) {
+            clearFieldError(field);
+        }
+    }
+    private void addFormRow(JPanel formPanel, GridBagConstraints gbc, int row, String labelText, JComponent component) {
+        // Label
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0.3;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(8, 5, 8, 5);
+        formPanel.add(createStyledLabel(labelText), gbc);
+        
+        // Component
+        gbc.gridx = 1;
+        gbc.weightx = 0.7;
+        formPanel.add(component, gbc);
+        
+        // Error label (sẽ được thêm bên dưới component)
+        JLabel errorLabel = fieldErrorLabels.get(component);
+        if (errorLabel != null) {
+            gbc.gridx = 1;
+            gbc.gridy = row;
+            gbc.insets = new Insets(0, 5, 8, 5); // Giảm khoảng cách trên để error label gần component hơn
+            gbc.anchor = GridBagConstraints.NORTHWEST;
+            
+            // Tạo một panel wrapper để chứa cả component và error label
+            JPanel wrapperPanel = new JPanel(new BorderLayout(0, 2));
+            wrapperPanel.setBackground(Color.WHITE);
+            wrapperPanel.add(component, BorderLayout.CENTER);
+            wrapperPanel.add(errorLabel, BorderLayout.SOUTH);
+            
+            // Thay thế component bằng wrapper panel
+            formPanel.remove(component);
+            formPanel.add(wrapperPanel, gbc);
+        }
+    }
+    private void initializeFieldErrorLabels(JComponent... components) {
+        fieldErrorLabels.clear();
+        for (JComponent component : components) {
+            JLabel errorLabel = new JLabel();
+            errorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            errorLabel.setForeground(errorBorderColor);
+            errorLabel.setVisible(false);
+            fieldErrorLabels.put(component, errorLabel);
+        }
+    }
+    private void showPersistentFieldError(JComponent field, String message) {
+        // Đặt viền đỏ cho field
+        setBorderError(field, true);
+        
+        // Hiển thị error label riêng cho field này
+        JLabel errorLabel = fieldErrorLabels.get(field);
+        if (errorLabel != null) {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+        }        
+        // Hủy timer cũ nếu có
+        Timer oldTimer = fieldErrorTimers.get(field);
+        if (oldTimer != null) {
+            oldTimer.stop();
+            fieldErrorTimers.remove(field);
+        }
+    }
+    private void validateAndClearError(JComponent field, Supplier<Boolean> validator) {
+        try {
+            if (validator.get()) {
+                clearFieldError(field);
+            }
+        } catch (Exception e) {
+            // Nếu validation throw exception, không clear error
+        }
+    }
     private void performSearch(String query) {
         searchResultsContainer.removeAll();
         searchResultsPanel.removeAll();
-
         if (query.isEmpty()) {
             adjustSplitPane(); // Adjust to hide search results area
             splitPane.revalidate();
@@ -388,7 +1511,6 @@ public class LichHenGUI extends JPanel {
             updateCalendar();
             return;
         }
-
         // Create a header panel for search results
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(245, 248, 250));
@@ -415,8 +1537,7 @@ public class LichHenGUI extends JPanel {
             splitPane.revalidate();
             splitPane.repaint();
             updateCalendar();
-        });
-        
+        });        
         headerPanel.add(resultsHeader, BorderLayout.WEST);
         headerPanel.add(closeButton, BorderLayout.EAST);
         
@@ -432,7 +1553,6 @@ public class LichHenGUI extends JPanel {
                 searchResults.add(lichHen);
             }
         }
-
         if (searchResults.isEmpty()) {
             JPanel noResultsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
             noResultsPanel.setBackground(Color.WHITE);
@@ -468,7 +1588,6 @@ public class LichHenGUI extends JPanel {
             
             searchResultsPanel.add(resultsContainer);
         }
-
         // Update calendar to highlight search results
         updateCalendarWithSearchResults(searchResults);
         
@@ -476,8 +1595,7 @@ public class LichHenGUI extends JPanel {
         adjustSplitPane();
         splitPane.revalidate();
         splitPane.repaint();
-    }
-    
+    }    
     private JPanel createSearchResultPanel(LichHen lichHen) {
         JPanel resultPanel = new JPanel(new BorderLayout(10, 0));
         resultPanel.setBackground(Color.WHITE);
@@ -551,22 +1669,18 @@ public class LichHenGUI extends JPanel {
                 showAppointmentDetails(lichHen);
                 highlightAppointment(lichHen);
                 scrollToAppointment(lichHen);
-            }
-            
+            }            
             @Override
             public void mouseEntered(MouseEvent e) {
                 resultPanel.setBackground(new Color(248, 249, 250));
-            }
-            
+            }            
             @Override
             public void mouseExited(MouseEvent e) {
                 resultPanel.setBackground(Color.WHITE);
             }
-        });
-        
+        });        
         return resultPanel;
     }
-
     private Color getStatusTextColor(String status) {
         switch (status) {
             case "Chờ xác nhận":
@@ -579,409 +1693,14 @@ public class LichHenGUI extends JPanel {
                 return Color.GRAY;
         }
     }
-    private void updateCalendarWithSearchResults(List<LichHen> searchResults) {
-        calendarPanel.removeAll();
-        LocalDate date = currentWeekStart;
-        String[] days = {"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"};
-
-        for (int i = 0; i < 7; i++) {
-            JPanel dayPanel = new JPanel(new BorderLayout());
-            dayPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
-
-            JLabel dayLabel = new JLabel(days[i] + " (" + date.format(DateTimeFormatter.ofPattern("d/M")) + ")", SwingConstants.CENTER);
-            dayLabel.setOpaque(true);
-            dayLabel.setBackground(new Color(173, 216, 230));
-            dayPanel.add(dayLabel, BorderLayout.NORTH);
-
-            JPanel morningPanel = new JPanel(new GridLayout(0, 1));
-            morningPanel.setBorder(BorderFactory.createTitledBorder("Sáng"));
-            JPanel afternoonPanel = new JPanel(new GridLayout(0, 1));
-            afternoonPanel.setBorder(BorderFactory.createTitledBorder("Chiều"));
-
-            // Lọc các lịch hẹn theo ngày
-            for (LichHen lichHen : searchResults) {
-                if (Date.valueOf(date).equals(lichHen.getNgayHen())) {
-                    JTextArea eventText = new JTextArea(
-                            "BS:" + lichHen.getHoTenBacSi() + "\n" +
-                            "BN:" + lichHen.getHoTenBenhNhan() + "\n" +
-                            "Phòng:" + lichHen.getTenPhong() + "\n" +
-                            "Giờ:" + lichHen.getGioHen().toString()
-                    );
-                    eventText.addMouseListener(new java.awt.event.MouseAdapter() {
-                        @Override
-                        public void mouseClicked(java.awt.event.MouseEvent evt) {
-                            showPopupMenu(evt, lichHen);
-                        }
-                    });
-                    eventText.setFont(new Font("Arial", Font.PLAIN, 10));
-                    eventText.setEditable(false);
-                    eventText.setOpaque(true);
-                    eventText.setBackground(getColorByStatus(lichHen.getTrangThai()));
-
-                    eventText.setName(lichHen.getHoTenBenhNhan());
-                    dayPanel.setName(lichHen.getHoTenBenhNhan());
-
-                    LocalTime gioHen = lichHen.getGioHen().toLocalTime();
-                    if (gioHen.isBefore(LocalTime.of(12, 0))) {
-                        morningPanel.add(eventText);
-                    } else {
-                        afternoonPanel.add(eventText);
-                    }
-                }
-            }
-
-            JPanel contentPanel = new JPanel(new GridLayout(2, 1));
-            contentPanel.add(morningPanel);
-            contentPanel.add(afternoonPanel);
-            dayPanel.add(contentPanel, BorderLayout.CENTER);
-            calendarPanel.add(dayPanel);
-            date = date.plusDays(1);
-        }
-
-        weekLabel.setText(getFormattedWeek());
-        calendarPanel.revalidate();
-        calendarPanel.repaint();
-    }
-
-
-    private void highlightAppointment(LichHen lichHen) {
-        for (Component comp : calendarPanel.getComponents()) {
-            if (comp instanceof JPanel) {
-                JPanel panel = (JPanel) comp;
-                if (panel.getName() != null && panel.getName().equals(lichHen.getHoTenBenhNhan())) {
-                    panel.setBackground(Color.YELLOW);
-                    break;
-                }
-            }
-        }
-    }
-
-    private void scrollToAppointment(LichHen lichHen) {
-        for (Component comp : calendarPanel.getComponents()) {
-            if (comp instanceof JPanel) {
-                JPanel panel = (JPanel) comp;
-                if (panel.getName() != null && panel.getName().equals(lichHen.getHoTenBenhNhan())) {
-                    JScrollPane scrollPane = (JScrollPane) calendarPanel.getParent();
-                    int panelY = panel.getY();
-                    scrollPane.getVerticalScrollBar().setValue(panelY);
-                    break;
-                }
-            }
-        }
-    }
-    private void showAppointmentDetails(LichHen lichHen) {
-        // Tạo một cửa sổ chi tiết hoặc panel mới để hiển thị thông tin
-        JFrame detailFrame = new JFrame("Chi tiết lịch hẹn");
-        detailFrame.setSize(280, 300); // Điều chỉnh kích thước cho phù hợp
-        detailFrame.setLayout(new BorderLayout());
-
-        JPanel detailPanel = new JPanel();
-        detailPanel.setLayout(new GridLayout(6, 2, 5, 5)); 
-        detailPanel.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.GRAY), 
-            "Thông tin lịch hẹn", 
-            TitledBorder.LEFT, 
-            TitledBorder.TOP,
-            new Font("Arial", Font.BOLD, 14), 
-            Color.BLACK
-        ));
-        String hoTenBacSi = lichHen.getHoTenBacSi();
-        String hoTenBenhNhan = lichHen.getHoTenBenhNhan();
-        java.sql.Date ngayHen = lichHen.getNgayHen();
-        java.sql.Time gioHen = lichHen.getGioHen();
-        String tenPhongKham = lichHen.getTenPhong();
-        String trangThai = lichHen.getTrangThai();
-        String moTa = lichHen.getMoTa();
-
-        // Định dạng giờ hẹn
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-        String gioHenString = timeFormat.format(gioHen); // Chuyển đối tượng Time thành chuỗi giờ
-
-        detailPanel.add(new JLabel("Tên bác sĩ:"));
-        detailPanel.add(new JLabel(hoTenBacSi));
-        detailPanel.add(new JLabel("Tên bệnh nhân:"));
-        detailPanel.add(new JLabel(hoTenBenhNhan));
-        detailPanel.add(new JLabel("Ngày hẹn:"));
-        detailPanel.add(new JLabel(ngayHen.toString())); // Hiển thị ngày hẹn
-        detailPanel.add(new JLabel("Giờ hẹn (HH:mm):"));
-        detailPanel.add(new JLabel(gioHenString)); // Hiển thị giờ hẹn
-        detailPanel.add(new JLabel("Tên phòng khám:"));
-        detailPanel.add(new JLabel(tenPhongKham));
-        detailPanel.add(new JLabel("Trạng thái:"));
-        detailPanel.add(new JLabel(trangThai)); 
-        detailFrame.add(detailPanel, BorderLayout.CENTER);
-
-        JButton closeButton = new JButton("Đóng");
-        closeButton.addActionListener(e -> detailFrame.dispose());
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.add(closeButton);
-        detailFrame.add(buttonPanel, BorderLayout.SOUTH);
-
-        detailFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        detailFrame.setLocationRelativeTo(this);
-        detailFrame.setVisible(true);
-    }
-    private String getFormattedWeek() {
-        LocalDate endOfWeek = currentWeekStart.plusDays(6);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy");
-        return currentWeekStart.format(formatter) + " - " + endOfWeek.format(formatter);
-    }
-    private void changeWeek(int delta) {
-        currentWeekStart = currentWeekStart.plusWeeks(delta);
-        updateCalendar();
-    }
-    private void updateCalendar() {
-        calendarPanel.removeAll();
-        LocalDate date = currentWeekStart;
-        LocalDate today = LocalDate.now();
-        String[] days = {"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"};
-
-        // Keep the same color scheme
-        Color headerBgColor = new Color(41, 128, 185);      // Bright blue for headers
-        Color todayHeaderBgColor = new Color(52, 152, 219); // Lighter blue for today's header
-        Color headerTextColor = Color.WHITE;                // White text for headers
-        Color morningHeaderColor = new Color(241, 196, 15); // Warm yellow for morning
-        Color afternoonHeaderColor = new Color(230, 126, 34); // Warm orange for afternoon
-        Color borderColor = new Color(189, 195, 199);       // Light gray borders
-        Color panelBgColor = new Color(250, 250, 250);      // Almost white background
-
-        for (int i = 0; i < 7; i++) {
-            JPanel dayPanel = new JPanel(new BorderLayout());
-            dayPanel.setBackground(panelBgColor);
-            dayPanel.setBorder(BorderFactory.createLineBorder(borderColor, 1, true));
-
-            // Create day header - keeping the same style
-            boolean isToday = date.equals(today);
-            
-            JPanel headerPanel = new JPanel(new BorderLayout());
-            headerPanel.setBackground(isToday ? todayHeaderBgColor : headerBgColor);
-            headerPanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
-            
-            // Format day header exactly as shown in the screenshot
-            String formattedDate = date.format(DateTimeFormatter.ofPattern("d/M"));
-            JLabel dayLabel = new JLabel(days[i] + " (" + formattedDate + ")", SwingConstants.CENTER);
-            dayLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            dayLabel.setForeground(headerTextColor);
-            
-            if (isToday) {
-                // Add bullet indicator for today
-                JLabel todayIndicator = new JLabel("•");
-                todayIndicator.setFont(new Font("Segoe UI", Font.BOLD, 16));
-                todayIndicator.setForeground(Color.WHITE);
-                headerPanel.add(todayIndicator, BorderLayout.WEST);
-            }
-            
-            headerPanel.add(dayLabel, BorderLayout.CENTER);
-            dayPanel.add(headerPanel, BorderLayout.NORTH);
-
-            // Morning panel with consistent styling
-            JPanel morningPanel = new JPanel(new BorderLayout());
-            morningPanel.setBackground(panelBgColor);
-            
-            // Morning header - use full width label to match screenshot
-            JLabel morningLabel = new JLabel("Sáng", SwingConstants.LEFT);
-            morningLabel.setOpaque(true);
-            morningLabel.setBackground(morningHeaderColor);
-            morningLabel.setForeground(Color.WHITE);
-            morningLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            morningLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-            morningPanel.add(morningLabel, BorderLayout.NORTH);
-            
-            // Morning content area
-            JPanel morningContentPanel = new JPanel();
-            morningContentPanel.setLayout(new BoxLayout(morningContentPanel, BoxLayout.Y_AXIS));
-            morningContentPanel.setBackground(panelBgColor);
-            morningContentPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-            morningPanel.add(morningContentPanel, BorderLayout.CENTER);
-            
-            // Afternoon panel with consistent styling
-            JPanel afternoonPanel = new JPanel(new BorderLayout());
-            afternoonPanel.setBackground(panelBgColor);
-            
-            // Afternoon header - use full width label to match screenshot
-            JLabel afternoonLabel = new JLabel("Chiều", SwingConstants.LEFT);
-            afternoonLabel.setOpaque(true);
-            afternoonLabel.setBackground(afternoonHeaderColor);
-            afternoonLabel.setForeground(Color.WHITE);
-            afternoonLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            afternoonLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-            afternoonPanel.add(afternoonLabel, BorderLayout.NORTH);
-            
-            // Afternoon content area
-            JPanel afternoonContentPanel = new JPanel();
-            afternoonContentPanel.setLayout(new BoxLayout(afternoonContentPanel, BoxLayout.Y_AXIS));
-            afternoonContentPanel.setBackground(panelBgColor);
-            afternoonContentPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-            afternoonPanel.add(afternoonContentPanel, BorderLayout.CENTER);
-
-            // Get appointments for this day
-            List<LichHen> lichHenList = qlLichHen.getLichHenByDate(Date.valueOf(date));
-
-            if (lichHenList != null && !lichHenList.isEmpty()) {
-                lichHenList.sort(Comparator.comparing(LichHen::getGioHen));
-
-                for (LichHen info : lichHenList) {
-                    // Improved appointment panel to display content more clearly
-                    JPanel appointmentPanel = new JPanel();
-                    appointmentPanel.setLayout(new BorderLayout());
-                    appointmentPanel.setBackground(getColorByStatus(info.getTrangThai()));
-                    appointmentPanel.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
-                        BorderFactory.createEmptyBorder(8, 10, 8, 10)
-                    ));
-                    appointmentPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                    appointmentPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-                    appointmentPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                    
-                    // Create a panel for all content with better layout
-                    JPanel contentPanel = new JPanel();
-                    contentPanel.setLayout(new GridLayout(4, 1, 0, 2));
-                    contentPanel.setBackground(getColorByStatus(info.getTrangThai()));
-                    
-                    // Time label - make more prominent
-                    JLabel timeLabel = new JLabel(info.getGioHen().toString().substring(0, 5) + ":00");
-                    timeLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    timeLabel.setForeground(new Color(44, 62, 80));
-                    
-                    // Patient label - improved display
-                    JLabel patientLabel = new JLabel("BN: " + info.getHoTenBenhNhan());
-                    patientLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                    patientLabel.setForeground(new Color(44, 62, 80));
-                    
-                    // Doctor label
-                    JLabel doctorLabel = new JLabel("BS: " + info.getHoTenBacSi());
-                    doctorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                    doctorLabel.setForeground(new Color(44, 62, 80));
-                    
-                    // Room label
-                    JLabel roomLabel = new JLabel("Phòng: " + info.getTenPhong());
-                    roomLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                    roomLabel.setForeground(new Color(44, 62, 80));
-                    
-                    contentPanel.add(timeLabel);
-                    contentPanel.add(patientLabel);
-                    contentPanel.add(doctorLabel);
-                    contentPanel.add(roomLabel);
-                    
-                    appointmentPanel.add(contentPanel, BorderLayout.CENTER);
-                    
-                    // Add mouse listener for popup menu and hover effects
-                    appointmentPanel.addMouseListener(new java.awt.event.MouseAdapter() {
-                        @Override
-                        public void mouseClicked(java.awt.event.MouseEvent evt) {
-                            showPopupMenu(evt, info);
-                        }
-                        
-                        @Override
-                        public void mouseEntered(MouseEvent e) {
-                            appointmentPanel.setBackground(brightenColor(getColorByStatus(info.getTrangThai())));
-                            contentPanel.setBackground(brightenColor(getColorByStatus(info.getTrangThai())));
-                        }
-                        
-                        @Override
-                        public void mouseExited(MouseEvent e) {
-                            appointmentPanel.setBackground(getColorByStatus(info.getTrangThai()));
-                            contentPanel.setBackground(getColorByStatus(info.getTrangThai()));
-                        }
-                    });
-                    
-                    appointmentPanel.setName(info.getHoTenBenhNhan());
-                    
-                    // Add appointment to appropriate panel based on time
-                    LocalTime gioHen = info.getGioHen().toLocalTime();
-                    if (gioHen.isBefore(LocalTime.of(12, 0))) {
-                        morningContentPanel.add(appointmentPanel);
-                        morningContentPanel.add(Box.createVerticalStrut(5));
-                    } else {
-                        afternoonContentPanel.add(appointmentPanel);
-                        afternoonContentPanel.add(Box.createVerticalStrut(5));
-                    }
-                }
-            }
-
-            // Add placeholders for empty sections
-            if (morningContentPanel.getComponentCount() == 0) {
-                JLabel placeholder = new JLabel("Không có lịch hẹn", SwingConstants.CENTER);
-                placeholder.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-                placeholder.setForeground(new Color(150, 150, 150));
-                placeholder.setAlignmentX(Component.CENTER_ALIGNMENT);
-                morningContentPanel.add(placeholder);
-            }
-            
-            if (afternoonContentPanel.getComponentCount() == 0) {
-                JLabel placeholder = new JLabel("Không có lịch hẹn", SwingConstants.CENTER);
-                placeholder.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-                placeholder.setForeground(new Color(150, 150, 150));
-                placeholder.setAlignmentX(Component.CENTER_ALIGNMENT);
-                afternoonContentPanel.add(placeholder);
-            }
-
-            // Create a panel to hold morning and afternoon sections with equal spacing
-            JPanel contentPanel = new JPanel(new GridLayout(2, 1, 0, 0));
-            contentPanel.setBackground(panelBgColor);
-            contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-            contentPanel.add(morningPanel);
-            contentPanel.add(afternoonPanel);
-            
-            dayPanel.add(contentPanel, BorderLayout.CENTER);
-            calendarPanel.add(dayPanel);
-            date = date.plusDays(1);
-        }
-
-        weekLabel.setText(getFormattedWeek());
-        calendarPanel.revalidate();
-        calendarPanel.repaint();
-    }
-    private void setupPopupMenu() {
-        popupMenu = new JPopupMenu();
-        popupMenu.setBorder(new LineBorder(borderColor, 1));
-        
-        menuItemXemChiTiet = createStyledMenuItem("Xem Chi Tiết");
-        menuItemChinhSua = createStyledMenuItem("Chỉnh Sửa");
-        menuItemXoa = createStyledMenuItem("Xóa");
-        
-        menuItemXoa.setForeground(accentColor); // Đặt màu đỏ cho nút xóa
-        
-        popupMenu.add(menuItemXemChiTiet);
-        popupMenu.addSeparator();
-        popupMenu.add(menuItemChinhSua);
-        popupMenu.addSeparator();
-        popupMenu.add(menuItemXoa);
-    }
-    private JMenuItem createStyledMenuItem(String text) {
-        JMenuItem menuItem = new JMenuItem(text);
-        menuItem.setFont(new Font("Arial", Font.PLAIN, 12));
-        menuItem.setBackground(Color.WHITE);
-        menuItem.setPreferredSize(new Dimension(120, 28));
-        return menuItem;
-    }
-    private void showPopupMenu(MouseEvent evt, LichHen lichHen) {
-        menuItemXemChiTiet.addActionListener(e -> showAppointmentDetails(lichHen));
-        menuItemChinhSua.addActionListener(e -> editAppointment(lichHen));
-        menuItemXoa.addActionListener(e -> deleteAppointment(lichHen));
-        
-        popupMenu.show(evt.getComponent(), evt.getX(), evt.getY());
-    }
-    private void showDetails(LichHen lichHen) {
-        JOptionPane.showMessageDialog(this,
-                "Bác sĩ: " + lichHen.getHoTenBacSi() + "\n" +
-                        "Bệnh nhân: " + lichHen.getHoTenBenhNhan() + "\n" +
-                        "Phòng khám: " + lichHen.getTenPhong() + "\n" +
-                        "Giờ hẹn: " + lichHen.getGioHen().toString() + "\n" +
-                        "Trạng thái: " + lichHen.getTrangThai(),
-                "Chi tiết lịch hẹn",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-    }
-    private void addAppointment() {
+    private void editAppointment(LichHen lichHen) {
         // Tạo panel chính với BorderLayout để tổ chức các thành phần
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         mainPanel.setBackground(Color.WHITE);
 
         // Tạo tiêu đề với màu sắc nổi bật
-        JLabel titleLabel = new JLabel("Thêm Lịch Hẹn Mới");
+        JLabel titleLabel = new JLabel("Chỉnh Sửa Lịch Hẹn");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
         titleLabel.setForeground(primaryColor);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
@@ -992,7 +1711,7 @@ public class LichHenGUI extends JPanel {
         formPanel.setBackground(Color.WHITE);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(8, 5, 8, 5);
+        gbc.insets = new Insets(6, 5, 6, 5); // Tăng khoảng cách đều
         gbc.weightx = 1.0;
 
         // Lấy danh sách dữ liệu
@@ -1000,137 +1719,429 @@ public class LichHenGUI extends JPanel {
         List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
         List<String> phongKhamList = qlLichHen.danhSachPhongKham();
 
-        // Chuẩn bị các components với style nhất quán
+        // Tạo regular combobox cho bác sĩ
+        bacSiList.add(0, "Lựa chọn");
         JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
+        comboBacSi.setPreferredSize(new Dimension(250, 35));
+        comboBacSi.setSelectedItem(lichHen.getHoTenBacSi());
+        
+        // Tạo regular combobox cho bệnh nhân
+        benhNhanList.add(0, "Lựa chọn");
         JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
+        comboBenhNhan.setPreferredSize(new Dimension(250, 35));
+        comboBenhNhan.setSelectedItem(lichHen.getHoTenBenhNhan());
+        
+        // Phòng khám - regular combobox
+        phongKhamList.add(0, "Lựa chọn");
         JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
+        comboPhongKham.setPreferredSize(new Dimension(250, 35));
+        comboPhongKham.setSelectedItem(lichHen.getTenPhong());
 
-        // DateChooser với style nhất quán
+        // DateChooser với style nhất quán và kích thước lớn hơn - THÊM VALIDATION NGHỈ
         JDateChooser dateChooserNgayHen = createStyledDateChooser();
-        dateChooserNgayHen.setDate(Calendar.getInstance().getTime());
+        dateChooserNgayHen.setPreferredSize(new Dimension(250, 35));
+        dateChooserNgayHen.setMinSelectableDate(new java.util.Date());
+        dateChooserNgayHen.setDate(java.sql.Date.valueOf(lichHen.getNgayHen().toLocalDate()));
 
-        // Tạo các trường nhập liệu với style
-        JTextField txtGioHen = createStyledTextField("08:00");
+        // Tạo time picker hiện đại với JSpinner - kích thước lớn hơn
+        JPanel timePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        timePanel.setBackground(Color.WHITE);
+        timePanel.setPreferredSize(new Dimension(250, 35));
+        timePanel.setName("timePanel");
+        
+        LocalTime currentTime = lichHen.getGioHen().toLocalTime();
+        int currentHour = currentTime.getHour();
+        int currentMinute = currentTime.getMinute();
+
+        // Spinner cho giờ (7-17) - kích thước lớn hơn
+        SpinnerNumberModel hourModel = new SpinnerNumberModel(currentHour, 7, 17, 1);
+        JSpinner hourSpinner = new JSpinner(hourModel);
+        hourSpinner.setPreferredSize(new Dimension(60, 32));
+        hourSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(normalBorderColor, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        hourSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        // Spinner cho phút (0, 15, 30, 45) - kích thước lớn hơn
+        String[] minutes = {"00", "15", "30", "45"};
+        String currentMinuteStr = String.format("%02d", currentMinute);
+        // Tìm phút gần nhất trong danh sách
+        String defaultMinute = "00";
+        for (String minute : minutes) {
+            if (minute.equals(currentMinuteStr)) {
+                defaultMinute = minute;
+                break;
+            }
+        }
+        // Nếu không tìm thấy chính xác, chọn phút gần nhất
+        if (!defaultMinute.equals(currentMinuteStr)) {
+            if (currentMinute <= 7) defaultMinute = "00";
+            else if (currentMinute <= 22) defaultMinute = "15";
+            else if (currentMinute <= 37) defaultMinute = "30";
+            else defaultMinute = "45";
+        }
+
+        SpinnerListModel minuteModel = new SpinnerListModel(minutes);
+        JSpinner minuteSpinner = new JSpinner(minuteModel);
+        minuteSpinner.setValue(defaultMinute);
+        minuteSpinner.setPreferredSize(new Dimension(60, 32));
+        minuteSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(normalBorderColor, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        minuteSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        
+        // Labels cho time picker
+        JLabel hourLabel = new JLabel("Giờ:");
+        hourLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        hourLabel.setForeground(new Color(100, 100, 100));
+        
+        JLabel minuteLabel = new JLabel("Phút:");
+        minuteLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        minuteLabel.setForeground(new Color(100, 100, 100));
+        
+        JLabel colonLabel = new JLabel(":");
+        colonLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        colonLabel.setForeground(new Color(100, 100, 100));
+        
+        // Thêm các component vào timePanel
+        timePanel.add(hourLabel);
+        timePanel.add(hourSpinner);
+        timePanel.add(colonLabel);
+        timePanel.add(minuteLabel);
+        timePanel.add(minuteSpinner);
+        
         String[] statuses = {"Chờ xác nhận", "Đã xác nhận", "Đã hủy"};
         JComboBox<String> statusComboBox = createStyledComboBox(statuses);
-        JTextField txtMoTa = createStyledTextField("");
+        statusComboBox.setPreferredSize(new Dimension(250, 35));
+        statusComboBox.setSelectedItem(lichHen.getTrangThai());
+        
+        JTextField txtMoTa = createStyledTextField(lichHen.getMoTa());
+        txtMoTa.setPreferredSize(new Dimension(250, 35));
 
-        // Thông tin giờ làm việc
+        // ID của lịch hẹn - chỉ hiển thị
+        JTextField txtIdLichHen = createStyledTextField(String.valueOf(lichHen.getIdLichHen()));
+        txtIdLichHen.setPreferredSize(new Dimension(250, 35));
+        txtIdLichHen.setEditable(false);
+        txtIdLichHen.setBackground(new Color(245, 245, 245));
+
+        // Thông tin giờ làm việc - CẬP NHẬT THÔNG TIN
         JPanel infoPanel = new JPanel(new BorderLayout());
-        infoPanel.setBackground(new Color(240, 248, 255)); // Màu nền nhẹ
+        infoPanel.setBackground(new Color(240, 248, 255));
         infoPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Giờ làm việc:</b><br/>Sáng: 7:30 - 12:00<br/>Chiều: 13:00 - 17:00<br/>Lịch hẹn cách nhau ít nhất 30 phút</html>");
+        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Lưu ý:</b><br/>• Giờ làm việc: Sáng: 7:30-12:00, Chiều: 13:00-17:00<br/>• Lịch hẹn cách nhau ít nhất 30 phút<br/>• <b>Nghỉ thứ 7, chủ nhật</b></html>");
         lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
         lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
 
+        // Tạo error panel
+        errorPanel = createErrorPanel();
+        // Khởi tạo error labels cho từng field
+        initializeFieldErrorLabels(comboBacSi, comboBenhNhan, comboPhongKham, dateChooserNgayHen, timePanel);
+
+        // Validation cho bác sĩ
+        comboBacSi.addActionListener(e -> validateAndClearError(comboBacSi, () -> {
+            String selected = (String) comboBacSi.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
+
+        // Validation cho bệnh nhân
+        comboBenhNhan.addActionListener(e -> validateAndClearError(comboBenhNhan, () -> {
+            String selected = (String) comboBenhNhan.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));
+            
+        comboPhongKham.addActionListener(e -> validateAndClearError(comboPhongKham, () -> {
+            String selected = (String) comboPhongKham.getSelectedItem();
+            return !"Lựa chọn".equals(selected) && selected != null && !selected.trim().isEmpty();
+        }));        
+        
+        // THÊM VALIDATION CHO NGÀY - KIỂM TRA KHÔNG ĐƯỢC CHỌN QUÁ KHỨ VÀ NGÀY NGHỈ
+        dateChooserNgayHen.addPropertyChangeListener("date", e -> validateAndClearError(dateChooserNgayHen, () -> {
+            java.util.Date selectedDate = dateChooserNgayHen.getDate();
+            if (selectedDate == null) return false;
+            
+            // Kiểm tra ngày không được ở quá khứ
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            Calendar selectedCal = Calendar.getInstance();
+            selectedCal.setTime(selectedDate);
+            selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+            selectedCal.set(Calendar.MINUTE, 0);
+            selectedCal.set(Calendar.SECOND, 0);
+            selectedCal.set(Calendar.MILLISECOND, 0);
+            
+            if (selectedCal.before(today)) return false;
+            
+            // Kiểm tra không phải ngày nghỉ (thứ 7, chủ nhật)
+            int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+            return dayOfWeek != Calendar.SUNDAY;
+        }));        
+        
+        // Listeners cho time spinners - CẬP NHẬT VALIDATION THỜI GIAN
+        ChangeListener timeChangeListener = e -> validateAndClearError(timePanel, () -> {
+            try {
+                int hour = (Integer) hourSpinner.getValue();
+                String minute = (String) minuteSpinner.getValue();
+                java.util.Date selectedDate = dateChooserNgayHen.getDate();
+                
+                if (selectedDate == null || hour < 7 || hour > 17 || minute == null) {
+                    return false;
+                }
+                
+                // Kiểm tra nếu là ngày hôm nay, thời gian phải sau thời điểm hiện tại
+                Calendar today = Calendar.getInstance();
+                Calendar selectedCal = Calendar.getInstance();
+                selectedCal.setTime(selectedDate);
+                
+                // Nếu là cùng ngày
+                if (today.get(Calendar.DATE) == selectedCal.get(Calendar.DATE) &&
+                    today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
+                    today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR)) {
+                    
+                    int selectedMinuteInt = Integer.parseInt(minute);
+                    
+                    // Thời gian phải sau thời điểm hiện tại ít nhất 15 phút
+                    if (hour < currentHour || 
+                        (hour == currentHour && selectedMinuteInt <= currentMinute + 15)) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            } catch (Exception ex) {
+                return false;
+            }
+        });
+        hourSpinner.addChangeListener(timeChangeListener);
+        minuteSpinner.addChangeListener(timeChangeListener);
+
         // Thêm các thành phần vào form với GridBagLayout
-        // Cột nhãn
+        int currentRow = 0;
+        
+        // Cột nhãn và điều khiển
+        addFormRow(formPanel, gbc, currentRow++, "ID Lịch hẹn:", txtIdLichHen);
+        addFormRow(formPanel, gbc, currentRow++, "Tên bác sĩ:", comboBacSi);
+        addFormRow(formPanel, gbc, currentRow++, "Tên bệnh nhân:", comboBenhNhan);
+        addFormRow(formPanel, gbc, currentRow++, "Ngày hẹn:", dateChooserNgayHen);
+        addFormRow(formPanel, gbc, currentRow++, "Giờ hẹn:", timePanel);
+        addFormRow(formPanel, gbc, currentRow++, "Phòng khám:", comboPhongKham);
+        addFormRow(formPanel, gbc, currentRow++, "Trạng thái:", statusComboBox);
+        addFormRow(formPanel, gbc, currentRow++, "Mô tả:", txtMoTa);
+        
+        // Thêm error panel
         gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0.3;
-        gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(createStyledLabel("Tên bác sĩ:"), gbc);
-
-        gbc.gridy = 1;
-        formPanel.add(createStyledLabel("Tên bệnh nhân:"), gbc);
-
-        gbc.gridy = 2;
-        formPanel.add(createStyledLabel("Ngày hẹn:"), gbc);
-
-        gbc.gridy = 3;
-        formPanel.add(createStyledLabel("Giờ hẹn (HH:mm):"), gbc);
-
-        gbc.gridy = 4;
-        formPanel.add(createStyledLabel("Phòng khám:"), gbc);
-
-        gbc.gridy = 5;
-        formPanel.add(createStyledLabel("Trạng thái:"), gbc);
-
-        gbc.gridy = 6;
-        formPanel.add(createStyledLabel("Mô tả:"), gbc);
-
-        // Cột điều khiển nhập liệu
-        gbc.gridx = 1;
-        gbc.gridy = 0;
-        gbc.weightx = 0.7;
-        formPanel.add(comboBacSi, gbc);
-
-        gbc.gridy = 1;
-        formPanel.add(comboBenhNhan, gbc);
-
-        gbc.gridy = 2;
-        formPanel.add(dateChooserNgayHen, gbc);
-
-        gbc.gridy = 3;
-        formPanel.add(txtGioHen, gbc);
-
-        gbc.gridy = 4;
-        formPanel.add(comboPhongKham, gbc);
-
-        gbc.gridy = 5;
-        formPanel.add(statusComboBox, gbc);
-
-        gbc.gridy = 6;
-        formPanel.add(txtMoTa, gbc);
-
-        // Thêm thông tin giờ làm việc ở dưới cùng
-        gbc.gridx = 0;
-        gbc.gridy = 7;
+        gbc.gridy = currentRow++;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(15, 5, 8, 5);
-        formPanel.add(infoPanel, gbc);
-
+        gbc.insets = new Insets(5, 5, 5, 5);
+        formPanel.add(errorPanel, gbc);        
+        // Thêm info panel
+        gbc.gridy = currentRow++;
+        gbc.insets = new Insets(10, 5, 8, 5);
+        formPanel.add(infoPanel, gbc);        
+        // Tạo scroll pane với kích thước lớn hơn
+        JScrollPane scrollPane = new JScrollPane(formPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(null);
+        scrollPane.setPreferredSize(new Dimension(480, 520)); // Tăng kích thước để hiển thị info thêm        
         // Thêm formPanel vào phần trung tâm của mainPanel
-        mainPanel.add(new JScrollPane(formPanel), BorderLayout.CENTER);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         // Tạo panel nút với FlowLayout
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
-        // Tạo các nút với màu sắc phù hợp
         JButton cancelButton = createRoundedButton("Hủy", Color.LIGHT_GRAY, Color.BLACK, cornerRadius);
+        cancelButton.setPreferredSize(new Dimension(90, 35));
         JButton saveButton = createRoundedButton("Lưu", primaryColor, Color.WHITE, cornerRadius);
+        saveButton.setPreferredSize(new Dimension(90, 35));
+        JButton deleteButton = createRoundedButton("Xóa", accentColor, Color.WHITE, cornerRadius);
+        deleteButton.setPreferredSize(new Dimension(90, 35));
 
+        buttonPanel.add(deleteButton);
         buttonPanel.add(cancelButton);
         buttonPanel.add(saveButton);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        // Hiển thị dialog với panel chính
-        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thêm Lịch Hẹn", true);
+        
+        // Hiển thị dialog với panel chính - kích thước lớn hơn
+        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chỉnh Sửa Lịch Hẹn", true);
         dialog.setContentPane(mainPanel);
-        dialog.setSize(500, 550);
+        dialog.setSize(550, 640); // Tăng kích thước dialog
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(false);
-
+        
         // Xử lý sự kiện nút hủy
-        cancelButton.addActionListener(e -> dialog.dispose());
+        cancelButton.addActionListener(e -> {
+            clearAllFieldErrors();
+            dialog.dispose();
+        });
 
-        // Xử lý sự kiện nút lưu
+        // Xử lý sự kiện nút xóa
+        deleteButton.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(dialog,
+                    "Bạn có chắc chắn muốn xóa lịch hẹn này?",
+                    "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    boolean success = qlLichHen.deleteLichHen(lichHen.getIdLichHen());
+                    if (success) {
+                        clearAllFieldErrors();
+                        dialog.dispose();                        
+                        updateCalendar();                        
+                        showSuccessToast("Xóa lịch hẹn thành công!");
+                    } else {
+                        showPersistentFieldError(deleteButton, "Không thể xóa lịch hẹn. Vui lòng thử lại");
+                    }
+                } catch (Exception ex) {
+                    showPersistentFieldError(deleteButton, "Lỗi khi xóa lịch hẹn");
+                    ex.printStackTrace();
+                }
+            }
+        });
+        
+        // Xử lý sự kiện nút lưu với validation mới - CẬP NHẬT VALIDATION
         saveButton.addActionListener(e -> {
             try {
-                // Lấy thông tin từ form
-                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
-                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
-                String tenPhongKham = ((String) comboPhongKham.getSelectedItem()).trim();
+                clearAllFieldErrors();                
+                boolean hasErrors = false;                
+                
+                // Validate bác sĩ từ regular combobox
+                String hoTenBacSi = ((String) comboBacSi.getSelectedItem());
+                if (hoTenBacSi == null || "Lựa chọn".equals(hoTenBacSi) || hoTenBacSi.trim().isEmpty()) {
+                    showPersistentFieldError(comboBacSi, "Vui lòng chọn bác sĩ");
+                    hasErrors = true;
+                }
+                
+                // Validate bệnh nhân từ regular combobox
+                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem());
+                if (hoTenBenhNhan == null || "Lựa chọn".equals(hoTenBenhNhan) || hoTenBenhNhan.trim().isEmpty()) {
+                    showPersistentFieldError(comboBenhNhan, "Vui lòng chọn bệnh nhân");
+                    hasErrors = true;
+                }
+                    
+                String tenPhongKham = ((String) comboPhongKham.getSelectedItem());
+                if (tenPhongKham == null || "Lựa chọn".equals(tenPhongKham) || tenPhongKham.trim().isEmpty()) {
+                    showPersistentFieldError(comboPhongKham, "Vui lòng chọn phòng khám");
+                    hasErrors = true;
+                }                
+                java.util.Date ngayHenDate = dateChooserNgayHen.getDate();
+                if (ngayHenDate == null) {
+                    showPersistentFieldError(dateChooserNgayHen, "Vui lòng chọn ngày hẹn");
+                    hasErrors = true;
+                } else {
+                    // VALIDATION NGÀY KHÔNG ĐƯỢC Ở QUÁ KHỨ
+                    Calendar today = Calendar.getInstance();
+                    today.set(Calendar.HOUR_OF_DAY, 0);
+                    today.set(Calendar.MINUTE, 0);
+                    today.set(Calendar.SECOND, 0);
+                    today.set(Calendar.MILLISECOND, 0);
+                    
+                    Calendar selectedCal = Calendar.getInstance();
+                    selectedCal.setTime(ngayHenDate);
+                    selectedCal.set(Calendar.HOUR_OF_DAY, 0);
+                    selectedCal.set(Calendar.MINUTE, 0);
+                    selectedCal.set(Calendar.SECOND, 0);
+                    selectedCal.set(Calendar.MILLISECOND, 0);
+                    
+                    if (selectedCal.before(today)) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn trong quá khứ");
+                        hasErrors = true;
+                    }
+                    
+                    // VALIDATION NGÀY NGHỈ
+                    int dayOfWeek = selectedCal.get(Calendar.DAY_OF_WEEK);
+                    if (dayOfWeek == Calendar.SUNDAY) {
+                        showPersistentFieldError(dateChooserNgayHen, "Không thể đặt lịch hẹn vào ngày nghỉ (thứ 7, chủ nhật)");
+                        hasErrors = true;
+                    }
+                }
+                
+                // Validate time
+                int selectedHour = (Integer) hourSpinner.getValue();
+                String selectedMinute = (String) minuteSpinner.getValue();
+                if (selectedHour < 7 || selectedHour > 17) {
+                    showPersistentFieldError(timePanel, "Giờ hẹn phải trong khoảng 7:00 - 17:00");
+                    hasErrors = true;
+                } else if (ngayHenDate != null) {
+                    // VALIDATION THỜI GIAN KHÔNG ĐƯỢC Ở QUÁ KHỨ NÕU LÀ HÔM NAY
+                    Calendar now = Calendar.getInstance();
+                    Calendar selectedDateTime = Calendar.getInstance();
+                    selectedDateTime.setTime(ngayHenDate);
+                    selectedDateTime.set(Calendar.HOUR_OF_DAY, selectedHour);
+                    selectedDateTime.set(Calendar.MINUTE, Integer.parseInt(selectedMinute));
+                    selectedDateTime.set(Calendar.SECOND, 0);
+                    selectedDateTime.set(Calendar.MILLISECOND, 0);
+                    
+                    // Kiểm tra nếu là ngày hôm nay và thời gian đã qua hoặc quá gần
+                    if (selectedDateTime.get(Calendar.DATE) == now.get(Calendar.DATE) &&
+                        selectedDateTime.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                        selectedDateTime.get(Calendar.YEAR) == now.get(Calendar.YEAR)) {
+                        
+                        // Thêm 15 phút buffer để đảm bảo có thời gian chuẩn bị
+                        now.add(Calendar.MINUTE, 15);
+                        
+                        if (selectedDateTime.before(now) || selectedDateTime.equals(now)) {
+                            showPersistentFieldError(timePanel, "Thời gian hẹn phải sau thời điểm hiện tại ít nhất 15 phút");
+                            hasErrors = true;
+                        }
+                    }
+                }
+                
+                if (hasErrors) {
+                    return;
+                }
 
+                // Tiếp tục xử lý logic lưu dữ liệu
                 int idBacSi = qlLichHen.getBacSiIdFromName(hoTenBacSi);
                 int idBenhNhan = qlLichHen.getBenhNhanIdFromName(hoTenBenhNhan);
                 int idPhongKham = qlLichHen.getPhongKhamIdFromName(tenPhongKham);
 
-                if (idBacSi == -1 || idBenhNhan == -1 || idPhongKham == -1) {
-                    showErrorMessage(dialog, "Tên bác sĩ, bệnh nhân hoặc phòng khám không hợp lệ.");
+                if (idBacSi == -1) {
+                    showPersistentFieldError(comboBacSi, "Tên bác sĩ không hợp lệ");
                     return;
                 }
-
-                java.util.Date ngayHenDate = dateChooserNgayHen.getDate();
+                if (idBenhNhan == -1) {
+                    showPersistentFieldError(comboBenhNhan, "Tên bệnh nhân không hợp lệ");
+                    return;
+                }
+                if (idPhongKham == -1) {
+                    showPersistentFieldError(comboPhongKham, "Tên phòng khám không hợp lệ");
+                    return;
+                }
+                
                 java.sql.Date ngayHen = new java.sql.Date(ngayHenDate.getTime());
-                LocalTime gioHen = LocalTime.parse(txtGioHen.getText());
+                String timeString = String.format("%02d:%s", selectedHour, selectedMinute);
+                LocalTime gioHen = LocalTime.parse(timeString);
                 java.sql.Time timeGioHen = java.sql.Time.valueOf(gioHen);
+                
+                // Lọc danh sách lịch hẹn để loại bỏ lịch hẹn hiện tại
+                List<LichHen> otherAppointments = new ArrayList<>();
+                for (LichHen appointment : qlLichHen.getAllLichHen()) {
+                    if (appointment.getIdLichHen() != lichHen.getIdLichHen()) {
+                        otherAppointments.add(appointment);
+                    }
+                }
+                
+                // Kiểm tra thời gian hợp lệ
+                String validationError = util.TimeValidator.validateAppointmentTime(
+                    ngayHen, 
+                    timeGioHen, 
+                    otherAppointments, 
+                    idBacSi, 
+                    idPhongKham
+                );
+                if (validationError != null) {
+                    showPersistentFieldError(timePanel, validationError);
+                    return;
+                }
                 
                 String selectedStatus = (String) statusComboBox.getSelectedItem();
                 LichHen.TrangThaiLichHen trangThaiEnum;
@@ -1150,282 +2161,6 @@ public class LichHenGUI extends JPanel {
                 
                 String moTa = txtMoTa.getText();
                 
-                // Kiểm tra thời gian hợp lệ
-                String validationError = util.TimeValidator.validateAppointmentTime(
-                    ngayHen, 
-                    timeGioHen, 
-                    qlLichHen.getAllLichHen(), 
-                    idBacSi, 
-                    idPhongKham
-                );
-
-                if (validationError != null) {
-                    showErrorMessage(dialog, validationError);
-                    return;
-                }
-                
-                // Tạo đối tượng lịch hẹn mới
-                LichHen lichHen = new LichHen(0, idBacSi, hoTenBacSi, idBenhNhan, hoTenBenhNhan, 
-                        ngayHen, idPhongKham, tenPhongKham, timeGioHen, trangThaiEnum, moTa);
-
-                // Lưu lịch hẹn
-                qlLichHen.datLichHen(lichHen);
-
-                // Hiển thị thông báo thành công và đóng dialog
-                showInfoMessage(dialog, "Thêm lịch hẹn thành công!");
-                dialog.dispose();
-                
-                // Cập nhật lịch
-                updateCalendar();
-            } catch (NumberFormatException ex) {
-                showErrorMessage(dialog, "Lỗi nhập liệu! Kiểm tra lại định dạng giờ (HH:mm).");
-            } catch (DateTimeParseException ex) {
-                showErrorMessage(dialog, "Lỗi định dạng giờ (HH:mm).");
-            } catch (Exception ex) {
-                showErrorMessage(dialog, "Lỗi nhập liệu! Kiểm tra lại định dạng.");
-                ex.printStackTrace();
-            }
-        });
-
-        dialog.setVisible(true);
-    }
-
-    private void editAppointment(LichHen lichHen) {
-        // Tạo panel chính với BorderLayout
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        mainPanel.setBackground(Color.WHITE);
-
-        // Tạo tiêu đề với màu sắc nổi bật
-        JLabel titleLabel = new JLabel("Chỉnh Sửa Lịch Hẹn");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        titleLabel.setForeground(primaryColor);
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        mainPanel.add(titleLabel, BorderLayout.NORTH);
-
-        // Panel chính để nhập thông tin với GridBagLayout
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBackground(Color.WHITE);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(8, 5, 8, 5);
-        gbc.weightx = 1.0;
-
-        // Lấy danh sách và tạo map để lưu ID
-        List<String> bacSiList = qlLichHen.danhSachBacSi();
-        List<String> benhNhanList = qlLichHen.danhSachBenhNhan();
-        List<String> phongKhamList = qlLichHen.danhSachPhongKham();
-
-        // Chuẩn bị các components với style nhất quán
-        JComboBox<String> comboBacSi = createStyledComboBox(bacSiList.toArray(new String[0]));
-        comboBacSi.setSelectedItem(lichHen.getHoTenBacSi());
-        
-        JComboBox<String> comboBenhNhan = createStyledComboBox(benhNhanList.toArray(new String[0]));
-        comboBenhNhan.setSelectedItem(lichHen.getHoTenBenhNhan());
-        
-        JComboBox<String> comboPhongKham = createStyledComboBox(phongKhamList.toArray(new String[0]));
-        comboPhongKham.setSelectedItem(lichHen.getTenPhong());
-
-        // DateChooser với style nhất quán
-        JDateChooser dateChooserNgayHen = createStyledDateChooser();
-        dateChooserNgayHen.setDateFormatString("yyyy-MM-dd");
-        dateChooserNgayHen.setDate(java.sql.Date.valueOf(lichHen.getNgayHen().toLocalDate()));
-
-        // Tạo các trường nhập liệu với style
-        JTextField txtGioHen = createStyledTextField(lichHen.getGioHen().toString());
-        String[] statuses = {"Chờ xác nhận", "Đã xác nhận", "Đã hủy"};
-        JComboBox<String> statusComboBox = createStyledComboBox(statuses);
-        statusComboBox.setSelectedItem(lichHen.getTrangThai());
-        JTextField txtMoTa = createStyledTextField(lichHen.getMoTa());
-
-        // Thông tin giờ làm việc
-        JPanel infoPanel = new JPanel(new BorderLayout());
-        infoPanel.setBackground(new Color(240, 248, 255)); // Màu nền nhẹ
-        infoPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 221, 242), 1),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
-
-        JLabel lblWorkingHoursInfo = new JLabel("<html><b>Giờ làm việc:</b><br/>Sáng: 7:30 - 12:00<br/>Chiều: 13:00 - 17:00<br/>Lịch hẹn cách nhau ít nhất 30 phút</html>");
-        lblWorkingHoursInfo.setForeground(new Color(70, 130, 180));
-        lblWorkingHoursInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        infoPanel.add(lblWorkingHoursInfo, BorderLayout.CENTER);
-
-        // ID của lịch hẹn - chỉ hiển thị
-        JTextField txtIdLichHen = createStyledTextField(String.valueOf(lichHen.getIdLichHen()));
-        txtIdLichHen.setEditable(false);
-        txtIdLichHen.setBackground(new Color(245, 245, 245));
-
-        // Thêm các thành phần vào form với GridBagLayout
-        // Cột nhãn
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0.3;
-        gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(createStyledLabel("ID Lịch hẹn:"), gbc);
-
-        gbc.gridy = 1;
-        formPanel.add(createStyledLabel("Bác sĩ:"), gbc);
-
-        gbc.gridy = 2;
-        formPanel.add(createStyledLabel("Bệnh nhân:"), gbc);
-
-        gbc.gridy = 3;
-        formPanel.add(createStyledLabel("Ngày hẹn:"), gbc);
-
-        gbc.gridy = 4;
-        formPanel.add(createStyledLabel("Giờ hẹn (HH:mm):"), gbc);
-
-        gbc.gridy = 5;
-        formPanel.add(createStyledLabel("Phòng khám:"), gbc);
-
-        gbc.gridy = 6;
-        formPanel.add(createStyledLabel("Trạng thái:"), gbc);
-
-        gbc.gridy = 7;
-        formPanel.add(createStyledLabel("Mô tả:"), gbc);
-
-        // Cột điều khiển nhập liệu
-        gbc.gridx = 1;
-        gbc.gridy = 0;
-        gbc.weightx = 0.7;
-        formPanel.add(txtIdLichHen, gbc);
-
-        gbc.gridy = 1;
-        formPanel.add(comboBacSi, gbc);
-
-        gbc.gridy = 2;
-        formPanel.add(comboBenhNhan, gbc);
-
-        gbc.gridy = 3;
-        formPanel.add(dateChooserNgayHen, gbc);
-
-        gbc.gridy = 4;
-        formPanel.add(txtGioHen, gbc);
-
-        gbc.gridy = 5;
-        formPanel.add(comboPhongKham, gbc);
-
-        gbc.gridy = 6;
-        formPanel.add(statusComboBox, gbc);
-
-        gbc.gridy = 7;
-        formPanel.add(txtMoTa, gbc);
-
-        // Thêm thông tin giờ làm việc ở dưới cùng
-        gbc.gridx = 0;
-        gbc.gridy = 8;
-        gbc.gridwidth = 2;
-        gbc.insets = new Insets(15, 5, 8, 5);
-        formPanel.add(infoPanel, gbc);
-
-        // Thêm formPanel vào phần trung tâm của mainPanel
-        mainPanel.add(new JScrollPane(formPanel), BorderLayout.CENTER);
-
-        // Tạo panel nút với FlowLayout
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        buttonPanel.setBackground(Color.WHITE);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-
-        // Tạo các nút với màu sắc phù hợp
-        JButton cancelButton = createRoundedButton("Hủy", Color.LIGHT_GRAY, Color.BLACK, cornerRadius);
-        JButton saveButton = createRoundedButton("Lưu thay đổi", primaryColor, Color.WHITE, cornerRadius);
-        JButton deleteButton = createRoundedButton("Xóa lịch hẹn", accentColor, Color.WHITE, cornerRadius);
-
-        buttonPanel.add(deleteButton);
-        buttonPanel.add(cancelButton);
-        buttonPanel.add(saveButton);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        // Hiển thị dialog với panel chính
-        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chỉnh Sửa Lịch Hẹn", true);
-        dialog.setContentPane(mainPanel);
-        dialog.setSize(500, 600);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-
-        // Xử lý sự kiện nút hủy
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        // Xử lý sự kiện nút xóa
-        deleteButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(dialog,
-                    "Bạn có chắc chắn muốn xóa lịch hẹn này?",
-                    "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-            if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    qlLichHen.deleteLichHen(lichHen.getIdLichHen());
-                    showInfoMessage(dialog, "Xóa lịch hẹn thành công!");
-                    dialog.dispose();
-                    updateCalendar();
-                } catch (Exception ex) {
-                    showErrorMessage(dialog, "Lỗi khi xóa lịch hẹn.");
-                    ex.printStackTrace();
-                }
-            }
-        });
-        saveButton.addActionListener(e -> {
-            try {
-                // Lấy thông tin từ form
-                String hoTenBacSi = ((String) comboBacSi.getSelectedItem()).trim();
-                String hoTenBenhNhan = ((String) comboBenhNhan.getSelectedItem()).trim();
-                String tenPhong = ((String) comboPhongKham.getSelectedItem()).trim();
-                
-                int idBacSi = qlLichHen.getBacSiIdFromName(hoTenBacSi);
-                int idBenhNhan = qlLichHen.getBenhNhanIdFromName(hoTenBenhNhan);
-                int idPhongKham = qlLichHen.getPhongKhamIdFromName(tenPhong);
-
-                if (idBacSi == -1 || idBenhNhan == -1 || idPhongKham == -1) {
-                    showErrorMessage(dialog, "Tên bác sĩ, bệnh nhân hoặc phòng khám không tồn tại!");
-                    return;
-                }
-
-                java.util.Date selectedDate = dateChooserNgayHen.getDate();
-                java.sql.Date ngayHen;
-                if (selectedDate != null) {
-                    ngayHen = new java.sql.Date(selectedDate.getTime());
-                } else {
-                    throw new IllegalArgumentException("Ngày hẹn không hợp lệ!");
-                }
-
-                LocalTime newGioHen = LocalTime.parse(txtGioHen.getText());
-                java.sql.Time timeGioHen = java.sql.Time.valueOf(newGioHen);
-                
-                // Tạo lịch hẹn tạm thời để kiểm tra
-                LichHen tempLichHen = new LichHen();
-                tempLichHen.setIdLichHen(lichHen.getIdLichHen());
-                tempLichHen.setIdBacSi(idBacSi);
-                tempLichHen.setHoTenBacSi(hoTenBacSi);
-                tempLichHen.setIdBenhNhan(idBenhNhan);
-                tempLichHen.setHoTenBenhNhan(hoTenBenhNhan);
-                tempLichHen.setNgayHen(ngayHen);
-                tempLichHen.setIdPhongKham(idPhongKham);
-                tempLichHen.setTenPhong(tenPhong);
-                tempLichHen.setGioHen(timeGioHen);
-                tempLichHen.setTrangThai((String) statusComboBox.getSelectedItem());
-                tempLichHen.setMoTa(txtMoTa.getText());
-                
-                // Lọc danh sách lịch hẹn để loại bỏ lịch hẹn hiện tại
-                List<LichHen> otherAppointments = new ArrayList<>();
-                for (LichHen appointment : qlLichHen.getAllLichHen()) {
-                    if (appointment.getIdLichHen() != lichHen.getIdLichHen()) {
-                        otherAppointments.add(appointment);
-                    }
-                }
-                
-                // Kiểm tra thời gian hợp lệ
-                String validationError = util.TimeValidator.validateAppointmentTime(
-                    ngayHen, 
-                    timeGioHen, 
-                    otherAppointments, 
-                    idBacSi, 
-                    idPhongKham
-                );
-                
-                if (validationError != null) {
-                    showErrorMessage(dialog, validationError);
-                    return;
-                }
-                
                 // Cập nhật đối tượng lịch hẹn
                 lichHen.setIdBacSi(idBacSi);
                 lichHen.setHoTenBacSi(hoTenBacSi);
@@ -1433,31 +2168,250 @@ public class LichHenGUI extends JPanel {
                 lichHen.setHoTenBenhNhan(hoTenBenhNhan);
                 lichHen.setNgayHen(ngayHen);
                 lichHen.setIdPhongKham(idPhongKham);
-                lichHen.setTenPhong(tenPhong);
+                lichHen.setTenPhong(tenPhongKham);
                 lichHen.setGioHen(timeGioHen);
-                lichHen.setTrangThai((String) statusComboBox.getSelectedItem());
-                lichHen.setMoTa(txtMoTa.getText());
-
-                // Lưu lịch hẹn
-                qlLichHen.updateLichHen(lichHen);
-
-                // Hiển thị thông báo thành công và đóng dialog
-                showInfoMessage(dialog, "Cập nhật lịch hẹn thành công!");
-                dialog.dispose();
+                lichHen.setTrangThai(selectedStatus);
+                lichHen.setMoTa(moTa);
                 
-                // Cập nhật lịch
-                updateCalendar();
+                // Thực hiện cập nhật và kiểm tra kết quả
+                boolean success = qlLichHen.updateLichHen(lichHen);
+                if (success) {
+                    // Clear tất cả errors trước khi đóng
+                    clearAllFieldErrors();
+                    dialog.dispose();
+                    updateCalendar();
+                    showSuccessToast("Cập nhật lịch hẹn thành công!");
+                } else {
+                    showPersistentFieldError(saveButton, "Không thể cập nhật lịch hẹn. Vui lòng thử lại");
+                }          
+            } catch (DateTimeParseException ex) {
+                showPersistentFieldError(timePanel, "Lỗi định dạng thời gian");
             } catch (Exception ex) {
-                showErrorMessage(dialog, "Lỗi nhập liệu! Kiểm tra lại định dạng.");
+                showPersistentFieldError(saveButton, "Lỗi nhập liệu! Vui lòng thử lại");
                 ex.printStackTrace();
             }
         });
-
+        
         dialog.setVisible(true);
     }
+    private JPanel createErrorPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setVisible(false);
+        
+        errorLabel = new JLabel();
+        errorLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        errorLabel.setForeground(errorBorderColor);
+        errorLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        panel.add(errorLabel, BorderLayout.CENTER);
+        return panel;
+    }
+    private void clearFieldError(JComponent field) {
+        // Khôi phục viền bình thường
+        setBorderError(field, false);
+        
+        // Ẩn error label riêng
+        JLabel errorLabel = fieldErrorLabels.get(field);
+        if (errorLabel != null) {
+            errorLabel.setVisible(false);
+        }
+        
+        // Hủy timer nếu có
+        Timer timer = fieldErrorTimers.get(field);
+        if (timer != null) {
+            timer.stop();
+            fieldErrorTimers.remove(field);
+        }
+        
+        // Kiểm tra nếu không còn lỗi nào thì ẩn error panel chung
+        boolean hasAnyError = fieldErrorLabels.values().stream()
+                .anyMatch(label -> label.isVisible());
+        
+        if (!hasAnyError && errorPanel != null) {
+            errorPanel.setVisible(false);
+        }
+    }
+    private void setBorderError(JComponent field, boolean isError) {
+        Color borderColor = isError ? errorBorderColor : normalBorderColor;
+        int borderWidth = isError ? 2 : 1;
+        
+        if (field instanceof JComboBox) {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, borderWidth),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            ));
+        } else if (field instanceof JTextField) {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, borderWidth),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+        } else if (field instanceof JPanel && field.getName() != null && field.getName().equals("timePanel")) {
+            // Xử lý riêng cho timePanel - áp dụng border cho các spinner bên trong
+            Component[] components = field.getComponents();
+            for (Component comp : components) {
+                if (comp instanceof JSpinner) {
+                    JSpinner spinner = (JSpinner) comp;
+                    spinner.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(borderColor, borderWidth),
+                        BorderFactory.createEmptyBorder(3, 3, 3, 3)
+                    ));
+                }
+            }
+            // Không set border cho timePanel để tránh conflict với layout
+        } else {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, borderWidth),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            ));
+        }
+    }
+    private String getFormattedWeek() {
+        LocalDate endOfWeek = currentWeekStart.plusDays(6);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/M/yyyy");
+        return currentWeekStart.format(formatter) + " - " + endOfWeek.format(formatter);
+    }
+    private void changeWeek(int delta) {
+        currentWeekStart = currentWeekStart.plusWeeks(delta);
+        updateCalendar();
+    }
+    private JMenuItem createStyledMenuItem(String text) {
+        JMenuItem menuItem = new JMenuItem(text);
+        menuItem.setFont(new Font("Arial", Font.PLAIN, 12));
+        menuItem.setBackground(Color.WHITE);
+        menuItem.setPreferredSize(new Dimension(120, 28));
+        return menuItem;
+    }
+    private void adjustSplitPane() {
+        if (searchResultsPanel.getComponentCount() == 0) {
+            // No search results, give all space to calendar
+            splitPane.setDividerLocation(1.0);
+        } else {
+            // Search results exist, allocate space proportionally
+            int totalHeight = getHeight() - 100; // Accounting for header
+            int calendarHeight = (int)(totalHeight * 0.7);
+            int searchHeight = totalHeight - calendarHeight;
+            
+            // Ensure minimum heights
+            if (calendarHeight < 200) calendarHeight = 200;
+            if (searchHeight < 100) searchHeight = 100;
+            
+            splitPane.setDividerLocation(calendarHeight);
+        }
+    }    
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
 
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+        return button;
+    }    
+    private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius, boolean reducedPadding) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            public boolean isOpaque() {
+                return false;
+            }
+        };
+        button.setFont(buttonFont);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Sử dụng padding khác nhau tùy theo button
+        if (reducedPadding) {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); // Padding nhỏ hơn cho "Chỉnh Sửa"
+        } else {
+            button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15)); // Padding bình thường cho "Đóng"
+        }
+
+        // Add hover effect
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(darkenColor(bgColor));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        return button;
+    }
+    private Color darkenColor(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
+    }    
+    private void highlightAppointment(LichHen lichHen) {
+        for (Component comp : calendarPanel.getComponents()) {
+            if (comp instanceof JPanel) {
+                JPanel panel = (JPanel) comp;
+                if (panel.getName() != null && panel.getName().equals(lichHen.getHoTenBenhNhan())) {
+                    panel.setBackground(Color.YELLOW);
+                    break;
+                }
+            }
+        }
+    }
+    private void scrollToAppointment(LichHen lichHen) {
+        for (Component comp : calendarPanel.getComponents()) {
+            if (comp instanceof JPanel) {
+                JPanel panel = (JPanel) comp;
+                if (panel.getName() != null && panel.getName().equals(lichHen.getHoTenBenhNhan())) {
+                    JScrollPane scrollPane = (JScrollPane) calendarPanel.getParent();
+                    int panelY = panel.getY();
+                    scrollPane.getVerticalScrollBar().setValue(panelY);
+                    break;
+                }
+            }
+        }
+    }
     // Các phương thức tiện ích để tạo components có style nhất quán
-
     private JLabel createStyledLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -1497,83 +2451,7 @@ public class LichHenGUI extends JPanel {
         dateField.setBorder(BorderFactory.createEmptyBorder());
         
         return dateChooser;
-    }
-    private void showErrorMessage(Component parent, String message) {
-        // Tạo panel chứa thông báo
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        panel.setBackground(Color.WHITE);
-        
-        // Icon cảnh báo
-        JLabel iconLabel = new JLabel();
-        panel.add(iconLabel, BorderLayout.WEST);
-        
-        // Nội dung thông báo
-        JLabel msgLabel = new JLabel("<html>" + message + "</html>");
-        msgLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        msgLabel.setForeground(new Color(220, 20, 60)); // Màu đỏ đậm
-        panel.add(msgLabel, BorderLayout.CENTER);
-        
-        // Tạo và hiển thị dialog
-        JDialog errorDialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "Lỗi");
-        errorDialog.setContentPane(panel);
-        
-        // Nút OK
-        JButton okButton = createRoundedButton("OK", accentColor, Color.WHITE, cornerRadius);
-        okButton.addActionListener(e -> errorDialog.dispose());
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(Color.WHITE);
-        buttonPanel.add(okButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        // Cấu hình dialog
-        errorDialog.pack();
-        errorDialog.setSize(Math.max(errorDialog.getWidth(), 350), errorDialog.getHeight());
-        errorDialog.setLocationRelativeTo(parent);
-        errorDialog.setResizable(false);
-        errorDialog.setVisible(true);
-    }
-    private void showInfoMessage(Component parent, String message) {
-        // Tạo panel chứa thông báo
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        panel.setBackground(Color.WHITE);
-        
-        JLabel iconLabel = new JLabel();
-        panel.add(iconLabel, BorderLayout.WEST);
-        
-        JLabel msgLabel = new JLabel("<html>" + message + "</html>");
-        msgLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        msgLabel.setForeground(new Color(0, 100, 150)); // Màu xanh đậm
-        panel.add(msgLabel, BorderLayout.CENTER);
-        
-        JDialog infoDialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "Thông báo");
-        infoDialog.setContentPane(panel);
-        
-        JButton okButton = createRoundedButton("OK", primaryColor, Color.WHITE, cornerRadius);
-        okButton.addActionListener(e -> infoDialog.dispose());
-        
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(Color.WHITE);
-        buttonPanel.add(okButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        infoDialog.pack();
-        infoDialog.setSize(Math.max(infoDialog.getWidth(), 350), infoDialog.getHeight());
-        infoDialog.setLocationRelativeTo(parent);
-        infoDialog.setResizable(false);
-        infoDialog.setVisible(true);
-    }
-    private void deleteAppointment(LichHen lichHen) {
-        int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc muốn xóa lịch hẹn này?", "Xác nhận", JOptionPane.YES_NO_OPTION);
-        if (confirm == JOptionPane.YES_OPTION) {
-            qlLichHen.deleteLichHen(lichHen.getIdLichHen());
-
-            JOptionPane.showMessageDialog(this, "Xóa thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            updateCalendar();
-        }
-    }
+    }   
     private Color brightenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], Math.max(0.0f, hsb[1] - 0.1f), Math.min(1.0f, hsb[2] + 0.1f));
@@ -1589,5 +2467,42 @@ public class LichHenGUI extends JPanel {
             default:
                 return Color.WHITE;
         }
+    }
+    public void showSuccessToast(String message) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);        
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));               
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);        
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+                screenSize.width - toastDialog.getWidth() - 20,
+                screenSize.height - toastDialog.getHeight() - 60
+        );        
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 }

@@ -24,8 +24,8 @@ public class DoanhThuController {
     private HoaDonController hoaDonController;
 
     // Định nghĩa màu sắc và font trước enum
-    private final Color successColor = new Color(86, 156, 104); // Elegant green
-    private final Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
+    private final static Color successColor = new Color(86, 156, 104); // Elegant green
+    private final static Color errorColor = new Color(220, 53, 69); // Bootstrap-like error color
     private final Color textColor = new Color(33, 37, 41); // Near-black text
     private final Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font boldFont = new Font("Segoe UI", Font.BOLD, 14);
