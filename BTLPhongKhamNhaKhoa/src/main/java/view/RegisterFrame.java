@@ -398,6 +398,8 @@ public class RegisterFrame extends JFrame {
                 } else {
                     showNotification("Registration failed. Please try again.", NotificationType.ERROR);
                 }
+            } else {
+                showNotification("Vui lòng điền đúng và đầy đủ thông tin vào các trường.", NotificationType.ERROR);
             }
         });
         
