@@ -1,4 +1,3 @@
-
 package controller;
 
 import model.BacSi;
@@ -57,7 +56,6 @@ public class NguoiDungController {
             statement = connection.prepareStatement(query);
             statement.setString(1, emailOrPhone);
             statement.setString(2, emailOrPhone);
-            statement.setString(3, hashPassword(password));
 
             resultSet = statement.executeQuery();
 
