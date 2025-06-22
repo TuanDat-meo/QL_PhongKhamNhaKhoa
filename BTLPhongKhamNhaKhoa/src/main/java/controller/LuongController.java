@@ -46,18 +46,16 @@ public class LuongController {
         return !"NguoiDung".equals(vaiTroNguoiDung);
     }
     
-    public void loadLuongData() {
+    public void loadLuongData(int highlightId) {
         DefaultTableModel modelLuong = view.getModelLuong();
         modelLuong.setRowCount(0);
-        
-        // Clear the original data list in the view before loading new data
         view.clearTable();
-        
+
         double totalLuongCoBan = 0;
         double totalThuong = 0;
         double totalKhauTru = 0;
         double totalTongLuong = 0;
-        
+
         String sql = "SELECT ln.idLuong, nd.idNguoiDung, nd.hoTen, ln.thangNam, ln.luongCoBan, ln.thuong, ln.khauTru, ln.tongLuong " +
                      "FROM LuongNhanVien ln " +
                      "JOIN NguoiDung nd ON ln.idNguoiDung = nd.idNguoiDung";
@@ -71,31 +69,33 @@ public class LuongController {
                 double thuong = resultSet.getDouble("thuong");
                 double khauTru = resultSet.getDouble("khauTru");
                 double tongLuong = resultSet.getDouble("tongLuong");
-          
-                String thangNamFormatted = monthYearFormat.format(thangNam);
 
-                // Use the actual numeric values instead of formatted strings to prevent scientific notation
+                String thangNamFormatted = monthYearFormat.format(thangNam);
                 Object[] rowData = new Object[]{idLuong, hoTen, thangNamFormatted, luongCoBan, thuong, khauTru, tongLuong};
-                
-                // Instead of directly adding to the model, use the view's method
-                // which will add to both the model and the original data list
-                view.loadLuongData(rowData);
+
+                // Nếu idLuong khớp với highlightId, gọi loadLuongData với highlightId
+                if (idLuong == highlightId) {
+                    view.loadLuongData(rowData, highlightId);
+                } else {
+                    view.loadLuongData(rowData);
+                }
 
                 totalLuongCoBan += luongCoBan;
                 totalThuong += thuong;
                 totalKhauTru += khauTru;
                 totalTongLuong += tongLuong;
             }
-            
-            // Update total row in UI
-            view.updateTotalRow(totalLuongCoBan, totalThuong, totalKhauTru, totalTongLuong);
 
+            view.updateTotalRow(totalLuongCoBan, totalThuong, totalKhauTru, totalTongLuong);
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Lỗi truy vấn dữ liệu lương!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+            view.showNotification("Lỗi truy vấn dữ liệu lương: " + e.getMessage(), LuongUI.NotificationType.ERROR);
         }
+    }
+
+    // Giữ nguyên phương thức loadLuongData() hiện tại cho các trường hợp không cần highlight
+    public void loadLuongData() {
+        loadLuongData(-1); // Gọi với highlightId = -1 khi không cần highlight
     }
     
     public void loadNhanVienComboBox(JComboBox<String> comboBox) {
@@ -162,45 +162,24 @@ public class LuongController {
         return false;
     }
 
-    public void themLuong(int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru) {
+    public boolean themLuong(int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru) {
         if (!kiemTraQuyenThayDoi()) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Bạn không có quyền thêm thông tin lương!", "Từ chối quyền", JOptionPane.WARNING_MESSAGE);
-            }
-            return;
+            view.showNotification("Không có quyền thêm lương!", LuongUI.NotificationType.ERROR);
+            return false;
         }
-        
-        if (idNguoiDung <= 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Vui lòng chọn nhân viên!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
+
+        if (idNguoiDung <= 0 || thangNam == null || luongCoBan < 0 || thuong < 0 || khauTru < 0) {
+            view.showNotification("Dữ liệu không hợp lệ!", LuongUI.NotificationType.ERROR);
+            return false;
         }
-        
-        if (thangNam == null) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Vui lòng chọn tháng năm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }
-        
-        if (luongCoBan < 0 || thuong < 0 || khauTru < 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Các giá trị lương không được âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }
-        
+
         if (kiemTraTonTaiLuong(idNguoiDung, thangNam)) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Đã tồn tại thông tin lương của nhân viên này trong tháng " + 
-                    monthYearFormat.format(thangNam) + "!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
+            view.showNotification("Lương đã tồn tại cho tháng này!", LuongUI.NotificationType.ERROR);
+            return false;
         }
 
         String sql = "INSERT INTO LuongNhanVien (idNguoiDung, thangNam, luongCoBan, thuong, khauTru, tongLuong) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+        try (PreparedStatement preparedStatement = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setInt(1, idNguoiDung);
             preparedStatement.setDate(2, new java.sql.Date(thangNam.getTime()));
             preparedStatement.setDouble(3, luongCoBan);
@@ -211,129 +190,78 @@ public class LuongController {
 
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows > 0) {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Thêm thông tin lương thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    loadLuongData(); // Tải lại dữ liệu sau khi thêm
+                // Lấy idLuong vừa thêm
+                try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int newIdLuong = generatedKeys.getInt(1);
+                        // Tải lại dữ liệu với highlightId
+                        view.clearTable();
+                        loadLuongData(newIdLuong);
+                        return true;
+                    }
                 }
-                return;
-            } else {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Thêm thông tin lương thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
-                return;
             }
+            view.showNotification("Thêm lương thất bại!", LuongUI.NotificationType.ERROR);
+            return false;
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Lỗi thêm thông tin lương: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+            view.showNotification("Lỗi SQL: " + e.getMessage(), LuongUI.NotificationType.ERROR);
+            return false;
         }
     }
 
-    public void xoaLuong(int idLuong) {
+    public boolean xoaLuong(int idLuong) {
         if (!kiemTraQuyenThayDoi()) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Bạn không có quyền xóa thông tin lương!", "Từ chối quyền", JOptionPane.WARNING_MESSAGE);
-            }
-            return;
+            return false; // Không có quyền
         }
-        
+
         if (idLuong <= 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "ID lương không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
+            return false; // ID không hợp lệ
         }
-        
-        int confirm = JOptionPane.showConfirmDialog(view, 
-            "Bạn có chắc chắn muốn xóa thông tin lương này?", 
-            "Xác nhận xóa", 
-            JOptionPane.YES_NO_OPTION);
-            
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-        
+
         String sql = "DELETE FROM LuongNhanVien WHERE idLuong = ?";
         try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
             preparedStatement.setInt(1, idLuong);
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows > 0) {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Xóa thông tin lương thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    loadLuongData(); // Tải lại dữ liệu sau khi xóa
-                }
-            } else {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Không tìm thấy thông tin lương để xóa!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
+                loadLuongData(); // Tải lại dữ liệu sau khi xóa
+                return true; // Xóa thành công
             }
+            return false; // Không tìm thấy bản ghi để xóa
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Lỗi xóa thông tin lương: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+            return false; // Lỗi SQL
         }
     }
     
-    public void suaLuong(int idLuong, int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru) {
+    public boolean suaLuong(int idLuong, int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru) {
         if (!kiemTraQuyenThayDoi()) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Bạn không có quyền sửa thông tin lương!", "Từ chối quyền", JOptionPane.WARNING_MESSAGE);
-            }
-            return;
+            view.showNotification("Không có quyền sửa lương!", LuongUI.NotificationType.ERROR);
+            return false;
         }
-        
-        if (idLuong <= 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "ID lương không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }        
-        
-        if (idNguoiDung <= 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Vui lòng chọn nhân viên!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }        
-        
-        if (thangNam == null) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Vui lòng chọn tháng năm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }        
-        
-        if (luongCoBan < 0 || thuong < 0 || khauTru < 0) {
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Các giá trị lương không được âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
-        }        
-        
+
+        if (idLuong <= 0 || idNguoiDung <= 0 || thangNam == null || luongCoBan < 0 || thuong < 0 || khauTru < 0) {
+            view.showNotification("Dữ liệu không hợp lệ!", LuongUI.NotificationType.ERROR);
+            return false;
+        }
+
         String checkSql = "SELECT COUNT(*) FROM LuongNhanVien WHERE idNguoiDung = ? AND MONTH(thangNam) = MONTH(?) AND YEAR(thangNam) = YEAR(?) AND idLuong != ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setInt(1, idNguoiDung);
             checkStmt.setDate(2, thangNam);
             checkStmt.setDate(3, thangNam);
             checkStmt.setInt(4, idLuong);
-            
+
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
-                    if (view != null) {
-                        JOptionPane.showMessageDialog(view, "Đã tồn tại thông tin lương của nhân viên này trong tháng " + 
-                            monthYearFormat.format(thangNam) + "!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    }
-                    return;
+                    view.showNotification("Lương đã tồn tại cho tháng này!", LuongUI.NotificationType.ERROR);
+                    return false;
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Lỗi kiểm tra dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-            return;
+            view.showNotification("Lỗi kiểm tra dữ liệu: " + e.getMessage(), LuongUI.NotificationType.ERROR);
+            return false;
         }
 
         String sql = "UPDATE LuongNhanVien SET idNguoiDung = ?, thangNam = ?, luongCoBan = ?, thuong = ?, khauTru = ?, tongLuong = ? WHERE idLuong = ?";
@@ -349,20 +277,17 @@ public class LuongController {
 
             int affectedRows = preparedStatement.executeUpdate();
             if (affectedRows > 0) {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Sửa thông tin lương thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    loadLuongData(); // Tải lại dữ liệu sau khi sửa
-                }
-            } else {
-                if (view != null) {
-                    JOptionPane.showMessageDialog(view, "Không tìm thấy thông tin lương để sửa!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
+                // Tải lại dữ liệu với highlightId
+                view.clearTable();
+                loadLuongData(idLuong);
+                return true;
             }
+            view.showNotification("Sửa lương thất bại!", LuongUI.NotificationType.ERROR);
+            return false;
         } catch (SQLException e) {
             e.printStackTrace();
-            if (view != null) {
-                JOptionPane.showMessageDialog(view, "Lỗi sửa thông tin lương: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+            view.showNotification("Lỗi SQL: " + e.getMessage(), LuongUI.NotificationType.ERROR);
+            return false;
         }
     }
     
