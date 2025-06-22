@@ -1,18 +1,33 @@
 USE QuanLyPhongKham;
-
--- Thêm dữ liệu vào bảng NguoiDung
+DESCRIBE NguoiDung;
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
+(N'Nguyễn Thị Hồng Loan', N'bacsi13@gmail.com', N'bacsi123', N'0965432187', '1988-03-12', N'Nữ', N'Bác sĩ'),
+(N'Trần Minh Quân', N'bacsi14@gmail.com', N'bacsi123', N'0976543298', '1985-09-28', N'Nam', N'Bác sĩ'),
+(N'Lê Thị Thanh Nga', N'bacsi15@gmail.com', N'bacsi123', N'0987654309', '1990-11-15', N'Nữ', N'Bác sĩ'),
+(N'Phạm Văn Hùng', N'bacsi16@gmail.com', N'bacsi123', N'0912345670', '1987-07-03', N'Nam', N'Bác sĩ'),
+(N'Võ Thị Lan Hương', N'bacsi17@gmail.com', N'bacsi123', N'0943216587', '1989-12-20', N'Nữ', N'Bác sĩ'),
+(N'Đỗ Minh Tuấn', N'bacsi18@gmail.com', N'bacsi123', N'0932165478', '1986-04-08', N'Nam', N'Bác sĩ'),
+(N'Hoàng Thị Mai Linh', N'bacsi19@gmail.com', N'bacsi123', N'0921456783', '1991-01-25', N'Nữ', N'Bác sĩ'),
+(N'Lương Văn Đạt', N'bacsi20@gmail.com', N'bacsi123', N'0954321876', '1984-08-18', N'Nam', N'Bác sĩ'),
+(N'Trịnh Thị Hương Giang', N'bacsi21@gmail.com', N'bacsi123', N'0965478321', '1992-06-14', N'Nữ', N'Bác sĩ'),
+(N'Bùi Thanh Tùng', N'bacsi22@gmail.com', N'bacsi123', N'0938765412', '1983-10-30', N'Nam', N'Bác sĩ');
+INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
+(N'Nguyễn Thị Linh', N'bacsi05@gmail.com', N'bacsi123', N'0909876543', '1987-03-15', N'Nữ', N'Bác sĩ'),
+(N'Vũ Minh Tâm', N'bacsi06@gmail.com', N'bacsi123', N'0923456781', '1985-12-08', N'Nam', N'Bác sĩ'),
+(N'Đặng Thị Hoa', N'bacsi07@gmail.com', N'bacsi123', N'0987123456', '1990-07-22', N'Nữ', N'Bác sĩ'),
+(N'Trương Văn Đức', N'bacsi08@gmail.com', N'bacsi123', N'0934567123', '1983-01-18', N'Nam', N'Bác sĩ'),
+(N'Lý Thị Kim', N'bacsi09@gmail.com', N'bacsi123', N'0912765432', '1989-09-30', N'Nữ', N'Bác sĩ'),
+(N'Phan Minh Hoàng', N'bacsi10@gmail.com', N'bacsi123', N'0967432109', '1986-04-12', N'Nam', N'Bác sĩ'),
+(N'Võ Thị Thanh', N'bacsi11@gmail.com', N'bacsi123', N'0945321098', '1991-11-05', N'Nữ', N'Bác sĩ'),
+(N'Huỳnh Văn Long', N'bacsi12@gmail.com', N'bacsi123', N'0978543210', '1984-06-28', N'Nam', N'Bác sĩ'),
 (N'Nguyễn Văn Minh', N'admin@gmail.com', N'admin123', N'0987654321', '1985-05-20', N'Nam', N'Admin'),
 (N'Trần Thị Hương', N'bacsi01@gmail.com', N'bacsi123', N'0912345678', '1982-09-15', N'Nữ', N'Bác sĩ'),
 (N'Lê Tuấn Đạt', N'bacsi02@gmail.com', N'bacsi123', N'0907001320', '1988-08-06', N'Nam', N'Bác sĩ'),
-(N'Phạm Thị Mai', N'bacsi03@gmail.com', N'bacsi123', N'0908765432', '1990-04-25', N'Nữ', N'Bác sĩ'),
+(N'Phạm Thị Mai', N'bacsi03@gmail.com', N'bacsi12a3', N'0908765432', '1990-04-25', N'Nữ', N'Bác sĩ'),
 (N'Hoàng Văn Nam', N'bacsi04@gmail.com', N'bacsi123', N'0901234567', '1986-11-10', N'Nam', N'Bác sĩ'),
 (N'Lê Thị Thanh', N'letan@gmail.com', N'letan123', N'0905123456', '1992-07-10', N'Nữ', N'Lễ tân'),
 (N'Hoàng Thị Lan', N'ketoan@gmail.com', N'ketoan123', N'0934567890', '1988-11-30', N'Nữ', N'Kế toán'),
-(N'Phạm Văn Tùng', N'quankho@gmail.com', N'quankho123', N'0976543210', '1995-03-25', N'Nam', N'Quản kho');
-
--- Thêm người dùng thông thường (bệnh nhân tiềm năng) - Đảm bảo thông tin user khớp với bệnh nhân
-INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
+(N'Phạm Văn Tùng', N'quankho@gmail.com', N'quankho123', N'0976543210', '1995-03-25', N'Nam', N'Quản kho'),
 (N'Trần Minh Hoàng', N'tranminhhoang@gmail.com', N'user123', N'0978123456', '1990-07-15', N'Nam', null),
 (N'Phạm Thị Lan', N'phamthilan@gmail.com', N'user123', N'0967543210', '1985-12-30', N'Nữ', null),
 (N'Đỗ Văn Tuấn', N'dovantuan@gmail.com', N'user123', N'0987654321', '2000-04-18', N'Nam', null),
@@ -28,41 +43,75 @@ INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, v
 (N'Trịnh Minh Thư', N'trinhminhthư@gmail.com', N'user123', N'0945678912', '2002-01-15', N'Nữ', null),
 (N'Phan Thanh Hải', N'phanthanhhai@gmail.com', N'user123', N'0989123456', '1997-09-30', N'Nam', null),
 (N'Dương Thị Hồng', N'duongthihong@gmail.com', N'user123', N'0967891234', '1994-12-20', N'Nữ', null);
-
--- Thêm dữ liệu mẫu vào bảng BenhNhan - Giữ sự nhất quán với thông tin người dùng
 INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALUES
-(N'Trần Minh Hoàng', '1990-07-15', N'Nam', N'0978123456', N'052090000123', N'23 Lê Lợi, Quận Hải Châu, Đà Nẵng'),
-(N'Phạm Thị Lan', '1985-12-30', N'Nữ', N'0967543210', N'031085000234', N'45 Lạch Tray, Quận Ngô Quyền, Hải Phòng'),
-(N'Đỗ Văn Tuấn', '2000-04-18', N'Nam', N'0987654321', N'001000012345', N'78 Nguyễn Văn Cừ, Quận Ninh Kiều, Cần Thơ'),
-(N'Vũ Ngọc Mai', '1998-11-25', N'Nữ', N'0934567890', N'074098000456', N'12 Nguyễn Huệ, TP Thủ Dầu Một, Bình Dương'),
-(N'Ngô Đức Tài', '1993-06-10', N'Nam', N'0923456789', N'046093000567', N'56 Trần Hưng Đạo, TP Huế, Thừa Thiên Huế'),
-(N'Ngô Bảo Anh', '1999-06-10', N'Nam', N'0923451289', N'046099000321', N'34 Lê Lợi, TP Huế, Thừa Thiên Huế'),
-(N'Lương Thị Hạnh', '1987-09-05', N'Nữ', N'0912123456', N'040087000678', N'45 Hồ Tùng Mậu, TP Vinh, Nghệ An'),
-(N'Bùi Quang Minh', '1995-03-12', N'Nam', N'0912876543', N'001095000789', N'67 Láng Hạ, Quận Đống Đa, Hà Nội'),
-(N'Hoàng Thị Lan Anh', '1988-07-22', N'Nữ', N'0967123456', N'001088000987', N'34 Trần Duy Hưng, Quận Cầu Giấy, Hà Nội'),
+(N'Trần Minh Hoàng', '1990-07-15', N'Nam', N'0978123456', N'052090000123', N'23 Lê Lợi, Quận 1, TP.HCM'),
+(N'Phạm Thị Lan', '1985-12-30', N'Nữ', N'0967543210', N'031085000234', N'45 Lạch Tray, Quận 3, TP.HCM'),
+(N'Đỗ Văn Tuấn', '2000-04-18', N'Nam', N'0987654321', N'001000012345', N'78 Nguyễn Văn Cừ, Quận 5, TP.HCM'),
+(N'Vũ Ngọc Mai', '1998-11-25', N'Nữ', N'0934567890', N'074098000456', N'12 Nguyễn Huệ, Quận 1, TP.HCM'),
+(N'Ngô Đức Tài', '1993-06-10', N'Nam', N'0923456789', N'046093000567', N'56 Trần Hưng Đạo, Quận 1, TP.HCM'),
+(N'Ngô Bảo Anh', '1999-06-10', N'Nam', N'0923451289', N'046099000321', N'34 Lê Lợi, Quận 3, TP.HCM'),
+(N'Lương Thị Hạnh', '1987-09-05', N'Nữ', N'0912123456', N'040087000678', N'45 Võ Văn Tần, Quận 3, TP.HCM'),
+(N'Bùi Quang Minh', '1995-03-12', N'Nam', N'0912876543', N'001095000789', N'67 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM'),
+(N'Hoàng Thị Lan Anh', '1988-07-22', N'Nữ', N'0967123456', N'001088000987', N'34 Cộng Hòa, Quận Tân Bình, TP.HCM'),
 (N'Đặng Quốc Tuấn', '1982-11-30', N'Nam', N'0923789456', N'079082000654', N'89 Nguyễn Đình Chiểu, Quận 3, TP.HCM'),
-(N'Lê Thu Trang', '2001-05-18', N'Nữ', N'0912345687', N'001001000321', N'12 Lý Thường Kiệt, Quận Hoàn Kiếm, Hà Nội'),
-(N'Nguyễn Văn Hòa', '1979-08-25', N'Nam', N'0978912345', N'001079000123', N'56 Đội Cấn, Quận Ba Đình, Hà Nội'),
-(N'Trịnh Minh Thư', '2002-01-15', N'Nữ', N'0945678912', N'001002000456', N'78 Thái Hà, Quận Đống Đa, Hà Nội'),
+(N'Lê Thu Trang', '2001-05-18', N'Nữ', N'0912345687', N'001001000321', N'12 Pasteur, Quận 1, TP.HCM'),
+(N'Nguyễn Văn Hòa', '1979-08-25', N'Nam', N'0978912345', N'001079000123', N'56 Hai Bà Trưng, Quận 1, TP.HCM'),
+(N'Trịnh Minh Thư', '2002-01-15', N'Nữ', N'0945678912', N'001002000456', N'78 Lý Tự Trọng, Quận 1, TP.HCM'),
 (N'Phan Thanh Hải', '1997-09-30', N'Nam', N'0989123456', N'079097000789', N'23 Võ Văn Tần, Quận 3, TP.HCM'),
 (N'Dương Thị Hồng', '1994-12-20', N'Nữ', N'0967891234', N'079094000654', N'45 Trần Hưng Đạo, Quận 1, TP.HCM');
 
--- Thêm dữ liệu mẫu vào bảng PhongKham
 INSERT INTO PhongKham (tenPhong, diaChi) VALUES
-(N'Phòng khám Răng Hàm Mặt Hà Nội', N'123 Nguyễn Trãi, Quận Thanh Xuân, Hà Nội'),
-(N'Phòng khám Nha khoa Sài Gòn', N'456 Lê Lợi, Quận 1, TP.HCM'),
-(N'Phòng khám Chỉnh nha Đà Nẵng', N'789 Trần Phú, Quận Hải Châu, Đà Nẵng'),
-(N'Phòng khám Nha khoa Biển Xanh', N'101 Lạch Tray, Quận Ngô Quyền, Hải Phòng'),
-(N'Phòng khám Răng Hàm Mặt Miền Tây', N'202 Nguyễn Văn Cừ, Quận Ninh Kiều, Cần Thơ');
+(N'Phòng khám Nha khoa Quận 1', N'123 Nguyễn Huệ, Quận 1, TP.HCM'),
+(N'Phòng khám Nha khoa Quận 3', N'456 Võ Văn Tần, Quận 3, TP.HCM'),
+(N'Phòng khám Nha khoa Bình Thạnh', N'789 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM');
 
--- Thêm dữ liệu mẫu vào bảng BacSi - Giữ idNguoiDung đúng với người dùng vai trò bác sĩ
 INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, kinhNghiem) VALUES
-(N'Trần Thị Hương', 2, 1, N'Răng Hàm Mặt', N'Tiến sĩ Y khoa - Đại học Y Hà Nội (2010)', 15),
-(N'Lê Tuấn Đạt', 3, 2, N'Răng Hàm Mặt', N'Bác sĩ Chuyên khoa I - Đại học Y Dược TP.HCM (2012)', 10),
-(N'Phạm Thị Mai', 4, 1, N'Chỉnh nha', N'Thạc sĩ Nha khoa - Đại học Y Hà Nội (2014)', 8),
-(N'Hoàng Văn Nam', 5, 3, N'Phẫu thuật nha khoa', N'Bác sĩ Chuyên khoa II - Đại học Y Huế (2008)', 12),
-(N'Nguyễn Văn Minh', 1, 2, N'Nha chu', N'Tiến sĩ Nha khoa - Đại học Y Dược TP.HCM (2005)', 20);
+(N'Trần Thị Hương', 2, 1, N'Nha khoa thẩm mỹ', N'Thạc sĩ Nha khoa thẩm mỹ - Đại học Y Dược TP.HCM (2016)', 8),
+(N'Lê Tuấn Đạt', 3, 2, N'Nha khoa trẻ em', N'Bác sĩ Chuyên khoa I - Đại học Y Dược TP.HCM (2015)', 9),
+(N'Phạm Thị Mai', 4, 3, N'Nội nha', N'Tiến sĩ Nội nha - Đại học Y Dược TP.HCM (2012)', 12),
+(N'Hoàng Văn Nam', 5, 1, N'Phục hình răng', N'Thạc sĩ Phục hình răng - Đại học Y Dược TP.HCM (2014)', 10),
+(N'Nguyễn Thị Linh', 24, 1, N'Nha khoa thẩm mỹ', N'Thạc sĩ Nha khoa thẩm mỹ - Đại học Y Dược Huế (2018)', 6),
+(N'Vũ Minh Tâm', 25, 2, N'Nha khoa trẻ em', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Cần Thơ (2017)', 7),
+(N'Đặng Thị Hoa', 26, 3, N'Nội nha', N'Tiến sĩ Nội nha - Đại học Y Dược Hà Nội (2013)', 11),
+(N'Trương Văn Đức', 27, 1, N'Phục hình răng', N'Thạc sĩ Phục hình răng - Đại học Y Dược TP.HCM (2013)', 11),
+(N'Lý Thị Kim', 28, 2, N'Nha khoa thẩm mỹ', N'Bác sĩ Chuyên khoa II - Đại học Y Dược TP.HCM (2019)', 5),
+(N'Phan Minh Hoàng', 29, 3, N'Nha khoa trẻ em', N'Thạc sĩ Nha khoa trẻ em - Đại học Y Dược TP.HCM (2016)', 8),
+(N'Võ Thị Thanh', 30, 1, N'Nội nha', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2020)', 4),
+(N'Huỳnh Văn Long', 31, 2, N'Phục hình răng', N'Tiến sĩ Phục hình răng - Đại học Y Dược TP.HCM (2011)', 13);
+INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, kinhNghiem) VALUES
+-- Bác sĩ cùng chuyên khoa Nha khoa thẩm mỹ tại Phòng khám Quận 1 (cùng với Trần Thị Hương và Nguyễn Thị Linh)
+(N'Nguyễn Thị Hồng Loan', 32, 1, N'Nha khoa thẩm mỹ', N'Thạc sĩ Nha khoa thẩm mỹ - Đại học Y Dược TP.HCM (2019)', 5),
 
+-- Bác sĩ cùng chuyên khoa Nha khoa trẻ em tại Phòng khám Quận 3 (cùng với Lê Tuấn Đạt và Vũ Minh Tâm)
+(N'Trần Minh Quân', 33, 2, N'Nha khoa trẻ em', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2018)', 6),
+
+-- Bác sĩ cùng chuyên khoa Nội nha tại Phòng khám Bình Thạnh (cùng với Phạm Thị Mai và Đặng Thị Hoa)
+(N'Lê Thị Thanh Nga', 34, 3, N'Nội nha', N'Thạc sĩ Nội nha - Đại học Y Dược TP.HCM (2017)', 7),
+
+-- Bác sĩ cùng chuyên khoa Phục hình răng tại Phòng khám Quận 1 (cùng với Hoàng Văn Nam và Trương Văn Đức)
+(N'Phạm Văn Hùng', 35, 1, N'Phục hình răng', N'Tiến sĩ Phục hình răng - Đại học Y Dược Hà Nội (2015)', 9),
+
+-- Bác sĩ cùng chuyên khoa Nha khoa thẩm mỹ tại Phòng khám Quận 3 (cùng với Lý Thị Kim)
+(N'Võ Thị Lan Hương', 36, 2, N'Nha khoa thẩm mỹ', N'Bác sĩ Chuyên khoa II - Đại học Y Dược Cần Thơ (2020)', 4),
+
+-- Các bác sĩ với chuyên khoa khác
+(N'Đỗ Minh Tuấn', 37, 1, N'Chỉnh nha', N'Thạc sĩ Chỉnh nha - Đại học Y Dược TP.HCM (2014)', 10),
+(N'Hoàng Thị Mai Linh', 38, 2, N'Nha khoa pháp y', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2021)', 3),
+(N'Lương Văn Đạt', 39, 3, N'Phẫu thuật hàm mặt', N'Tiến sĩ Phẫu thuật hàm mặt - Đại học Y Dược TP.HCM (2012)', 12),
+(N'Trịnh Thị Hương Giang', 40, 1, N'Nha khoa cộng đồng', N'Thạc sĩ Y tế công cộng - Đại học Y Dược TP.HCM (2020)', 4),
+(N'Bùi Thanh Tùng', 41, 2, N'Implant nha khoa', N'Bác sĩ Chuyên khoa II - Đại học Y Dược Hà Nội (2016)', 8);
+
+-- Cập nhật một số lịch hẹn mẫu với các bác sĩ mới
+INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
+(13, 1, '2025-06-12', 1, '08:00:00', N'Chờ xác nhận', N'Tư vấn làm răng sứ thẩm mỹ'),
+(13, 5, '2025-06-15', 1, '09:30:00', N'Chờ xác nhận', N'Tẩy trắng răng chuyên nghiệp'),
+(14, 3, '2025-06-14', 2, '10:00:00', N'Chờ xác nhận', N'Khám răng định kỳ cho trẻ'),
+(14, 7, '2025-06-18', 2, '14:30:00', N'Chờ xác nhận', N'Bôi Fluor phòng sâu răng'),
+(15, 2, '2025-06-16', 3, '11:00:00', N'Chờ xác nhận', N'Điều trị tủy răng hàm lớn'),
+(15, 8, '2025-06-20', 3, '15:00:00', N'Chờ xác nhận', N'Tái khám sau điều trị tủy'),
+(18, 4, '2025-06-22', 1, '09:00:00', N'Chờ xác nhận', N'Tư vấn niềng răng chỉnh nha'),
+(19, 6, '2025-06-25', 2, '13:30:00', N'Chờ xác nhận', N'Khám định kỳ nha khoa pháp y'),
+(20, 9, '2025-06-28', 3, '08:30:00', N'Chờ xác nhận', N'Tư vấn phẫu thuật hàm mặt');
 -- Thêm dữ liệu mẫu vào bảng NhaCungCap
 INSERT INTO NhaCungCap (tenNCC, diaChi, soDienThoai, MaSoThue, NgayDangKy) VALUES
 (N'Công ty Dược phẩm ABC', N'10 Nguyễn Huệ, Quận 1, TP.HCM', N'02812345678', N'123456789012', '2023-01-15'),
@@ -145,7 +194,6 @@ INSERT INTO DichVu (tenDichVu, gia) VALUES
 (N'Điều trị viêm nha chu', 600000),
 (N'Phục hình răng tháo lắp', 3500000);
 
--- Thêm dữ liệu mẫu vào bảng HoSoBenhAn với ngày quá khứ và hiện tại
 INSERT INTO HoSoBenhAn (idBenhNhan, chuanDoan, ghiChu, ngayTao, trangThai) VALUES
 (1, N'Sâu răng vùng cổ răng số 16, 26', N'Bệnh nhân có tiền sử đau nhức khi ăn đồ ngọt.', '2024-01-15', N'Hoàn tất'),
 (2, N'Viêm nha chu cấp tính', N'Lợi sưng đỏ, chảy máu khi chải răng.', '2024-02-20', N'Hoàn tất'),
@@ -158,56 +206,72 @@ INSERT INTO HoSoBenhAn (idBenhNhan, chuanDoan, ghiChu, ngayTao, trangThai) VALUE
 (9, N'Răng hô cần niềng răng', N'Bệnh nhân muốn cải thiện thẩm mỹ khuôn mặt.', '2024-05-25', N'Mới'),
 (10, N'Loạn khớp thái dương hàm', N'Bệnh nhân có tiếng kêu khi há miệng, đau vùng khớp.', '2024-05-27', N'Mới');
 
--- Thêm dữ liệu mẫu vào bảng LichHen với những lịch trong quá khứ, hiện tại và tương lai
--- Đảm bảo idBenhNhan từ 1-15 phù hợp với người dùng từ 9-23 (vị trí 9+0, 9+1, 9+2, etc.)
 INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
--- Lịch hẹn quá khứ (đã hoàn thành)
-(1, 1, '2024-01-15', 1, '09:00:00', N'Đã hoàn thành', N'Khám và tư vấn điều trị sâu răng'),
-(2, 2, '2024-02-20', 2, '10:30:00', N'Đã hoàn thành', N'Khám và điều trị viêm nha chu'),
-(3, 3, '2024-03-05', 1, '14:00:00', N'Đã hoàn thành', N'Nhổ răng khôn'),
-(4, 4, '2024-04-12', 3, '08:30:00', N'Đã hoàn thành', N'Phục hình răng cửa bị gãy'),
-(5, 5, '2024-05-01', 2, '15:30:00', N'Đã hoàn thành', N'Điều trị tủy răng số 36'),
+(1, 11, '2025-01-08', 1, '08:00:00', N'Đã hoàn thành', N'Khám tổng quát và tư vấn'),
+(2, 12, '2025-01-10', 2, '09:30:00', N'Đã hoàn thành', N'Điều trị sâu răng số 17'),
+(3, 13, '2025-01-12', 3, '14:00:00', N'Đã hoàn thành', N'Cạo vôi răng định kỳ'),
+(4, 14, '2025-01-15', 1, '10:30:00', N'Đã hoàn thành', N'Nhổ răng sữa'),
+(1, 15, '2025-01-18', 2, '15:00:00', N'Đã hoàn thành', N'Khám đau răng cấp tính'),
+(2, 1, '2025-01-22', 1, '08:30:00', N'Đã hoàn thành', N'Tái khám sau trám răng'),
+(3, 2, '2025-01-25', 2, '11:00:00', N'Đã hoàn thành', N'Điều trị viêm nha chu lần 2'),
+(4, 3, '2025-01-28', 3, '16:30:00', N'Đã hủy', N'Bệnh nhân báo bận đột xuất'),
+(1, 4, '2025-02-03', 1, '09:00:00', N'Đã hoàn thành', N'Kiểm tra răng phục hình'),
+(2, 5, '2025-02-05', 2, '14:30:00', N'Đã hoàn thành', N'Điều trị tủy răng lần 2'),
+(3, 6, '2025-02-08', 3, '10:00:00', N'Đã hoàn thành', N'Lấy dấu hàm để làm cầu răng'),
+(4, 7, '2025-02-12', 1, '15:30:00', N'Đã hoàn thành', N'Vệ sinh răng miệng chuyên sâu'),
+(1, 8, '2025-02-15', 2, '08:00:00', N'Đã hoàn thành', N'Tư vấn phục hình thẩm mỹ'),
+(2, 9, '2025-02-18', 3, '11:30:00', N'Đã hoàn thành', N'Khám tư vấn niềng răng'),
+(3, 10, '2025-02-22', 1, '13:00:00', N'Đã hoàn thành', N'Điều trị loạn khớp thái dương hàm'),
+(4, 11, '2025-02-25', 2, '16:00:00', N'Đã hủy', N'Thời tiết xấu, hoãn lịch'),
+(1, 12, '2025-02-28', 3, '09:30:00', N'Đã hoàn thành', N'Tái khám sau điều trị'),
+(2, 13, '2025-03-05', 1, '08:30:00', N'Đã hoàn thành', N'Trám răng composite'),
+(3, 14, '2025-03-08', 2, '10:00:00', N'Đã hoàn thành', N'Điều trị tủy răng số 26'),
+(4, 15, '2025-03-12', 3, '14:00:00', N'Đã hoàn thành', N'Nhổ răng khôn số 38'),
+(1, 1, '2025-03-15', 1, '11:30:00', N'Đã hoàn thành', N'Kiểm tra răng đã trám'),
+(2, 2, '2025-03-18', 2, '15:30:00', N'Đã hoàn thành', N'Hoàn tất điều trị viêm nha chu'),
+(3, 3, '2025-03-22', 3, '09:00:00', N'Đã hoàn thành', N'Tái khám sau nhổ răng khôn'),
+(4, 4, '2025-03-25', 1, '13:30:00', N'Đã hoàn thành', N'Lắp răng sứ tạm thời'),
+(1, 5, '2025-03-28', 2, '16:00:00', N'Đã hoàn thành', N'Hoàn tất điều trị tủy'),
+(2, 6, '2025-04-02', 3, '08:00:00', N'Đã hoàn thành', N'Thử cầu răng'),
+(3, 7, '2025-04-05', 1, '10:30:00', N'Đã hoàn thành', N'Khám định kỳ 3 tháng'),
+(4, 8, '2025-04-08', 2, '14:30:00', N'Đã hoàn thành', N'Làm veneer răng cửa'),
+(1, 9, '2025-04-12', 3, '11:00:00', N'Đã hoàn thành', N'Lắp mắc cài niềng răng'),
+(2, 10, '2025-04-15', 1, '15:00:00', N'Đã hoàn thành', N'Tái khám điều trị khớp hàm'),
+(3, 11, '2025-04-18', 2, '09:30:00', N'Đã hoàn thành', N'Chuẩn bị trồng răng Implant'),
+(4, 12, '2025-04-22', 3, '13:00:00', N'Đã hoàn thành', N'Điều trị tủy răng số 37'),
+(1, 13, '2025-04-25', 1, '16:30:00', N'Đã hủy', N'Bệnh nhân có việc gia đình'),
+(2, 14, '2025-04-28', 2, '10:00:00', N'Đã hoàn thành', N'Tái khám sau điều trị tủy'),
+(3, 15, '2025-05-03', 3, '08:30:00', N'Đã hoàn thành', N'Tái khám sau nhổ răng khôn'),
+(1, 1, '2025-06-02', 1, '08:00:00', N'Đã xác nhận', N'Khám định kỳ 6 tháng'),
+(2, 3, '2025-06-05', 2, '09:30:00', N'Đã xác nhận', N'Điều trị tủy răng lần 3'),
+(3, 5, '2025-06-08', 3, '14:00:00', N'Đã xác nhận', N'Tái khám sau cấy implant'),
+(4, 7, '2025-06-12', 1, '10:30:00', N'Đã xác nhận', N'Điều chỉnh niềng răng'),
+(1, 9, '2025-06-15', 2, '15:00:00', N'Chờ xác nhận', N'Khám tư vấn bọc răng sứ'),
+(2, 11, '2025-06-18', 3, '08:30:00', N'Chờ xác nhận', N'Cạo vôi răng định kỳ'),
+(3, 13, '2025-06-22', 1, '11:00:00', N'Chờ xác nhận', N'Nhổ răng sữa trẻ em'),
+(4, 15, '2025-06-25', 2, '16:30:00', N'Chờ xác nhận', N'Tẩy trắng răng'),
+(1, 2, '2025-06-28', 3, '09:00:00', N'Chờ xác nhận', N'Khám tổng quát định kỳ'),
+(2, 4, '2025-07-02', 1, '14:30:00', N'Chờ xác nhận', N'Lắp cầu răng cố định');
 
--- Lịch hẹn hiện tại (tháng 5/2025)
-(1, 5, '2025-05-06', 1, '09:30:00', N'Đã xác nhận', N'Tái khám sau điều trị tủy'),
-(2, 6, '2025-05-06', 2, '11:00:00', N'Đã xác nhận', N'Lấy dấu làm cầu răng'),
-(3, 7, '2025-05-07', 1, '14:30:00', N'Đã xác nhận', N'Cạo vôi răng'),
-(4, 8, '2025-05-08', 3, '10:00:00', N'Chờ xác nhận', N'Tư vấn làm veneer'),
-(5, 9, '2025-05-09', 2, '16:00:00', N'Chờ xác nhận', N'Tư vấn niềng răng'),
-
--- Lịch hẹn tương lai
-(1, 10, '2025-05-15', 1, '09:00:00', N'Đã xác nhận', N'Khám loạn khớp thái dương hàm'),
-(2, 1, '2025-05-20', 2, '10:30:00', N'Đã xác nhận', N'Khám định kỳ 6 tháng'),
-(3, 2, '2025-05-25', 1, '15:00:00', N'Chờ xác nhận', N'Tái khám sau điều trị viêm nha chu'),
-(4, 3, '2025-06-05', 3, '14:00:00', N'Chờ xác nhận', N'Tái khám vết nhổ răng'),
-(5, 4, '2025-06-12', 2, '11:30:00', N'Chờ xác nhận', N'Kiểm tra răng phục hình'),
-
--- Lịch hẹn bị hủy
-(1, 11, '2025-05-07', 1, '11:00:00', N'Đã hủy', N'Tư vấn trồng răng Implant'),
-(2, 12, '2025-05-08', 2, '09:30:00', N'Đã hủy', N'Khám đau răng cấp tính');
-
--- Thêm dữ liệu mẫu vào bảng DieuTri
 INSERT INTO DieuTri (idHoSo, idBacSi, moTa, ngayDieuTri) VALUES
-(1, 1, N'Làm sạch và trám răng số 16, 26 bằng composite.', '2024-01-15'),
-(1, 1, N'Tái khám sau trám răng, răng phục hồi tốt.', '2024-01-30'),
-(2, 2, N'Cạo vôi răng và kê đơn thuốc kháng sinh cho viêm nha chu.', '2024-02-20'),
-(2, 2, N'Tái khám, tình trạng viêm đã giảm, hướng dẫn vệ sinh răng miệng.', '2024-03-05'),
-(3, 3, N'Nhổ răng khôn số 48, cắt lợi trùm, khâu vết thương.', '2024-03-05'),
-(3, 3, N'Tái khám, cắt chỉ, vết thương lành tốt.', '2024-03-12');
-INSERT INTO DieuTri (idHoSo, idBacSi, moTa, ngayDieuTri) VALUES
-(1, 1, N'Kê đơn thuốc kháng sinh và hướng dẫn bệnh nhân nghỉ ngơi.', '2024-03-01'),
-(2, 2, N'Tiến hành trám răng số 21.', '2024-03-02'),
-(3, 3, N'Đặt nẹp và theo dõi tình trạng hồi phục.', '2024-03-03'),
-(4, 4, N'Kê thuốc bôi ngoài da và tư vấn cách chăm sóc da.', '2024-03-04'),
-(5, 5, N'Đề xuất nội soi và kê đơn thuốc kháng viêm.', '2024-03-05');
+(4, 4, N'Phục hình răng cửa bằng composite, tái tạo hình dạng răng.', '2024-04-12'),
+(4, 4, N'Tái khám, kiểm tra độ bền của vật liệu phục hình.', '2024-04-26'),
+(5, 1, N'Điều trị tủy răng số 36 - loại bỏ tủy viêm, lấy tủy.', '2024-05-01'),
+(5, 1, N'Trám tủy, đặt thuốc kháng sinh trong ống tủy.', '2024-05-08'),
+(6, 2, N'Lấy dấu hàm để chuẩn bị làm cầu răng 3 đơn vị.', '2024-05-10'),
+(6, 2, N'Thử cầu răng tạm thời, điều chỉnh khớp cắn.', '2024-05-17');
 
--- Thêm dữ liệu mẫu vào bảng HoaDon
 INSERT INTO HoaDon (idBenhNhan, ngayTao, tongTien, trangThai) VALUES
 (1, '2025-03-01', 1500000.00, N'DaThanhToan'),
 (2, '2025-03-05', 2200000.00, N'ChuaThanhToan'),
 (3, '2025-03-10', 1800000.00, N'DaThanhToan'),
 (4, '2025-03-15', 900000.00, N'DaThanhToan'),
-(5, '2025-03-20', 3000000.00, N'DaThanhToan');
+(5, '2025-03-20', 3000000.00, N'DaThanhToan'),
+(6, '2025-06-01', 4200000.00, N'DaThanhToan'),
+(7, '2025-06-03', 850000.00, N'DaThanhToan'), 
+(8, '2025-06-05', 6500000.00, N'ChuaThanhToan'),
+(9, '2025-06-08', 25500000.00, N'DaThanhToan'),
+(10, '2025-06-10', 1200000.00, N'ChuaThanhToan');
 -- Thêm dữ liệu mẫu vào bảng DoanhThu
 INSERT INTO DoanhThu (thangNam, tongDoanhThu, idHoaDon) VALUES
 ('2025-01-01', 12500000.00, 1),

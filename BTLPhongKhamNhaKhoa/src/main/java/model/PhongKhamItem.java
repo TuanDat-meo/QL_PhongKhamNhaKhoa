@@ -15,6 +15,9 @@ public class PhongKhamItem {
     
     @Override
     public String toString() {
+    	if (phongKham == null) {
+            return "-- Lựa chọn --";
+        }
         return phongKham.getTenPhong() + " - " + phongKham.getDiaChi();
     }
 }

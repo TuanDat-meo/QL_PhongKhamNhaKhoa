@@ -892,6 +892,10 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
         if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
         String[] roles = availableRoles.toArray(new String[0]);
+        // Create a new array with "Lựa chọn" at the beginning
+        String[] rolesWithDefault = new String[roles.length + 1];
+        rolesWithDefault[0] = "Lựa chọn";
+        System.arraycopy(roles, 0, rolesWithDefault, 1, roles.length);
         
         JDialog dialog = createStyledDialog("Thêm Người Dùng Mới", 450, 500);
         
@@ -921,6 +925,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         JPasswordField xacNhanMatKhauField = createStyledPasswordField();
         
         JComboBox<String> vaiTroBox = createStyledComboBox(roles, "Lựa chọn");
+
         
         formPanel.add(createFormRow("Họ tên:", hoTenField));
         formPanel.add(Box.createVerticalStrut(15));
