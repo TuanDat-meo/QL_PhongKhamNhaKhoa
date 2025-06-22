@@ -104,9 +104,9 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
 
     private void initializeFormatters() {
         Locale localeVN = new Locale("vi", "VN");
-        currencyFormat = NumberFormat.getInstance(localeVN);
+        currencyFormat = NumberFormat.getNumberInstance(localeVN); // Sử dụng NumberFormat.getNumberInstance để không có ký hiệu "₫"
         currencyFormat.setMinimumFractionDigits(0);
-        currencyFormat.setGroupingUsed(true);
+        currencyFormat.setMaximumFractionDigits(0);
     }
 
     private void initializeController() {
@@ -240,7 +240,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         tableTotalRow.setFont(totalRowFont);
         tableTotalRow.setRowHeight(45);
         tableTotalRow.setTableHeader(null);
-        tableTotalRow.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+        tableTotalRow.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
                     boolean hasFocus, int row, int column) {
@@ -251,7 +251,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.RIGHT);
                     ((JLabel) c).setFont(totalRowFont);
                 } else if (column == 4 && value instanceof Double) {
-                    ((JLabel) c).setText(currencyFormat.format((Double) value) + " VND");
+                    ((JLabel) c).setText(currencyFormat.format((Double) value) + " VNĐ"); // Thêm "VNĐ"
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                     ((JLabel) c).setFont(totalRowFont);
                 } else {
@@ -283,6 +283,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         table.setFocusable(false);
         table.setAutoCreateRowSorter(true);
         table.setBorder(null);
+
         if (table == tableDoanhThu) {
             JTableHeader header = table.getTableHeader();
             header.setFont(tableHeaderFont);
@@ -293,22 +294,25 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             header.setReorderingAllowed(false);
             ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
         }
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);
-        table.getColumnModel().getColumn(1).setPreferredWidth(80);
-        table.getColumnModel().getColumn(2).setPreferredWidth(200);
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);
-        table.getColumnModel().getColumn(4).setPreferredWidth(150);
-        table.getColumnModel().getColumn(5).setPreferredWidth(120);
-        
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(50);   // ID
+        table.getColumnModel().getColumn(1).setPreferredWidth(80);   // ID Hóa Đơn
+        table.getColumnModel().getColumn(2).setPreferredWidth(200);  // Tên Bệnh Nhân
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);  // Tháng/Năm
+        table.getColumnModel().getColumn(4).setPreferredWidth(150);  // Tổng Thu
+        table.getColumnModel().getColumn(5).setPreferredWidth(120);  // Trạng Thái
+
+        // Renderer tùy chỉnh cho tất cả các cột
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
                     boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                
+
                 int modelRow = table.convertRowIndexToModel(row);
                 int rowId = (Integer) modelDoanhThu.getValueAt(modelRow, 0);
-                
+
+                // Xử lý màu nền
                 if (!isSelected) {
                     if (highlightedRowId > 0 && rowId == highlightedRowId) {
                         c.setBackground(highlightColor);
@@ -318,14 +322,51 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 } else {
                     c.setBackground(table.getSelectionBackground());
                 }
-                
+
+                // Căn giữa dữ liệu cho tất cả các cột
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
-                
+
+                // Xử lý hiển thị cho cột "Tổng Thu" (Double)
                 if (column == 4 && value instanceof Double) {
-                    ((JLabel) c).setText(currencyFormat.format((Double) value) + " VND");
+                    ((JLabel) c).setText(currencyFormat.format((Double) value));
+                } 
+                // Xử lý hiển thị cho cột "ID" và "ID Hóa Đơn" (Integer)
+                else if ((column == 0 || column == 1) && value instanceof Integer) {
+                    ((JLabel) c).setText(String.valueOf(value));
+                } 
+                // Xử lý hiển thị cho các cột String (Tên Bệnh Nhân, Tháng/Năm, Trạng Thái)
+                else if (column == 2 || column == 3 || column == 5) {
+                    ((JLabel) c).setText(value != null ? value.toString() : "");
                 }
-                
+
                 ((JLabel) c).setBorder(new EmptyBorder(0, 5, 0, 5));
+                return c;
+            }
+        });
+
+        // Đảm bảo renderer cho Integer và Double cũng căn giữa
+        table.setDefaultRenderer(Integer.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
+                ((JLabel) c).setText(value != null ? value.toString() : "");
+                return c;
+            }
+        });
+
+        table.setDefaultRenderer(Double.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
+                if (column == 4 && value instanceof Double) {
+                    ((JLabel) c).setText(currencyFormat.format((Double) value));
+                } else {
+                    ((JLabel) c).setText(value != null ? value.toString() : "");
+                }
                 return c;
             }
         });
@@ -1407,6 +1448,22 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     }
 
     public void loadDoanhThuData(Object[] rowData, int highlightId) {
+        // Kiểm tra kiểu dữ liệu
+        if (!(rowData[1] instanceof Integer)) {
+            System.err.println("Dữ liệu ID Hóa Đơn không phải Integer: " + rowData[1]);
+            rowData[1] = 0; // Gán giá trị mặc định
+        }
+        if (!(rowData[4] instanceof Double)) {
+            System.err.println("Dữ liệu Tổng Thu không phải Double: " + rowData[4]);
+            try {
+                // Thử chuyển đổi nếu dữ liệu là chuỗi dạng khoa học
+                rowData[4] = Double.parseDouble(rowData[4].toString());
+            } catch (NumberFormatException e) {
+                System.err.println("Không thể chuyển đổi Tổng Thu: " + rowData[4]);
+                rowData[4] = 0.0; // Gán giá trị mặc định
+            }
+        }
+
         if (highlightId > 0 && rowData[0].equals(highlightId)) {
             modelDoanhThu.insertRow(0, rowData);
             originalData.add(0, Arrays.copyOf(rowData, rowData.length));

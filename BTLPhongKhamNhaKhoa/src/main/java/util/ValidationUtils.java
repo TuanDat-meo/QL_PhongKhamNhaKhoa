@@ -14,6 +14,8 @@ import javax.swing.border.CompoundBorder;
 import java.awt.Color;
 import javax.swing.JLabel;
 import javax.swing.ImageIcon;
+import javax.swing.JComboBox;
+
 import java.awt.event.FocusListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
@@ -557,6 +559,40 @@ public class ValidationUtils {
         component.repaint();
     }
     
+    private static final Color VALID_COLOR = new Color(86, 156, 104); // Màu viền hợp lệ, đồng bộ với DoanhThuUI
+
+    // Các phương thức hiện có giữ nguyên, chỉ thêm hai phương thức mới
+
+    public static void setValidBorder(JComponent component) {
+        if (component instanceof JTextField || component instanceof JComboBox) {
+            component.setBorder(new CompoundBorder(
+                new CustomBorder(8, VALID_COLOR),
+                new EmptyBorder(5, 12, 5, 12)
+            ));
+        } else if (component instanceof JDateChooser) {
+            component.setBorder(new CustomBorder(8, VALID_COLOR));
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
+        }
+        component.revalidate();
+        component.repaint();
+    }
+
+    public static void setErrorBorder(JComponent component) {
+        if (component instanceof JTextField || component instanceof JComboBox) {
+            component.setBorder(new CompoundBorder(
+                new CustomBorder(8, ERROR_COLOR),
+                new EmptyBorder(5, 12, 5, 12)
+            ));
+        } else if (component instanceof JDateChooser) {
+            component.setBorder(new CustomBorder(8, ERROR_COLOR));
+            JTextField dateField = (JTextField) ((JDateChooser) component).getDateEditor().getUiComponent();
+            dateField.setBorder(new EmptyBorder(5, 12, 5, 12));
+            dateField.setForeground(ERROR_COLOR);
+        }
+        component.revalidate();
+        component.repaint();
+    }
     public static void validateConfirmPassword(String password, String confirmPassword, JComponent field, JLabel errorLabel) {
         if (!confirmPassword.equals(password)) {
             setError(field, errorLabel, "Passwords do not match");
