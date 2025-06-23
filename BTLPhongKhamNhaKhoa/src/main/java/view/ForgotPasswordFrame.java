@@ -13,8 +13,10 @@ import model.Otp;
 public class ForgotPasswordFrame extends JFrame {
     private JTextField emailOrPhoneField;
     private JButton sendOTPButton;
+    private LoginFrame loginFrame;
 
-    public ForgotPasswordFrame() {
+    public ForgotPasswordFrame(LoginFrame loginFrame) {
+        this.loginFrame = loginFrame;
         setTitle("Forgot Password");
         setSize(350, 200);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -30,7 +32,25 @@ public class ForgotPasswordFrame extends JFrame {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
-        emailOrPhoneField = new JTextField("Enter your email or phone", 20);
+        emailOrPhoneField = new JTextField("", 20);
+        emailOrPhoneField.setForeground(Color.GRAY);
+        emailOrPhoneField.setText("");
+        emailOrPhoneField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (emailOrPhoneField.getText().equals("Enter your email or phone")) {
+                    emailOrPhoneField.setText("");
+                    emailOrPhoneField.setForeground(Color.BLACK);
+                }
+            }
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (emailOrPhoneField.getText().isEmpty()) {
+                    emailOrPhoneField.setForeground(Color.GRAY);
+                    emailOrPhoneField.setText("Enter your email or phone");
+                }
+            }
+        });
         panel.add(emailOrPhoneField, gbc);
 
         // Nút gửi OTP
@@ -60,12 +80,23 @@ public class ForgotPasswordFrame extends JFrame {
             OtpDAO.insertOtp(otpObj);
             System.out.println("[FORGOT PASSWORD] OTP for " + input + ": " + otp);
             JOptionPane.showMessageDialog(this, "OTP sent to your email/phone.");
-            new EnterOTPFrame(this, user.getIdNguoiDung()); // Truyền idNguoiDung sang bước nhập OTP
+            new EnterOTPFrame(this, user.getIdNguoiDung(), loginFrame); // Truyền loginFrame
+            this.dispose();
         });
 
         panel.add(sendOTPButton, gbc);
 
         add(panel);
         setVisible(true);
+
+        // Khi mở form, set placeholder nếu rỗng
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            if (emailOrPhoneField.getText().isEmpty()) {
+                emailOrPhoneField.setForeground(Color.GRAY);
+                emailOrPhoneField.setText("Enter your email or phone");
+            }
+            // Không tự động focus vào ô input, focus về frame
+            this.requestFocusInWindow();
+        });
     }
 }

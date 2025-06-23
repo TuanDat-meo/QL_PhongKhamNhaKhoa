@@ -400,12 +400,13 @@ public class LoginFrame extends JFrame {
             }            
             @Override
             public void mouseClicked(MouseEvent e) {
-                new ForgotPasswordFrame();
+                new ForgotPasswordFrame(LoginFrame.this);
+                setVisible(false);
             }
         });
         createAccountButton.addActionListener(e -> {
-            this.setVisible(false);
             new RegisterFrame(this);
+            setVisible(false);
         });        
         loginButton.addActionListener(e -> {
             String email = emailField.getText().trim();

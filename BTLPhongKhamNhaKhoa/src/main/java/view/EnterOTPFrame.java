@@ -12,10 +12,12 @@ public class EnterOTPFrame extends JFrame {
     private JButton verifyButton;
     private ForgotPasswordFrame parentFrame;
     private int idNguoiDung;
+    private LoginFrame loginFrame;
 
-    public EnterOTPFrame(ForgotPasswordFrame parent, int idNguoiDung) {
+    public EnterOTPFrame(ForgotPasswordFrame parent, int idNguoiDung, LoginFrame loginFrame) {
         this.parentFrame = parent;
         this.idNguoiDung = idNguoiDung;
+        this.loginFrame = loginFrame;
         setTitle("Enter OTP");
         setSize(300, 150);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -31,7 +33,25 @@ public class EnterOTPFrame extends JFrame {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
-        otpField = new JTextField("Enter OTP", 10);
+        otpField = new JTextField("", 10);
+        otpField.setForeground(Color.GRAY);
+        otpField.setText("");
+        otpField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (otpField.getText().equals("Enter OTP")) {
+                    otpField.setText("");
+                    otpField.setForeground(Color.BLACK);
+                }
+            }
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (otpField.getText().isEmpty()) {
+                    otpField.setForeground(Color.GRAY);
+                    otpField.setText("Enter OTP");
+                }
+            }
+        });
         panel.add(otpField, gbc);
 
         // Nút xác minh
@@ -47,7 +67,8 @@ public class EnterOTPFrame extends JFrame {
             if (otp != null) {
                 JOptionPane.showMessageDialog(this, "OTP verified successfully.");
                 OtpDAO.markOtpUsed(otp.getIdOTP());
-                new ResetPasswordFrame(this, idNguoiDung); // Mở cửa sổ đổi mật khẩu, truyền idNguoiDung
+                new ResetPasswordFrame(this, idNguoiDung, loginFrame); // Truyền loginFrame
+                this.dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Invalid or expired OTP. Hãy kiểm tra lại mã OTP, idNguoiDung, loại OTP và thời gian hết hạn trong database!");
             }
@@ -57,5 +78,15 @@ public class EnterOTPFrame extends JFrame {
 
         add(panel);
         setVisible(true);
+
+        // Khi mở form, set placeholder nếu rỗng
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            if (otpField.getText().isEmpty()) {
+                otpField.setForeground(Color.GRAY);
+                otpField.setText("Enter OTP");
+            }
+            // Không tự động focus vào ô input, focus về frame
+            this.requestFocusInWindow();
+        });
     }
 }
