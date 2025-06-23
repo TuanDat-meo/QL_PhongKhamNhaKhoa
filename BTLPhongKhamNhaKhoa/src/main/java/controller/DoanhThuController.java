@@ -98,11 +98,11 @@ public class DoanhThuController {
                 String hoTenBenhNhan = resultSet.getString("hoTen");
                 Date thangNam = resultSet.getDate("thangNam");
                 double tongDoanhThu = resultSet.getDouble("tongDoanhThu");
-                String trangThai = resultSet.getString("trangThai");
+                String trangThai = resultSet.getString("trangThai").equals("DaThanhToan") ? "Đã Thanh Toán" : resultSet.getString("trangThai");
 
                 Object[] rowData = new Object[]{
-                        idDoanhThu, idHoaDon, hoTenBenhNhan,
-                        monthYearFormat.format(thangNam), tongDoanhThu, trangThai
+                    idDoanhThu, idHoaDon, hoTenBenhNhan,
+                    monthYearFormat.format(thangNam), tongDoanhThu, trangThai
                 };
                 view.loadDoanhThuData(rowData);
                 totalRevenue += tongDoanhThu;
@@ -113,6 +113,7 @@ public class DoanhThuController {
             SwingUtilities.invokeLater(() -> showNotification("Lỗi truy vấn dữ liệu doanh thu: " + e.getMessage(), NotificationType.ERROR));
         }
     }
+
 
     public int themDoanhThu(java.util.Date thangNam, double tongDoanhThu, int idHoaDon) {
         if (!kiemTraHoaDon(idHoaDon)) {
@@ -520,11 +521,11 @@ public class DoanhThuController {
                 String hoTenBenhNhan = resultSet.getString("hoTen");
                 Date thangNam = resultSet.getDate("thangNam");
                 double tongDoanhThu = resultSet.getDouble("tongDoanhThu");
-                String trangThai = resultSet.getString("trangThai");
+                String trangThai = resultSet.getString("trangThai").equals("DaThanhToan") ? "Đã Thanh Toán" : resultSet.getString("trangThai");
 
                 Object[] rowData = new Object[]{
-                        idDoanhThu, idHoaDon, hoTenBenhNhan,
-                        monthYearFormat.format(thangNam), tongDoanhThu, trangThai
+                    idDoanhThu, idHoaDon, hoTenBenhNhan,
+                    monthYearFormat.format(thangNam), tongDoanhThu, trangThai
                 };
                 dataList.add(rowData);
                 totalRevenue += tongDoanhThu;
