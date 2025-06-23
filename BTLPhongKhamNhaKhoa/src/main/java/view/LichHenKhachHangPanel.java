@@ -49,7 +49,8 @@ public class LichHenKhachHangPanel extends JPanel {
     private JPopupMenu popupMenuLichHen;
     private JMenuItem menuItemXemChiTiet;
     private JMenuItem menuItemSuaLichHen;
-    private JMenuItem menuItemXoaLichHen;    
+    private JMenuItem menuItemXoaLichHen;   
+    
     // Enhanced Color Palette - Softer and More Professional
     private static final Color BG_PRIMARY = new Color(248, 250, 252);        // Softer background
     private static final Color BG_SECONDARY = new Color(241, 245, 249);      // Lighter secondary
@@ -67,7 +68,7 @@ public class LichHenKhachHangPanel extends JPanel {
     private static final Color COLOR_MORNING = new Color(224, 244, 255); // light sky blue
     private static final Color COLOR_AFTERNOON = new Color(255, 242, 215); // vàng kem sáng
 
-    private static final Color COLOR_SELECTED = new Color(59, 130, 246);     // Blue selection
+    private static final Color COLOR_SELECTED = new Color(79, 172, 254);     // Blue selection
     private static final Color COLOR_BOOKED = new Color(220, 252, 231);      // Light mint green for booked
     private static final Color COLOR_HOVER = new Color(241, 245, 249);       // Light hover effect
     
@@ -81,7 +82,17 @@ public class LichHenKhachHangPanel extends JPanel {
     private Color headerTextColor = Color.WHITE; // Header text color
     private int cornerRadius = 10;
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Color STATUS_PENDING = new Color(255, 193, 7);     // Amber/Warning - Chờ xác nhận
+    private static final Color STATUS_CONFIRMED = new Color(40, 167, 69);   // Success Green - Đã xác nhận  
+    private static final Color STATUS_CANCELLED = new Color(220, 53, 69);   // Danger Red - Đã hủy
+    private static final Color STATUS_DEFAULT = new Color(248, 249, 250);   // Light Gray - Mặc định
 
+    // Sử dụng Map để tối ưu performance thay vì switch-case
+    private static final Map<String, Color> STATUS_COLOR_MAP = Map.of(
+        "Chờ xác nhận", STATUS_PENDING,
+        "Đã xác nhận", STATUS_CONFIRMED,
+        "Đã hủy", STATUS_CANCELLED
+    );
     private final String[] daysOfWeek = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
     
     private final String[] timeSlots = {
@@ -113,7 +124,7 @@ public class LichHenKhachHangPanel extends JPanel {
             NguoiDungController userController = new NguoiDungController();
             this.currentUser = userController.getNguoiDungById(userId);
             updateUIBasedOnUserRole();
-            loadData();
+            resetFilters(true); // Reset filters và load data mới
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, 
                 "Không thể tải thông tin người dùng: " + e.getMessage(), 
@@ -269,44 +280,50 @@ public class LichHenKhachHangPanel extends JPanel {
         return navPanel;
     }    
     private JPanel createInlineFilterSection() {
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0)); // Reduced spacing
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         filterPanel.setBackground(BG_SECONDARY);
-        
-        // Compact date picker
+
+        // Create date chooser following the pattern
         dateChooser = new JDateChooser();
+        dateChooser.setDateFormatString("dd/MM/yyyy");
         dateChooser.setDate(new java.util.Date());
-        dateChooser.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        dateChooser.setPreferredSize(new Dimension(90, 26)); // Smaller
-        dateChooser.setBackground(BG_CARD);
-        dateChooser.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        
-        // Compact combos
-        cbBacSi = createCompactComboBox(110); // Reduced width
+        dateChooser.setPreferredSize(new Dimension(100, 26));
+        dateChooser.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1),
+            BorderFactory.createEmptyBorder(2, 6, 2, 6)));
+
+        // Create combo boxes following the pattern
+        cbBacSi = createCompactComboBox(110);
+        cbBacSi.setPreferredSize(new Dimension(110, 26));
+        cbBacSi.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         loadBacSiList();
-        
-        cbPhongKham = createCompactComboBox(90); // Reduced width
+
+        cbPhongKham = createCompactComboBox(110);
+        cbPhongKham.setPreferredSize(new Dimension(110, 26));
+        cbPhongKham.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         loadPhongKhamList();
-        
-        // Compact search field
-        txtTimKiem = createCompactTextField(110); // Reduced width
+
+        // Create search text field following the pattern
+        txtTimKiem = createCompactTextField(140);
+        txtTimKiem.setPreferredSize(new Dimension(140, 26));
+        txtTimKiem.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(BORDER_COLOR, 1),
-            new EmptyBorder(3, 6, 3, 6) // Reduced padding
-        ));
+            new EmptyBorder(3, 6, 3, 6)));
         txtTimKiem.setToolTipText("Tìm kiếm...");
-        
-        // Compact search button
+
+        // Create search button following the pattern
         btnTimKiem = createCompactButton("Tìm", ACCENT_PRIMARY);
         btnTimKiem.setPreferredSize(new Dimension(45, 26));
-        
+        btnTimKiem.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnTimKiem.addActionListener(e -> applySearch());
+
         filterPanel.add(dateChooser);
         filterPanel.add(cbBacSi);
         filterPanel.add(cbPhongKham);
         filterPanel.add(txtTimKiem);
         filterPanel.add(btnTimKiem);
-        
-        btnTimKiem.addActionListener(e -> applySearch());
-        
+
         return filterPanel;
     }
     private JTextField createCompactTextField(int width) {
@@ -366,33 +383,66 @@ public class LichHenKhachHangPanel extends JPanel {
         return footerPanel;
     }
     private JPanel createCompactLegendPanel() {
-        JPanel legendPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0)); // Reduced spacing
+        JPanel legendPanel = new JPanel(new BorderLayout());
         legendPanel.setBackground(BG_SECONDARY);
         
-        String[] labels = {"Buổi sáng", "Buổi chiều", "Đã chọn", "Đã đặt"};
-        Color[] colors = {COLOR_MORNING, COLOR_AFTERNOON, COLOR_SELECTED, COLOR_BOOKED};
+        // Tạo 2 hàng: 1 hàng cho màu thời gian, 1 hàng cho màu trạng thái
+        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        topRow.setBackground(BG_SECONDARY);
         
-        for (int i = 0; i < labels.length; i++) {
-            JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0)); // Reduced spacing
-            item.setBackground(BG_SECONDARY);
-            
-            // Color indicator square
-            JPanel colorSquare = new JPanel();
-            colorSquare.setPreferredSize(new Dimension(14, 14)); // Smaller square
-            colorSquare.setBackground(colors[i]);
-            colorSquare.setBorder(BorderFactory.createLineBorder(BORDER_STRONG, 1));
-            
-            JLabel label = new JLabel(labels[i]);
-            label.setFont(new Font("Segoe UI", Font.PLAIN, 11)); // Smaller font
-            label.setForeground(TEXT_SECONDARY);
-            
-            item.add(colorSquare);
-            item.add(label);
-            legendPanel.add(item);
+        JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        bottomRow.setBackground(BG_SECONDARY);
+        
+        // Hàng 1: Màu thời gian và trạng thái cơ bản
+        String[] timeLabels = {"Buổi sáng", "Buổi chiều", "Đã chọn", "Đã đặt"};
+        Color[] timeColors = {COLOR_MORNING, COLOR_AFTERNOON, COLOR_SELECTED, COLOR_BOOKED};
+        
+        for (int i = 0; i < timeLabels.length; i++) {
+            JPanel item = createLegendItem(timeLabels[i], timeColors[i]);
+            topRow.add(item);
         }
         
+        // Hàng 2: Màu trạng thái lịch hẹn
+        String[] statusLabels = {"Chờ xác nhận", "Đã xác nhận", "Đã hủy"};
+        Color[] statusColors = {STATUS_PENDING, STATUS_CONFIRMED, STATUS_CANCELLED};
+        
+        for (int i = 0; i < statusLabels.length; i++) {
+            JPanel item = createLegendItem(statusLabels[i], statusColors[i]);
+            bottomRow.add(item);
+        }
+        
+        // Thêm các hàng vào panel chính
+        JPanel containerPanel = new JPanel();
+        containerPanel.setLayout(new BoxLayout(containerPanel, BoxLayout.Y_AXIS));
+        containerPanel.setBackground(BG_SECONDARY);
+        
+        containerPanel.add(topRow);
+        containerPanel.add(Box.createVerticalStrut(8)); // Khoảng cách giữa 2 hàng
+        containerPanel.add(bottomRow);
+        
+        legendPanel.add(containerPanel, BorderLayout.WEST);
+        
         return legendPanel;
-    }     
+    }
+    private JPanel createLegendItem(String label, Color color) {
+        JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        item.setBackground(BG_SECONDARY);
+        
+        // Color indicator square
+        JPanel colorSquare = new JPanel();
+        colorSquare.setPreferredSize(new Dimension(14, 14));
+        colorSquare.setBackground(color);
+        colorSquare.setBorder(BorderFactory.createLineBorder(BORDER_STRONG, 1));
+        
+        JLabel labelComponent = new JLabel(label);
+        labelComponent.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        labelComponent.setForeground(TEXT_SECONDARY);
+        
+        item.add(colorSquare);
+        item.add(labelComponent);
+        
+        return item;
+    }
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
         JButton button = new JButton(text) {
             @Override
@@ -656,7 +706,7 @@ public class LichHenKhachHangPanel extends JPanel {
             // Background colors based on selection and time
             if (row == selectedRow && column == selectedColumn) {
                 panel.setBackground(COLOR_SELECTED);
-                panel.setBorder(BorderFactory.createLineBorder(ACCENT_PRIMARY, 2));
+                panel.setBorder(BorderFactory.createLineBorder(new Color(37, 99, 235), 3));
             } else {
                 if (column == 0) {
                     panel.setBackground(TABLE_HEADER_BG);
@@ -672,128 +722,78 @@ public class LichHenKhachHangPanel extends JPanel {
             
             if (value != null && !value.toString().isEmpty()) {
                 if (column == 0) {
-                    // Time column - compact display
-                    JLabel timeLabel = new JLabel(value.toString());
-                    timeLabel.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Smaller font
-                    timeLabel.setHorizontalAlignment(JLabel.CENTER);
-                    timeLabel.setVerticalAlignment(JLabel.CENTER);
-                    timeLabel.setForeground(TEXT_PRIMARY);
-                    panel.add(timeLabel, BorderLayout.CENTER);
-                } else {
-                    // Appointment cell - compact layout
-                    String[] lines = value.toString().split("\n");
-                    
-                    JPanel contentPanel = new JPanel();
-                    contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-                    contentPanel.setOpaque(false);
-                    contentPanel.setBorder(new EmptyBorder(3, 6, 3, 6)); // Reduced padding
-                    
-                    if (lines.length >= 1) {
-                        JLabel nameLabel = new JLabel("BN: " + lines[0]);
-                        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Smaller font
-                        nameLabel.setForeground(TEXT_PRIMARY);
-                        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                        contentPanel.add(nameLabel);                                           
-                        
-                        if (lines.length >= 2) {
-                            JLabel roomLabel = new JLabel("P: " + lines[1]); // Shortened "Phòng" to "P"
-                            roomLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9)); // Smaller font
-                            roomLabel.setForeground(TEXT_SECONDARY);
-                            roomLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                            contentPanel.add(Box.createVerticalStrut(2)); // Reduced spacing
-                            contentPanel.add(roomLabel);
-                        }
-                        
-                        panel.setBackground(COLOR_BOOKED);
-                        
-                        // Success indicator bar
-                        JPanel indicator = new JPanel();
-                        indicator.setPreferredSize(new Dimension(3, panel.getHeight())); // Thinner indicator
-                        indicator.setBackground(SUCCESS_COLOR);
-                        panel.add(indicator, BorderLayout.WEST);
-                    }
-                    
-                    panel.add(contentPanel, BorderLayout.CENTER);
-                }
-            } else if (column > 0) {
-                // Empty cell with selection indicator
-                if (row == selectedRow && column == selectedColumn) {
-                    JLabel plusLabel = new JLabel("+");
-                    plusLabel.setFont(new Font("Segoe UI", Font.BOLD, 16)); // Smaller plus
-                    plusLabel.setForeground(ACCENT_PRIMARY);
-                    plusLabel.setHorizontalAlignment(JLabel.CENTER);
-                    plusLabel.setVerticalAlignment(JLabel.CENTER);
-                    panel.add(plusLabel, BorderLayout.CENTER);
-                }
-            }
-
-            return panel;
-        }
-    }
-    private class ModernScheduleTableCellRenderer extends DefaultTableCellRenderer {
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, 
-                boolean isSelected, boolean hasFocus, int row, int column) {
-
-            JPanel panel = new JPanel(new BorderLayout(0, 0));
-            
-            // Background colors based on selection and time
-            if (row == selectedRow && column == selectedColumn) {
-                panel.setBackground(COLOR_SELECTED);
-                panel.setBorder(BorderFactory.createLineBorder(ACCENT_PRIMARY, 3));
-            } else {
-                if (column == 0) {
-                    panel.setBackground(TABLE_HEADER_BG);
-                    panel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 2, BORDER_STRONG));
-                } else if (row < MORNING_SLOTS_COUNT) { // Buổi sáng
-                    panel.setBackground(COLOR_MORNING);
-                    panel.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-                } else { // Buổi chiều
-                    panel.setBackground(COLOR_AFTERNOON);
-                    panel.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-                }
-            }
-            
-            if (value != null && !value.toString().isEmpty()) {
-                if (column == 0) {
                     // Time column
                     JLabel timeLabel = new JLabel(value.toString());
-                    timeLabel.setFont(FONT_HEADER);
+                    timeLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
                     timeLabel.setHorizontalAlignment(JLabel.CENTER);
                     timeLabel.setVerticalAlignment(JLabel.CENTER);
                     timeLabel.setForeground(TEXT_PRIMARY);
                     panel.add(timeLabel, BorderLayout.CENTER);
                 } else {
-                    // Appointment cell
+                    // Appointment cell - sử dụng màu theo trạng thái
+                    String key = row + "-" + column;
+                    LichHen lichHen = appointmentMap.get(key);
+                    
                     String[] lines = value.toString().split("\n");
                     
                     JPanel contentPanel = new JPanel();
                     contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
                     contentPanel.setOpaque(false);
-                    contentPanel.setBorder(new EmptyBorder(6, 10, 6, 10));
+                    contentPanel.setBorder(new EmptyBorder(3, 6, 3, 6));
                     
                     if (lines.length >= 1) {
                         JLabel nameLabel = new JLabel("BN: " + lines[0]);
-                        nameLabel.setFont(FONT_BOLD);
+                        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
                         nameLabel.setForeground(TEXT_PRIMARY);
                         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
                         contentPanel.add(nameLabel);                                           
                         
                         if (lines.length >= 2) {
-                            JLabel roomLabel = new JLabel("Phòng: " + lines[1]);
-                            roomLabel.setFont(FONT_SMALL);
+                            JLabel roomLabel = new JLabel("P: " + lines[1]);
+                            roomLabel.setFont(new Font("Segoe UI", Font.PLAIN, 9));
                             roomLabel.setForeground(TEXT_SECONDARY);
                             roomLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                            contentPanel.add(Box.createVerticalStrut(4));
+                            contentPanel.add(Box.createVerticalStrut(2));
                             contentPanel.add(roomLabel);
                         }
                         
-                        panel.setBackground(COLOR_BOOKED);
+                        // *** QUAN TRỌNG: Sử dụng màu theo trạng thái thay vì màu cố định ***
+                        Color appointmentBgColor;
+                        Color indicatorColor;
                         
-                        // Success indicator bar
+                        if (lichHen != null && lichHen.getTrangThai() != null) {
+                            // Lấy màu theo trạng thái lịch hẹn
+                            appointmentBgColor = getColorByStatus(lichHen.getTrangThai());
+                            indicatorColor = appointmentBgColor.darker();
+                            
+                            // Thêm status badge nhỏ
+                            JLabel statusBadge = new JLabel(lichHen.getTrangThai());
+                            statusBadge.setFont(new Font("Segoe UI", Font.BOLD, 8));
+                            statusBadge.setForeground(getTextColorByStatus(lichHen.getTrangThai()));
+                            statusBadge.setAlignmentX(Component.LEFT_ALIGNMENT);
+                            contentPanel.add(Box.createVerticalStrut(1));
+                            contentPanel.add(statusBadge);
+                        } else {
+                            // Fallback cho trường hợp không có trạng thái
+                            appointmentBgColor = COLOR_BOOKED;
+                            indicatorColor = SUCCESS_COLOR;
+                        }
+                        
+                        // Xử lý màu nền khi ô được chọn
+                        if (row == selectedRow && column == selectedColumn) {
+                            // Làm sáng màu nền khi được chọn
+                            int red = Math.min(255, appointmentBgColor.getRed() + 30);
+                            int green = Math.min(255, appointmentBgColor.getGreen() + 30);
+                            int blue = Math.min(255, appointmentBgColor.getBlue() + 30);
+                            panel.setBackground(new Color(red, green, blue));
+                        } else {
+                            panel.setBackground(appointmentBgColor);
+                        }
+                        
+                        // Status indicator bar bên trái
                         JPanel indicator = new JPanel();
                         indicator.setPreferredSize(new Dimension(4, panel.getHeight()));
-                        indicator.setBackground(SUCCESS_COLOR);
+                        indicator.setBackground(indicatorColor);
                         panel.add(indicator, BorderLayout.WEST);
                     }
                     
@@ -803,8 +803,8 @@ public class LichHenKhachHangPanel extends JPanel {
                 // Empty cell with selection indicator
                 if (row == selectedRow && column == selectedColumn) {
                     JLabel plusLabel = new JLabel("+");
-                    plusLabel.setFont(new Font("Inter", Font.BOLD, 20));
-                    plusLabel.setForeground(ACCENT_PRIMARY);
+                    plusLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+                    plusLabel.setForeground(Color.WHITE);
                     plusLabel.setHorizontalAlignment(JLabel.CENTER);
                     plusLabel.setVerticalAlignment(JLabel.CENTER);
                     panel.add(plusLabel, BorderLayout.CENTER);
@@ -813,7 +813,7 @@ public class LichHenKhachHangPanel extends JPanel {
 
             return panel;
         }
-    }
+    }    
     private void updateWeekLabel() {
         Calendar startOfWeek = (Calendar) currentCalendar.clone();
         startOfWeek.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
@@ -857,7 +857,7 @@ public class LichHenKhachHangPanel extends JPanel {
     }
 
     private void filterAndLoadData(String doctor, String room) {
-        // Clear current data - đơn giản hóa
+        // Clear current data
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 1; j < tableModel.getColumnCount(); j++) {
                 tableModel.setValueAt(null, i, j);
@@ -865,7 +865,29 @@ public class LichHenKhachHangPanel extends JPanel {
         }
         
         String searchText = txtTimKiem.getText().trim().toLowerCase();
-        List<LichHen> dsLichHen = controller.getAllLichHen();
+        List<LichHen> dsLichHen = new ArrayList<>();
+        
+        // Lấy dữ liệu theo role của user trước
+        try {
+            if (currentUser != null) {
+                String role = currentUser.getVaiTro();
+                String userName = currentUser.getHoTen();
+                
+                if ("ADMIN".equalsIgnoreCase(role) || "STAFF".equalsIgnoreCase(role) || "NHÂN VIÊN".equalsIgnoreCase(role)) {
+                    dsLichHen = controller.getAllLichHen();
+                } else if ("PATIENT".equalsIgnoreCase(role) || "BỆNH NHÂN".equalsIgnoreCase(role)) {
+                    dsLichHen = getLichHenByPatientName(userName);
+                } else if ("DOCTOR".equalsIgnoreCase(role) || "BÁC SĨ".equalsIgnoreCase(role)) {
+                    dsLichHen = getLichHenByDoctorName(userName);
+                } else {
+                    dsLichHen = getLichHenByUserName(userName);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            dsLichHen = new ArrayList<>();
+        }
+        
         List<LichHen> filteredList = new ArrayList<>();
         
         for (LichHen lichHen : dsLichHen) {
@@ -899,7 +921,7 @@ public class LichHenKhachHangPanel extends JPanel {
         loadAppointmentsToTable(filteredList);
     }
     private void loadData() {
-        // Clear current data - không cần skip header rows nữa
+        // Clear current data
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             for (int j = 1; j < tableModel.getColumnCount(); j++) {
                 tableModel.setValueAt(null, i, j);
@@ -908,28 +930,88 @@ public class LichHenKhachHangPanel extends JPanel {
         
         List<LichHen> dsLichHen = new ArrayList<>();
         try {
-            try {
-                dsLichHen = controller.getAllLichHen();
-            } catch (IllegalArgumentException e) {
-                if (currentUser != null) {
-                    try {
-                        if ("PATIENT".equalsIgnoreCase(currentUser.getVaiTro()) || 
-                            "BỆNH NHÂN".equalsIgnoreCase(currentUser.getVaiTro())) {
-                            dsLichHen = controller.getLichHenByUserId(currentUser.getIdNguoiDung());
-                        } else if ("DOCTOR".equalsIgnoreCase(currentUser.getVaiTro()) || 
-                                  "BÁC SĨ".equalsIgnoreCase(currentUser.getVaiTro())) {
-                            dsLichHen = controller.layLichHenTheoBacSi(currentUser.getIdNguoiDung());
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
+            if (currentUser != null) {
+                String role = currentUser.getVaiTro();
+                String userName = currentUser.getHoTen(); // Lấy tên người dùng hiện tại
+                
+                if ("ADMIN".equalsIgnoreCase(role) || "STAFF".equalsIgnoreCase(role) || "NHÂN VIÊN".equalsIgnoreCase(role)) {
+                    // Admin và Staff có thể xem tất cả lịch hẹn
+                    dsLichHen = controller.getAllLichHen();
+                } else if ("PATIENT".equalsIgnoreCase(role) || "BỆNH NHÂN".equalsIgnoreCase(role)) {
+                    // Bệnh nhân chỉ xem lịch hẹn của chính mình
+                    dsLichHen = getLichHenByPatientName(userName);
+                } else if ("DOCTOR".equalsIgnoreCase(role) || "BÁC SĨ".equalsIgnoreCase(role)) {
+                    // Bác sĩ chỉ xem lịch hẹn mà họ phụ trách
+                    dsLichHen = getLichHenByDoctorName(userName);
+                } else {
+                    // Mặc định: chỉ xem lịch hẹn của chính mình (theo tên)
+                    dsLichHen = getLichHenByUserName(userName);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Không thể tải dữ liệu lịch hẹn: " + e.getMessage(), 
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
 
         loadAppointmentsToTable(dsLichHen);
+    }
+
+    // Thêm các phương thức helper để lấy lịch hẹn theo tên người dùng
+    private List<LichHen> getLichHenByPatientName(String patientName) {
+        try {
+            List<LichHen> allAppointments = controller.getAllLichHen();
+            List<LichHen> userAppointments = new ArrayList<>();
+            
+            for (LichHen lichHen : allAppointments) {
+                if (lichHen.getHoTenBenhNhan() != null && 
+                    lichHen.getHoTenBenhNhan().equalsIgnoreCase(patientName)) {
+                    userAppointments.add(lichHen);
+                }
+            }
+            return userAppointments;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    private List<LichHen> getLichHenByDoctorName(String doctorName) {
+        try {
+            List<LichHen> allAppointments = controller.getAllLichHen();
+            List<LichHen> doctorAppointments = new ArrayList<>();
+            
+            for (LichHen lichHen : allAppointments) {
+                if (lichHen.getHoTenBacSi() != null && 
+                    lichHen.getHoTenBacSi().equalsIgnoreCase(doctorName)) {
+                    doctorAppointments.add(lichHen);
+                }
+            }
+            return doctorAppointments;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    private List<LichHen> getLichHenByUserName(String userName) {
+        try {
+            List<LichHen> allAppointments = controller.getAllLichHen();
+            List<LichHen> userAppointments = new ArrayList<>();
+            
+            for (LichHen lichHen : allAppointments) {
+                // Kiểm tra cả bệnh nhân và bác sĩ
+                if ((lichHen.getHoTenBenhNhan() != null && lichHen.getHoTenBenhNhan().equalsIgnoreCase(userName)) ||
+                    (lichHen.getHoTenBacSi() != null && lichHen.getHoTenBacSi().equalsIgnoreCase(userName))) {
+                    userAppointments.add(lichHen);
+                }
+            }
+            return userAppointments;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
     private void loadAppointmentsToTable(List<LichHen> dsLichHen) {
         // Clear current data - đơn giản hóa
@@ -1498,7 +1580,16 @@ public class LichHenKhachHangPanel extends JPanel {
         
         return fieldPanel;
     }
-    
+    private Color getColorByStatus(String status) {
+        return status != null ? STATUS_COLOR_MAP.getOrDefault(status, STATUS_DEFAULT) : STATUS_DEFAULT;
+    }
+    private Color getTextColorByStatus(String status) {
+        Color bgColor = getColorByStatus(status);
+        
+        // Tính độ sáng để chọn màu text phù hợp
+        double brightness = (bgColor.getRed() * 0.299 + bgColor.getGreen() * 0.587 + bgColor.getBlue() * 0.114) / 255;
+        return brightness > 0.6 ? Color.BLACK : Color.WHITE;
+    }
     private JComboBox<String> createBacSiComboBox(LichHen lichHen) {
         JComboBox<String> combo = new JComboBox<>();
         combo.setFont(FONT_BODY);
@@ -1522,13 +1613,25 @@ public class LichHenKhachHangPanel extends JPanel {
         combo.setBackground(BG_CARD);
         combo.setName("cbBenhNhan");
         
-        List<String> benhNhanList = controller.danhSachBenhNhan();
-        for (String benhNhan : benhNhanList) {
-            combo.addItem(benhNhan);
+        // Chỉ hiển thị tên người dùng hiện tại
+        if (currentUser != null) {
+            String currentUserName = currentUser.getHoTen();
+            combo.addItem(currentUserName);
+            combo.setSelectedItem(currentUserName);
+            
+            // Disable combo box vì chỉ có một lựa chọn
+            combo.setEnabled(false);
         }
         
+        // Nếu đang cập nhật lịch hẹn và có thông tin bệnh nhân khác với user hiện tại
         if (lichHen != null && lichHen.getHoTenBenhNhan() != null) {
-            combo.setSelectedItem(lichHen.getHoTenBenhNhan());
+            String lichHenPatient = lichHen.getHoTenBenhNhan();
+            
+            // Nếu bệnh nhân trong lịch hẹn khác với user hiện tại, thêm vào combo
+            if (currentUser != null && !lichHenPatient.equals(currentUser.getHoTen())) {
+                combo.addItem(lichHenPatient);
+            }
+            combo.setSelectedItem(lichHenPatient);
         }
         
         return combo;
@@ -1678,16 +1781,23 @@ public class LichHenKhachHangPanel extends JPanel {
         combo.setFont(FONT_BODY);
         combo.setBackground(BG_CARD);
         combo.setName("cbTrangThai");
-        
+
         String[] trangThaiList = {"Chờ xác nhận", "Đã xác nhận", "Đã hủy", "Hoàn thành"};
         for (String trangThai : trangThaiList) {
             combo.addItem(trangThai);
         }
+
+        // Mặc định chọn "Chờ xác nhận"
+        combo.setSelectedItem("Chờ xác nhận");
         
+        // Nếu có lịch hẹn và có trạng thái thì hiển thị theo trạng thái đó
         if (lichHen != null && lichHen.getTrangThai() != null) {
             combo.setSelectedItem(lichHen.getTrangThai());
         }
         
+        // Không cho phép chỉnh sửa trạng thái
+        combo.setEnabled(false);
+
         return combo;
     }
     
@@ -2217,25 +2327,18 @@ public class LichHenKhachHangPanel extends JPanel {
         }
         return null;
     }
-    private void resetFilters(boolean showNotification) {
-        dateChooser.setDate(new java.util.Date());
+    private void resetFilters(boolean reloadData) {
+        txtTimKiem.setText("");
         cbBacSi.setSelectedIndex(0);
         cbPhongKham.setSelectedIndex(0);
-        txtTimKiem.setText("");
-        
+        dateChooser.setDate(new java.util.Date());
         currentCalendar = Calendar.getInstance();
         updateWeekLabel();
-        loadData();
         
-        if (showNotification) {
-            JOptionPane.showMessageDialog(
-                this,
-                "Đã xóa tất cả bộ lọc.",
-                "Thông báo",
-                JOptionPane.INFORMATION_MESSAGE
-            );
+        if (reloadData) {
+            loadData();
         }
-    }      
+    }  
     private void loadBacSiList() {
         cbBacSi.removeAllItems();
         cbBacSi.addItem("-- Tất cả bác sĩ --");
