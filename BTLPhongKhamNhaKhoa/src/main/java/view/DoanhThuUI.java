@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeListener {
-    private Color primaryColor = new Color(79, 129, 189);     // Professional blue
+	private Color primaryColor = new Color(79, 129, 189);     // Professional blue
     private Color secondaryColor = new Color(141, 180, 226);  // Lighter blue
     private Color accentColor = new Color(192, 80, 77);       // Refined red for delete
     private Color successColor = new Color(86, 156, 104);     // Elegant green for add
@@ -46,10 +46,10 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private Color tableStripeColor = new Color(245, 247, 250); // Very light stripe
     private Color borderColor = new Color(222, 226, 230);     // Light gray borders
     private Color totalRowColor = new Color(232, 240, 254);   // Light blue for total row
+    private Color statisticsColor = new Color(58, 175, 169);  // Teal color for statistics
     
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
-    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 12);
     private Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableHeaderFont = new Font("Segoe UI", Font.BOLD, 14);
     private Font tableFont = new Font("Segoe UI", Font.PLAIN, 13);
@@ -61,6 +61,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private DefaultTableModel modelTotalRow;
     private JButton btnXuatFile;
     private JButton btnThemMoiDoanhThu;
+    private JButton btnThongKe; // New statistics button
     private JTextField txtTimKiemDoanhThu;
     private JButton btnTimKiemDoanhThu;
     private TableRowSorter<DefaultTableModel> sorterDoanhThu;
@@ -68,9 +69,18 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     private JMenuItem menuItemSuaDoanhThu;
     private JMenuItem menuItemXoaDoanhThu;
     private JMenuItem menuItemXemChiTiet;
-    private JFrame parentFrame;
     private double totalRevenue = 0;
     private List<Object[]> originalData = new ArrayList<>();
+    
+    // Main content panel that will switch between table view and statistics view
+    private JPanel mainContentPanel;
+    private CardLayout cardLayout;
+    private JPanel tableViewPanel;
+    private ThongKeDoanhThuPanel statisticsPanel;
+    private boolean isShowingStatistics = false;
+    private JLabel titleLabel;
+    private JLabel viewIndicator;
+    private JPanel searchPanel;
     // Business Logic
     private DoanhThuController doanhThuController;
     private NumberFormat currencyFormat;
@@ -83,7 +93,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
     public DoanhThuUI() {
         initializePanel();
         initializeFormatters();
-        buildTablePanel();
+        buildMainLayout();
         initializeController();
         buildHeaderPanel();
         buildButtonPanel();
@@ -95,20 +105,17 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             btnXuatFile.setEnabled(modelDoanhThu.getRowCount() > 0);
         });
     }
-
     private void initializePanel() {
         setLayout(new BorderLayout(0, 0));
         setBackground(backgroundColor);
         setBorder(new EmptyBorder(20, 20, 20, 20));
     }
-
     private void initializeFormatters() {
         Locale localeVN = new Locale("vi", "VN");
         currencyFormat = NumberFormat.getNumberInstance(localeVN); // Sử dụng NumberFormat.getNumberInstance để không có ký hiệu "₫"
         currencyFormat.setMinimumFractionDigits(0);
         currencyFormat.setMaximumFractionDigits(0);
     }
-
     private void initializeController() {
         doanhThuController = new DoanhThuController(this);
         if (modelDoanhThu == null) {
@@ -116,20 +123,29 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
         exportManager = new ExportManager(this, modelDoanhThu, this);
     }
-
     private void buildHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout(15, 15));
         headerPanel.setBackground(backgroundColor);
         headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
+        
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         titlePanel.setBackground(backgroundColor);
         
+        // Dynamic title based on current view
         JLabel titleLabel = new JLabel("QUẢN LÝ DOANH THU");
         titleLabel.setFont(titleFont);
         titleLabel.setForeground(primaryColor);
         titlePanel.add(titleLabel);
         
+        // Add view toggle indicator
+        JLabel viewIndicator = new JLabel("» Danh sách");
+        viewIndicator.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        viewIndicator.setForeground(secondaryColor);
+        titlePanel.add(viewIndicator);
+        
         headerPanel.add(titlePanel, BorderLayout.WEST);
+        
+        // Search panel - only show when in table view
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         searchPanel.setBackground(backgroundColor);
         
@@ -139,7 +155,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         txtTimKiemDoanhThu = new JTextField(18);
         txtTimKiemDoanhThu.setFont(regularFont);
-        
         txtTimKiemDoanhThu.setPreferredSize(new Dimension(220, 38));
         txtTimKiemDoanhThu.setBorder(BorderFactory.createCompoundBorder(
                 new util.CustomBorder(10, borderColor), 
@@ -147,15 +162,59 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         btnTimKiemDoanhThu = createStyledButton("Tìm kiếm");
         btnTimKiemDoanhThu.setPreferredSize(new Dimension(120, 38));
+        
         searchPanel.add(searchLabel);
         searchPanel.add(txtTimKiemDoanhThu);
         searchPanel.add(btnTimKiemDoanhThu);
         
         headerPanel.add(searchPanel, BorderLayout.EAST);
         
+        // Store references for dynamic updates
+        this.titleLabel = titleLabel;
+        this.viewIndicator = viewIndicator;
+        this.searchPanel = searchPanel;
+        
         add(headerPanel, BorderLayout.NORTH);
     }
-
+    private void buildMainLayout() {
+        // Create CardLayout for switching between views
+        cardLayout = new CardLayout();
+        mainContentPanel = new JPanel(cardLayout);
+        mainContentPanel.setBackground(backgroundColor);
+        
+        // Build table view panel
+        buildTableViewPanel();
+        
+        // Build statistics panel
+        buildStatisticsPanel();
+        
+        // Add panels to card layout
+        mainContentPanel.add(tableViewPanel, "TABLE_VIEW");
+        mainContentPanel.add(statisticsPanel, "STATISTICS_VIEW");
+        
+        add(mainContentPanel, BorderLayout.CENTER);
+    }
+    private void buildTableViewPanel() {
+        tableViewPanel = new JPanel(new BorderLayout());
+        tableViewPanel.setBackground(backgroundColor);
+        buildTablePanel();
+    }
+    private void buildStatisticsPanel() {
+        statisticsPanel = new ThongKeDoanhThuPanel();
+    }
+    private void updateHeaderForCurrentView() {
+        if (isShowingStatistics) {
+            titleLabel.setText("THỐNG KÊ DOANH THU");
+            searchPanel.setVisible(false);
+        } else {
+            titleLabel.setText("QUẢN LÝ DOANH THU");
+            viewIndicator.setText("» Danh sách");
+            searchPanel.setVisible(true);
+        }
+        // Refresh the header panel
+        ((JPanel) titleLabel.getParent().getParent()).revalidate();
+        ((JPanel) titleLabel.getParent().getParent()).repaint();
+    }
     private void buildTablePanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(backgroundColor);
@@ -167,11 +226,14 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
 
         initializeTable();
         styleTable();
+        
         JPanel tablesContainer = new JPanel(new BorderLayout());
         tablesContainer.setBackground(Color.WHITE);
+        
         JScrollPane scrollPane = new JScrollPane(tableDoanhThu);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
+        
         JPanel totalPanel = new JPanel(new BorderLayout());
         totalPanel.setBackground(Color.WHITE);
         totalPanel.add(tableTotalRow, BorderLayout.CENTER);
@@ -181,9 +243,9 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         
         tablePanel.add(tablesContainer, BorderLayout.CENTER);
         wrapperPanel.add(tablePanel, BorderLayout.CENTER);
-        add(wrapperPanel, BorderLayout.CENTER);
+        
+        tableViewPanel.add(wrapperPanel, BorderLayout.CENTER);
     }
-
     private void initializeTable() {
         String[] columns = {"ID", "ID Hóa Đơn", "Tên Bệnh Nhân", "Tháng/Năm", "Tổng Thu", "Trạng Thái"};
         
@@ -202,7 +264,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 }
                 return String.class;
             }
-        };
+        };        
         
         tableDoanhThu = new JTable(modelDoanhThu) {
             @Override
@@ -214,14 +276,16 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 return comp;
             }
         };
+        
         sorterDoanhThu = new TableRowSorter<>(modelDoanhThu);
         tableDoanhThu.setRowSorter(sorterDoanhThu);
+        
         modelTotalRow = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
-        };
+        };        
         
         tableTotalRow = new JTable(modelTotalRow) {
             @Override
@@ -231,15 +295,17 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 return comp;
             }
         };
+        
         modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", 0.0, null});
     }
-
     private void styleTable() {
         styleMainTable(tableDoanhThu);
         styleMainTable(tableTotalRow);
+        
         tableTotalRow.setFont(totalRowFont);
         tableTotalRow.setRowHeight(45);
         tableTotalRow.setTableHeader(null);
+        
         tableTotalRow.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -251,7 +317,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.RIGHT);
                     ((JLabel) c).setFont(totalRowFont);
                 } else if (column == 4 && value instanceof Double) {
-                    ((JLabel) c).setText(currencyFormat.format((Double) value) + " VNĐ"); // Thêm "VNĐ"
+                    ((JLabel) c).setText(currencyFormat.format((Double) value) + " VNĐ");
                     ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                     ((JLabel) c).setFont(totalRowFont);
                 } else {
@@ -262,7 +328,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
     }
-
     public void updateTotalRow(double totalAmount) {
         if (modelTotalRow.getRowCount() == 0) {
             modelTotalRow.addRow(new Object[]{null, null, null, "Tổng:", totalAmount, null});
@@ -272,7 +337,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         }
         tableTotalRow.repaint();
     }
-
     private void styleMainTable(JTable table) {
         table.setFont(tableFont);
         table.setRowHeight(40);
@@ -302,7 +366,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         table.getColumnModel().getColumn(4).setPreferredWidth(150);  // Tổng Thu
         table.getColumnModel().getColumn(5).setPreferredWidth(120);  // Trạng Thái
 
-        // Renderer tùy chỉnh cho tất cả các cột
+        // Custom renderer for all columns
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -312,7 +376,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 int modelRow = table.convertRowIndexToModel(row);
                 int rowId = (Integer) modelDoanhThu.getValueAt(modelRow, 0);
 
-                // Xử lý màu nền
+                // Handle background color
                 if (!isSelected) {
                     if (highlightedRowId > 0 && rowId == highlightedRowId) {
                         c.setBackground(highlightColor);
@@ -323,18 +387,18 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     c.setBackground(table.getSelectionBackground());
                 }
 
-                // Căn giữa dữ liệu cho tất cả các cột
+                // Center align data for all columns
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
 
-                // Xử lý hiển thị cho cột "Tổng Thu" (Double)
+                // Handle display for "Tổng Thu" column (Double)
                 if (column == 4 && value instanceof Double) {
                     ((JLabel) c).setText(currencyFormat.format((Double) value));
                 } 
-                // Xử lý hiển thị cho cột "ID" và "ID Hóa Đơn" (Integer)
+                // Handle display for "ID" and "ID Hóa Đơn" columns (Integer)
                 else if ((column == 0 || column == 1) && value instanceof Integer) {
                     ((JLabel) c).setText(String.valueOf(value));
                 } 
-                // Xử lý hiển thị cho các cột String (Tên Bệnh Nhân, Tháng/Năm, Trạng Thái)
+                // Handle display for String columns
                 else if (column == 2 || column == 3 || column == 5) {
                     ((JLabel) c).setText(value != null ? value.toString() : "");
                 }
@@ -343,8 +407,8 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 return c;
             }
         });
-
-        // Đảm bảo renderer cho Integer và Double cũng căn giữa
+        
+        // Ensure Integer and Double renderers also center align
         table.setDefaultRenderer(Integer.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -355,7 +419,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 return c;
             }
         });
-
+        
         table.setDefaultRenderer(Double.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
@@ -371,11 +435,15 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
     }
-
     private void buildButtonPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
+        
+        // View toggle button
+        btnThongKe = createRoundedButton("Thống kê", statisticsColor, buttonTextColor, 10);
+        btnThongKe.setPreferredSize(new Dimension(120, 45));
+        btnThongKe.addActionListener(e -> toggleView());
         
         btnXuatFile = createRoundedButton("Xuất file", warningColor, buttonTextColor, 10);
         btnXuatFile.setPreferredSize(new Dimension(100, 45));
@@ -391,16 +459,39 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         btnThemMoiDoanhThu.setPreferredSize(new Dimension(100, 45));
         btnThemMoiDoanhThu.addActionListener(e -> showThemMoiDialog());
         
+        // Add buttons in order
+        buttonPanel.add(btnThongKe);
         buttonPanel.add(btnXuatFile);
         buttonPanel.add(btnThemMoiDoanhThu);
         
         add(buttonPanel, BorderLayout.SOUTH);
     }
-    
+    private void toggleView() {
+        isShowingStatistics = !isShowingStatistics;
+        
+        if (isShowingStatistics) {
+            // Switch to statistics view
+            cardLayout.show(mainContentPanel, "STATISTICS_VIEW");
+            btnThongKe.setText("Danh sách");
+            btnThongKe.setBackground(primaryColor);
+            
+            btnThemMoiDoanhThu.setVisible(false);
+            
+        } else {
+            cardLayout.show(mainContentPanel, "TABLE_VIEW");
+            btnThongKe.setText("Thống kê");
+            btnThongKe.setBackground(statisticsColor);
+            btnThemMoiDoanhThu.setVisible(true);
+        }
+        updateHeaderForCurrentView();
+        SwingUtilities.invokeLater(() -> {
+            mainContentPanel.revalidate();
+            mainContentPanel.repaint();
+        });
+    }
     private JButton createStyledButton(String text) {
         return createRoundedButton(text, primaryColor, buttonTextColor, 10);
     }
-
     private JButton createRoundedButton(String text, Color bgColor, Color fgColor, int radius) {
         JButton button = new JButton(text) {
             @Override
@@ -418,7 +509,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 return false;
             }
         };
-
         button.setFont(buttonFont);
         button.setBackground(bgColor);
         button.setForeground(fgColor);
@@ -430,13 +520,11 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             new LineBorder(bgColor.darker(), 1),
             BorderFactory.createEmptyBorder(8, 15, 8, 15)
         ));
-
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 button.setBackground(darkenColor(bgColor));
             }
-
             @Override
             public void mouseExited(MouseEvent e) {
                 button.setBackground(bgColor);
@@ -445,12 +533,10 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
 
         return button;
     }
-
     private Color darkenColor(Color color) {
         float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
         return Color.getHSBColor(hsb[0], hsb[1], Math.max(0.0f, hsb[2] - 0.1f));
     }
-
     private void setupEventListeners() {
         btnTimKiemDoanhThu.addActionListener(e -> {
             if (txtTimKiemDoanhThu.getText().trim().isEmpty()) {
@@ -459,8 +545,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             } else {
                 filterDoanhThu();
             }
-        });
-        
+        });        
         txtTimKiemDoanhThu.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -473,8 +558,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     }
                 }
             }
-        });
-        
+        });        
         tableDoanhThu.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -490,8 +574,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 } else {
                     tableDoanhThu.clearSelection();
                 }
-            }
-            
+            }            
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
@@ -499,7 +582,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 }
             }
         });
-
         JScrollPane scrollPane = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, tableDoanhThu);
         if (scrollPane != null) {
             scrollPane.addMouseWheelListener(e -> {
@@ -507,14 +589,12 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     resetHighlightState();
                 }
             });
-
             scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
                 if (highlightedRowId > 0 && e.getValueIsAdjusting()) {
                     resetHighlightState();
                 }
             });
         }
-
         tableDoanhThu.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -522,7 +602,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     resetHighlightState();
                 }
             }
-
             private boolean isNavigationKey(int keyCode) {
                 return keyCode == KeyEvent.VK_UP ||
                        keyCode == KeyEvent.VK_DOWN ||
@@ -532,7 +611,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                        keyCode == KeyEvent.VK_END;
             }
         });
-
         tableDoanhThu.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -541,8 +619,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 }
             }
         });
-    }
-    
+    }    
     private void setupPopupMenu() {
         popupMenuDoanhThu = new JPopupMenu();
         popupMenuDoanhThu.setBorder(new LineBorder(borderColor, 1));
@@ -577,7 +654,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             }
         });
     }
-
     private JMenuItem createStyledMenuItem(String text) {
         JMenuItem menuItem = new JMenuItem(text);
         menuItem.setFont(regularFont);
@@ -599,14 +675,12 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         });
         
         return menuItem;
-    }
-    
+    }    
     private void showPopupMenu(MouseEvent e) {
         if (tableDoanhThu.getSelectedRow() >= 0) {
             popupMenuDoanhThu.show(e.getComponent(), e.getX(), e.getY());
         }
-    }
-    
+    }    
     private void xemChiTietDoanhThuAction() {
         int selectedRow = tableDoanhThu.getSelectedRow();
         if (selectedRow >= 0) {
@@ -637,7 +711,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             showNotification("Vui lòng chọn một dòng để xem chi tiết!", NotificationType.WARNING);
         }
     }
-
     private JTextField createStyledTextField() {
         JTextField textField = new JTextField();
         textField.setFont(regularFont);
@@ -653,7 +726,6 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         textField.setHorizontalAlignment(JTextField.LEFT);
         return textField;
     }
-
     private void showThemMoiDialog() {
         JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (topFrame == null) {
