@@ -1,4 +1,5 @@
 package view;
+
 import controller.KhoVatTuController;
 import controller.ThongKeKhoVatTuController;
 import model.KhoVatTu;
@@ -10,14 +11,15 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
+
 public class ThongKeKhoVatTuPanel extends JPanel {
     private static final Color PRIMARY_COLOR = new Color(25, 118, 210);    // Xanh dương đậm
     private static final Color SECONDARY_COLOR = new Color(66, 165, 245);  // Xanh dương nhạt
-    private static final Color BACKGROUND_COLOR = new Color(245, 245, 245); // Xám nhạt
+    private static final Color BACKGROUND_COLOR = new Color(245, 247, 250); // Xám nhạt
     private static final Color TEXT_COLOR = new Color(33, 33, 33);         // Đen nhạt
     private static final Color BUTTON_COLOR = new Color(25, 118, 210);     // Xanh dương cho nút
     private static final Color BUTTON_TEXT_COLOR = Color.WHITE;            // Chữ trắng cho nút
-    private static final Color CHART_COLORS[] = {
+    private static final Color[] CHART_COLORS = {
         new Color(25, 118, 210),  // Xanh dương
         new Color(244, 67, 54),   // Đỏ
         new Color(76, 175, 80),   // Xanh lá
@@ -71,7 +73,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         statPanel.setLayout(new BoxLayout(statPanel, BoxLayout.X_AXIS));
         statPanel.setBackground(Color.WHITE);
         statPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createLineBorder(Color.BLACK, 1),
             BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));        
         lblTongVatTu = new JLabel("Tổng số vật tư: 0");
@@ -95,7 +97,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         pnlControl.setLayout(new BoxLayout(pnlControl, BoxLayout.Y_AXIS));
         pnlControl.setBackground(Color.WHITE);
         pnlControl.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createLineBorder(Color.BLACK, 1),
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));        
         JPanel pnlFilter = new JPanel(new GridBagLayout());
@@ -198,7 +200,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         setupTableStyle();
         JScrollPane scrollPane = new JScrollPane(tblKetQua);
         scrollPane.getViewport().setBackground(Color.WHITE);
-        scrollPane.setBorder(BorderFactory.createLineBorder(SECONDARY_COLOR, 1));
+        scrollPane.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
         
         pnlTable.add(scrollPane, BorderLayout.CENTER);
         
@@ -244,15 +246,9 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         
-        DefaultTableCellRenderer leftRenderer = new DefaultTableCellRenderer();
-        leftRenderer.setHorizontalAlignment(JLabel.LEFT);
-        
-        tblKetQua.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);  // ID
-        tblKetQua.getColumnModel().getColumn(1).setCellRenderer(leftRenderer);    // Tên
-        tblKetQua.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);  // Số lượng
-        tblKetQua.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);  // Đơn vị
-        tblKetQua.getColumnModel().getColumn(4).setCellRenderer(leftRenderer);    // NCC
-        tblKetQua.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);  // Phân loại
+        for (int i = 0; i < tblKetQua.getColumnCount(); i++) {
+            tblKetQua.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
         
         tblKetQua.getColumnModel().getColumn(0).setPreferredWidth(60);    // ID
         tblKetQua.getColumnModel().getColumn(1).setPreferredWidth(200);   // Tên
@@ -267,18 +263,17 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         JComboBox<String> comboBox = new JComboBox<>();
         comboBox.setFont(new Font("Arial", Font.PLAIN, 13));
         comboBox.setBackground(Color.WHITE);
-        comboBox.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
-            BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
-        comboBox.setPreferredSize(new Dimension(200, 30));
+        // Sử dụng viền mặc định của JComboBox nhưng đổi màu thành đen
+        comboBox.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+        // Đặt kích thước bằng với ô Số lượng tối thiểu (100, 30)
+        comboBox.setPreferredSize(new Dimension(100, 30));
         return comboBox;
     }
     private JTextField createStyledTextField() {
         JTextField textField = new JTextField();
         textField.setFont(new Font("Arial", Font.PLAIN, 13));
         textField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createLineBorder(Color.BLACK, 1),
             BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
         textField.setPreferredSize(new Dimension(100, 30));
@@ -564,7 +559,6 @@ public class ThongKeKhoVatTuPanel extends JPanel {
                     // Vẽ khung cột
                     g2d.setColor(Color.BLACK);
                     g2d.drawRect(x, bottom - barHeight, barWidth, barHeight);                    
-                    
                     // Vẽ giá trị
                     g2d.drawString(String.valueOf(value), x + barWidth/2 - g2d.getFontMetrics().stringWidth(String.valueOf(value))/2, 
                                   bottom - barHeight - 5);
@@ -695,7 +689,6 @@ public class ThongKeKhoVatTuPanel extends JPanel {
                 int radius = Math.min(getWidth(), getHeight()) / 3;
                 g2d.setFont(new Font("Arial", Font.BOLD, 16));
                 g2d.drawString("Tỷ lệ vật tư theo phân loại", centerX - 120, 30);
-                
                 
                 Color[] colors = CHART_COLORS;
                 

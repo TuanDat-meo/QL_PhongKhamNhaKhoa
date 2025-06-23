@@ -9,14 +9,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.List;
-
 import com.toedter.calendar.JDateChooser;
 
 public class ThongKeLichHenPanel extends JPanel implements ExportManager.MessageCallback {
@@ -61,7 +59,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
     private void initComponents() {
         setLayout(new BorderLayout());
         setBackground(BACKGROUND_COLOR);
-        setBorder(new EmptyBorder(PADDING, PADDING, PADDING, PADDING));
+        setBorder(new EmptyBorder(15, 15, 15, 15));
         
         createHeaderPanel();
         createFilterPanel();
@@ -83,15 +81,16 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
     }
     
     private void createHeaderPanel() {
-        headerPanel = new JPanel(new BorderLayout());
+        headerPanel = new JPanel(new BorderLayout(10, 10));
         headerPanel.setBackground(BACKGROUND_COLOR);
-        headerPanel.setBorder(new EmptyBorder(0, 0, PADDING, 0));
+        headerPanel.setBorder(new EmptyBorder(0, 0, 5, 0));
         
-        JLabel titleLabel = new JLabel("Thống Kê Lịch Hẹn");
-        titleLabel.setFont(TITLE_FONT);
+        JLabel titleLabel = new JLabel("THỐNG KÊ LỊCH HẸN");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
         titleLabel.setForeground(PRIMARY_COLOR);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
         
-        headerPanel.add(titleLabel, BorderLayout.WEST);
+        headerPanel.add(titleLabel, BorderLayout.NORTH);
     }
     
     private void createFilterPanel() {
@@ -115,6 +114,8 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         timePeriodComboBox = new JComboBox<>(timePeriods);
         timePeriodComboBox.setFont(NORMAL_FONT);
         timePeriodComboBox.setSelectedIndex(2);
+        timePeriodComboBox.setPreferredSize(new Dimension(150, 30)); // Đặt chiều cao đồng bộ
+        timePeriodComboBox.setMaximumSize(new Dimension(150, 30));
         
         JLabel fromLabel = new JLabel("Từ ngày:");
         fromLabel.setFont(NORMAL_FONT);
@@ -122,6 +123,8 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         startDateChooser = new JDateChooser();
         startDateChooser.setFont(NORMAL_FONT);
         startDateChooser.setDateFormatString("dd/MM/yyyy");
+        startDateChooser.setPreferredSize(new Dimension(120, 30)); // Đặt chiều cao đồng bộ
+        startDateChooser.setMaximumSize(new Dimension(120, 30));
         
         JLabel toLabel = new JLabel("Đến ngày:");
         toLabel.setFont(NORMAL_FONT);
@@ -129,8 +132,10 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         endDateChooser = new JDateChooser();
         endDateChooser.setFont(NORMAL_FONT);
         endDateChooser.setDateFormatString("dd/MM/yyyy");
+        endDateChooser.setPreferredSize(new Dimension(120, 30)); // Đặt chiều cao đồng bộ
+        endDateChooser.setMaximumSize(new Dimension(120, 30));
         
-        applyButton = createButton("Áp dụng", PRIMARY_COLOR, BUTTON_TEXT_COLOR);
+        applyButton = createButton("Thống kê", PRIMARY_COLOR, BUTTON_TEXT_COLOR); // Đổi tên thành "Thống kê"
         exportButton = createButton("Xuất báo cáo", SECONDARY_COLOR, BUTTON_TEXT_COLOR);
         
         gbc.gridx = 0;
@@ -210,9 +215,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         summaryPanel.setBorder(new EmptyBorder(0, 0, PADDING, 0));
         
         JPanel totalCard = createSummaryCard("Tổng lịch hẹn", "0", new Color(41, 128, 185));
-        
         JPanel completedCard = createSummaryCard("Hoàn thành", "0", new Color(46, 204, 113));
-        
         JPanel cancelledCard = createSummaryCard("Đã hủy", "0", new Color(231, 76, 60));
         
         summaryPanel.add(totalCard);
@@ -228,7 +231,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 230, 230), 1, true),
+                BorderFactory.createLineBorder(Color.BLACK, 1), // Viền đen
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
         
@@ -285,13 +288,16 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         
+        // Căn giữa tất cả các cột
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        table.setDefaultRenderer(Object.class, centerRenderer);
         
-        table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
-        table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-        table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
-        table.getColumnModel().getColumn(6).setCellRenderer(centerRenderer);
+        // Tùy chỉnh tiêu đề bảng
+        JTableHeader header = table.getTableHeader();
+        header.setBackground(PRIMARY_COLOR); // Màu nền giống nút Thống kê
+        header.setForeground(Color.WHITE); // Chữ trắng
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14)); // Font đồng bộ
         
         table.getColumnModel().getColumn(0).setPreferredWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
@@ -430,7 +436,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
     private void loadAppointmentTable(Date startDate, Date endDate) {
         tableModel.setRowCount(0);
         
-        List<LichHen> appointments = controller.layDanhSachLichHen(startDate, endDate);
+        java.util.List<LichHen> appointments = controller.layDanhSachLichHen(startDate, endDate);
         
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
@@ -495,7 +501,6 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         toastDialog.add(toastPanel);
         toastDialog.pack();
 
-        // Position at bottom right
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         toastDialog.setLocation(
             screenSize.width - toastDialog.getWidth() - 20,
@@ -504,7 +509,6 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
 
         toastDialog.setVisible(true);
 
-        // Auto-hide after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
