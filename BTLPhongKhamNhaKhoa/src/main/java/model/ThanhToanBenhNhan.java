@@ -1,4 +1,3 @@
-// model.ThanhToanBenhNhan.java
 package model;
 
 public class ThanhToanBenhNhan {

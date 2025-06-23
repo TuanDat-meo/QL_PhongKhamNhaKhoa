@@ -34,7 +34,6 @@ public class DieuTri {
         this.trangThai = trangThai;
     }
 
-    // Existing getters and setters
     public int getIdDieuTri() {
         return idDieuTri;
     }
@@ -90,8 +89,6 @@ public class DieuTri {
     public void setTenBenhNhan(String tenBenhNhan) {
         this.tenBenhNhan = tenBenhNhan;
     }
-    
-    // New getters and setters for the added fields
     public String getTenDieuTri() {
         return tenDieuTri;
     }

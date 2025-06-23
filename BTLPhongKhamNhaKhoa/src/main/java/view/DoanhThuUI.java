@@ -1,10 +1,10 @@
 package view;
 
 import controller.DoanhThuController;
-import util.DataChangeListener;
-import util.ExportManager;
-import util.ExportManager.MessageCallback;
-import util.RoundedPanel;
+import model.DataChangeListener;
+import model.ExportManager;
+import model.RoundedPanel;
+import model.ExportManager.MessageCallback;
 import util.ValidationUtils;
 
 import javax.swing.*;
@@ -157,7 +157,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         txtTimKiemDoanhThu.setFont(regularFont);
         txtTimKiemDoanhThu.setPreferredSize(new Dimension(220, 38));
         txtTimKiemDoanhThu.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(10, borderColor), 
+                new model.CustomBorder(10, borderColor), 
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)));
         
         btnTimKiemDoanhThu = createStyledButton("Tìm kiếm");
@@ -718,7 +718,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         textField.setMinimumSize(new Dimension(230, 38));
         textField.setMaximumSize(new Dimension(230, 38));
         textField.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
         textField.setBackground(Color.WHITE);
@@ -931,14 +931,14 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                             txtTongThu.setCaretPosition(0);
                             txtIdHoaDon.setForeground(Color.BLACK);
                             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                                new util.CustomBorder(8, successColor),
+                                new model.CustomBorder(8, successColor),
                                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
                             ));
                         } else {
                             txtTongThu.setText("Không tìm thấy hóa đơn");
                             txtIdHoaDon.setForeground(Color.RED);
                             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                                new util.CustomBorder(8, new Color(220, 53, 69)),
+                                new model.CustomBorder(8, new Color(220, 53, 69)),
                                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
                             ));
                         }
@@ -946,7 +946,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                         txtTongThu.setText("ID không hợp lệ");
                         txtIdHoaDon.setForeground(Color.RED);
                         txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                            new util.CustomBorder(8, new Color(220, 53, 69)),
+                            new model.CustomBorder(8, new Color(220, 53, 69)),
                             BorderFactory.createEmptyBorder(5, 12, 5, 12)
                         ));
                     }
@@ -954,7 +954,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     txtTongThu.setText("");
                     txtIdHoaDon.setForeground(Color.BLACK);
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, borderColor),
+                        new model.CustomBorder(8, borderColor),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                 }
@@ -1002,7 +1002,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         JDateChooser dateChooser = new JDateChooser();
         dateChooser.setFont(regularFont);
         dateChooser.setPreferredSize(new Dimension(300, 35));
-        dateChooser.setBorder(new util.CustomBorder(8, borderColor));
+        dateChooser.setBorder(new model.CustomBorder(8, borderColor));
         JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateTextField.setFont(regularFont);
         dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));
@@ -1033,14 +1033,14 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
         boolean isValid = true;
 
         txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
 
         if (idText.isEmpty()) {
             ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID Hóa Đơn không được để trống");
             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, new Color(220, 53, 69)),
+                new model.CustomBorder(8, new Color(220, 53, 69)),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             txtIdHoaDon.requestFocus();
@@ -1053,7 +1053,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                     ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "Không tìm thấy hóa đơn");
                     txtTongThu.setText("Không tìm thấy hóa đơn");
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, new Color(220, 53, 69)),
+                        new model.CustomBorder(8, new Color(220, 53, 69)),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                     txtIdHoaDon.requestFocus();
@@ -1061,7 +1061,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 } else {
                     txtTongThu.setText(currencyFormat.format(tongThu) + " VND");
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, successColor),
+                        new model.CustomBorder(8, successColor),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                 }
@@ -1069,7 +1069,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID không hợp lệ");
                 txtTongThu.setText("ID không hợp lệ");
                 txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    new model.CustomBorder(8, new Color(220, 53, 69)),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 txtIdHoaDon.requestFocus();
@@ -1079,14 +1079,14 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
 
         JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateTextField.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
 
         if (dateText.isEmpty()) {
             ValidationUtils.showValidationError(dateChooser, dateErrorLabel, "Tháng/Năm không được để trống");
             dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, new Color(220, 53, 69)),
+                new model.CustomBorder(8, new Color(220, 53, 69)),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             if (isValid) {
@@ -1099,13 +1099,13 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 sdf.setLenient(false);
                 thangNam = sdf.parse(dateText);
                 dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, successColor),
+                    new model.CustomBorder(8, successColor),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
             } catch (ParseException ex) {
                 ValidationUtils.showValidationError(dateChooser, dateErrorLabel, "Tháng/Năm không hợp lệ");
                 dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    new model.CustomBorder(8, new Color(220, 53, 69)),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 if (isValid) {
@@ -1142,13 +1142,13 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             int newId = doanhThuController.themDoanhThu(thangNam, tongThu, idHoaDon);
             if (newId > 0) {
                 txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, successColor),
+                    new model.CustomBorder(8, successColor),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 dialog.dispose();
             } else {
                 txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, new Color(220, 53, 69)),
+                    new model.CustomBorder(8, new Color(220, 53, 69)),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 showNotification("Thêm doanh thu thất bại!", NotificationType.ERROR);
@@ -1157,7 +1157,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             ValidationUtils.showValidationError(txtIdHoaDon, idErrorLabel, "ID không hợp lệ");
             txtTongThu.setText("ID không hợp lệ");
             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, new Color(220, 53, 69)),
+                new model.CustomBorder(8, new Color(220, 53, 69)),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             txtIdHoaDon.requestFocus();

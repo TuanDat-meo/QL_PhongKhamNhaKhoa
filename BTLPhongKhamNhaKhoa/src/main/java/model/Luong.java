@@ -12,7 +12,6 @@ public class Luong {
     private double tongLuong;
     
     public Luong() {
-        // Constructor mặc định
     }
     
     public Luong(int idLuong, int idNguoiDung, Date thangNam, double luongCoBan, double thuong, double khauTru, double tongLuong) {
@@ -80,18 +79,9 @@ public class Luong {
     public void setTongLuong(double tongLuong) {
         this.tongLuong = tongLuong;
     }
-    
-    /**
-     * Tính toán tổng lương dựa trên lương cơ bản, thưởng và khấu trừ
-     * @return Tổng tiền lương
-     */
     public double tinhTongLuong() {
         return this.luongCoBan + this.thuong - this.khauTru;
     }
-    
-    /**
-     * Cập nhật tổng lương dựa trên các thành phần hiện tại
-     */
     public void capNhatTongLuong() {
         this.tongLuong = tinhTongLuong();
     }

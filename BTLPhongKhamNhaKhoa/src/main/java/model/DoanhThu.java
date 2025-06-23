@@ -18,7 +18,6 @@ public class DoanhThu {
         this.idHoaDon = idHoaDon;
     }
 
-    // Getters and Setters
     public int getIdDoanhThu() {
         return idDoanhThu;
     }

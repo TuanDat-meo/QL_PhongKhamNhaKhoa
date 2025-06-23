@@ -5,8 +5,6 @@ public class ThongKe {
     private int soLuongNhaCungCap;
     private int soLuongBenhNhan;
     private int soLuongLichHen;
-    // Thêm các thuộc tính khác bạn muốn thống kê
-
     public ThongKe() {
     }
 

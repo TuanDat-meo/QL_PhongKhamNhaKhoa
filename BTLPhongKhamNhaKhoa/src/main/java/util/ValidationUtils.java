@@ -24,6 +24,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import javax.swing.event.DocumentListener;
 import com.toedter.calendar.JDateChooser;
+
+import model.CustomBorder;
+
 import javax.swing.event.DocumentEvent;
 import java.awt.FlowLayout;
 import javax.swing.JPanel;
@@ -187,7 +190,6 @@ public class ValidationUtils {
             }
         });
     }
-    
     @FunctionalInterface
     public interface ValidationFunction {
         boolean validate(String input);
@@ -498,7 +500,7 @@ public class ValidationUtils {
         if (component instanceof JDateChooser) {
             // Handle JDateChooser case (from Đức-Tính branch)
             try {
-                component.setBorder(new util.CustomBorder(8, BORDER_COLOR));
+                component.setBorder(new model.CustomBorder(8, BORDER_COLOR));
             } catch (Exception e) {
                 // Fallback if CustomBorder is not available
                 component.setBorder(new LineBorder(BORDER_COLOR, 1, true));
@@ -510,7 +512,7 @@ public class ValidationUtils {
             // Handle regular components
             try {
                 component.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, BORDER_COLOR),
+                    new model.CustomBorder(8, BORDER_COLOR),
                     new EmptyBorder(10, 15, 10, 15)
                 ));
             } catch (Exception e) {

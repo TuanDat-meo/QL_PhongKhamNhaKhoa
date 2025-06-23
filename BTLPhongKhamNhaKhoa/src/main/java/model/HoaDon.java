@@ -9,10 +9,8 @@ public class HoaDon {
     private double tongTien;
     private String trangThai;
 
-    // Constructors
     public HoaDon() {
     }
-
     public HoaDon(int idHoaDon, int idBenhNhan, Date ngayTao, double tongTien, String trangThai) {
         this.idHoaDon = idHoaDon;
         this.idBenhNhan = idBenhNhan;
@@ -20,8 +18,6 @@ public class HoaDon {
         this.tongTien = tongTien;
         this.trangThai = trangThai;
     }
-
-    // Getters and Setters
     public int getIdHoaDon() {
         return idHoaDon;
     }

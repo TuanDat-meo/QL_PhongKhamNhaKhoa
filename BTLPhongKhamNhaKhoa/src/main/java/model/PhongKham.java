@@ -14,7 +14,6 @@ public class PhongKham {
         this.diaChi = diaChi;
     }
     
-    // Getters and Setters
     public int getIdPhongKham() {
         return idPhongKham;
     }

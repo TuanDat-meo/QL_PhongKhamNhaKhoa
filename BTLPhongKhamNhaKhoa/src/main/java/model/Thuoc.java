@@ -1,4 +1,3 @@
-// model/Thuoc.java
 package model;
 
 public class Thuoc {
