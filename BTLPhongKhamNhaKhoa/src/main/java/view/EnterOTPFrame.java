@@ -4,13 +4,18 @@ import javax.swing.*;
 
 import java.awt.*;
 
+import controller.OtpDAO;
+import model.Otp;
+
 public class EnterOTPFrame extends JFrame {
     private JTextField otpField;
     private JButton verifyButton;
     private ForgotPasswordFrame parentFrame;
+    private int idNguoiDung;
 
-    public EnterOTPFrame(ForgotPasswordFrame parent) {
+    public EnterOTPFrame(ForgotPasswordFrame parent, int idNguoiDung) {
         this.parentFrame = parent;
+        this.idNguoiDung = idNguoiDung;
         setTitle("Enter OTP");
         setSize(300, 150);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -36,11 +41,15 @@ public class EnterOTPFrame extends JFrame {
         verifyButton.setForeground(Color.WHITE);
 
         verifyButton.addActionListener(e -> {
-            if (otpField.getText().equals("123456")) { // Giả lập OTP
+            String otpInput = otpField.getText().trim();
+            System.out.println("Check OTP: idNguoiDung=" + idNguoiDung + ", maOTP=" + otpInput + ", loai=QuenMatKhau");
+            Otp otp = OtpDAO.getValidOtp(idNguoiDung, otpInput, "QuenMatKhau");
+            if (otp != null) {
                 JOptionPane.showMessageDialog(this, "OTP verified successfully.");
-                new ResetPasswordFrame(this); // Mở cửa sổ đổi mật khẩu
+                OtpDAO.markOtpUsed(otp.getIdOTP());
+                new ResetPasswordFrame(this, idNguoiDung); // Mở cửa sổ đổi mật khẩu, truyền idNguoiDung
             } else {
-                JOptionPane.showMessageDialog(this, "Invalid OTP. Try again.");
+                JOptionPane.showMessageDialog(this, "Invalid or expired OTP. Hãy kiểm tra lại mã OTP, idNguoiDung, loại OTP và thời gian hết hạn trong database!");
             }
         });
 

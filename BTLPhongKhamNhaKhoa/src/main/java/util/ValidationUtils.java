@@ -34,7 +34,7 @@ public class ValidationUtils {
     private static final String CCCD_PATTERN = "^\\d{9}|\\d{12}$";
     private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
     private static final String PHONE_PATTERN = "^0\\d{9}$";
-    private static final String PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
+    private static final String PASSWORD_PATTERN = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+=\\-{}\\[\\]:;\"'<>,.?/]).{6,}$";
     
     private static final int MIN_PASSWORD_LENGTH = 6;
     
@@ -302,40 +302,16 @@ public class ValidationUtils {
                Pattern.matches(PHONE_PATTERN, input);
     }
     
-    public static boolean validatePassword(String password, JComponent component, JComponent errorLabel) {
+    public static boolean validatePassword(String password, JComponent component, JLabel errorLabel) {
         if (password == null || password.isEmpty()) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PASSWORD_EMPTY_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PASSWORD_EMPTY_ERROR);
-            }
+            setError(component, errorLabel, PASSWORD_EMPTY_ERROR);
             return false;
         }
-        if (password.length() < MIN_PASSWORD_LENGTH) {
-            component.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ERROR_COLOR, 1, true),
-                new EmptyBorder(10, 15, 10, 15)
-            ));
-            if (errorLabel instanceof JTextField) {
-                ((JTextField) errorLabel).setText(PASSWORD_ERROR);
-            } else if (errorLabel instanceof JLabel) {
-                ((JLabel) errorLabel).setText(PASSWORD_ERROR);
-            }
+        if (!Pattern.matches(PASSWORD_PATTERN, password)) {
+            setError(component, errorLabel, "Password must be at least 6 characters, include at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 special character");
             return false;
         }
-        component.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(SUCCESS_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        if (errorLabel instanceof JTextField) {
-            ((JTextField) errorLabel).setText("");
-        } else if (errorLabel instanceof JLabel) {
-            ((JLabel) errorLabel).setText("");
-        }
+        setSuccess(component, errorLabel);
         return true;
     }
     

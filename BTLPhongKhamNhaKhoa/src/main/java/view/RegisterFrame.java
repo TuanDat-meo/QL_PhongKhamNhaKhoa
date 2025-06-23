@@ -370,36 +370,62 @@ public class RegisterFrame extends JFrame {
         
         // Registration action
         registerButton.addActionListener(e -> {
-            if (validateAllFields()) {
-                String name = nameField.getText().trim();
-                String email = emailField.getText().trim();
-                String phone = phoneField.getText().trim();
-                String password = String.valueOf(passwordField.getPassword()).trim();
-                
-                // Check if the email already exists
-                if (NguoiDungController.isEmailExists(email)) {
-                    showNotification("Email already registered!", NotificationType.WARNING);
-                    return;
-                }
-                
-                if (NguoiDungController.isPhoneExists(phone)) {
-                    showNotification("Phone number already registered!", NotificationType.WARNING);
-                    return;
-                }
-                boolean success = NguoiDungController.registerUser(name, email, phone, password);
-                
-                if (success) {
-                    showNotification("Registration successful!", NotificationType.SUCCESS);
-                    // Open login frame after successful registration
-                    SwingUtilities.invokeLater(() -> {
-                        new LoginFrame();
-                        dispose(); // Close registration window
-                    });
-                } else {
-                    showNotification("Registration failed. Please try again.", NotificationType.ERROR);
-                }
+            // Validate định dạng
+            validateNameField();
+            validateEmailField();
+            validatePhoneField();
+            validatePasswordField();
+            validateConfirmPasswordField();
+
+            // Kiểm tra trường rỗng và set lỗi đỏ nếu có
+            if (nameField.getText().trim().isEmpty() || nameField.getText().equals(NAME_PLACEHOLDER)) {
+                setError(nameField, nameErrorLabel, "Name is required");
+            }
+            if (emailField.getText().trim().isEmpty() || emailField.getText().equals(EMAIL_PLACEHOLDER)) {
+                setError(emailField, emailErrorLabel, "Email is required");
+            }
+            if (phoneField.getText().trim().isEmpty() || phoneField.getText().equals(PHONE_PLACEHOLDER)) {
+                setError(phoneField, phoneErrorLabel, "Phone number is required");
+            }
+            if (String.valueOf(passwordField.getPassword()).trim().isEmpty() || String.valueOf(passwordField.getPassword()).equals(PASSWORD_PLACEHOLDER)) {
+                setError(passwordField, passwordErrorLabel, "Password is required");
+            }
+            if (String.valueOf(confirmPasswordField.getPassword()).trim().isEmpty() || String.valueOf(confirmPasswordField.getPassword()).equals(CONFIRM_PASSWORD_PLACEHOLDER)) {
+                setError(confirmPasswordField, confirmPasswordErrorLabel, "Please confirm your password");
+            }
+
+            // Nếu còn bất kỳ label lỗi nào không rỗng thì return
+            if (!nameErrorLabel.getText().isEmpty() ||
+                !emailErrorLabel.getText().isEmpty() ||
+                !phoneErrorLabel.getText().isEmpty() ||
+                !passwordErrorLabel.getText().isEmpty() ||
+                !confirmPasswordErrorLabel.getText().isEmpty()) {
+                return;
+            }
+
+            // ... phần đăng ký như cũ ...
+            String name = nameField.getText().trim();
+            String email = emailField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String password = String.valueOf(passwordField.getPassword()).trim();
+
+            if (NguoiDungController.isEmailExists(email)) {
+                showNotification("Email already registered!", NotificationType.WARNING);
+                return;
+            }
+            if (NguoiDungController.isPhoneExists(phone)) {
+                showNotification("Phone number already registered!", NotificationType.WARNING);
+                return;
+            }
+            boolean success = NguoiDungController.registerUser(name, email, phone, password);
+            if (success) {
+                showNotification("Registration successful!", NotificationType.SUCCESS);
+                SwingUtilities.invokeLater(() -> {
+                    new LoginFrame();
+                    dispose();
+                });
             } else {
-                showNotification("Vui lòng điền đúng và đầy đủ thông tin vào các trường.", NotificationType.ERROR);
+                showNotification("Registration failed. Please try again.", NotificationType.ERROR);
             }
         });
         
@@ -562,106 +588,6 @@ public class RegisterFrame extends JFrame {
         } else {
             ValidationUtils.clearValidationError(confirmPasswordField, confirmPasswordErrorLabel);
         }
-    }
-    
-    private boolean validateAllFields() {
-        boolean isValid = true;
-        
-        // Clear placeholder texts for validation
-        String name = nameField.getText().trim();
-        if (name.equals(NAME_PLACEHOLDER)) {
-            nameField.setText("");
-        }
-        
-        String email = emailField.getText().trim();
-        if (email.equals(EMAIL_PLACEHOLDER)) {
-            emailField.setText("");
-        }
-        
-        String phone = phoneField.getText().trim();
-        if (phone.equals(PHONE_PLACEHOLDER)) {
-            phoneField.setText("");
-        }
-        
-        String password = String.valueOf(passwordField.getPassword());
-        if (password.equals(PASSWORD_PLACEHOLDER)) {
-            passwordField.setText("");
-        }
-        
-        String confirmPassword = String.valueOf(confirmPasswordField.getPassword());
-        if (confirmPassword.equals(CONFIRM_PASSWORD_PLACEHOLDER)) {
-            confirmPasswordField.setText("");
-        }
-        
-        // Validate all fields
-        validateNameField();
-        validateEmailField();
-        validatePhoneField();
-        validatePasswordField();
-        validateConfirmPasswordField();
-        
-        // Check for errors
-        if (!nameErrorLabel.getText().isEmpty()) isValid = false;
-        if (!emailErrorLabel.getText().isEmpty()) isValid = false;
-        if (!phoneErrorLabel.getText().isEmpty()) isValid = false;
-        if (!passwordErrorLabel.getText().isEmpty()) isValid = false;
-        if (!confirmPasswordErrorLabel.getText().isEmpty()) isValid = false;
-        
-        // Check for empty fields
-        if (nameField.getText().trim().isEmpty()) {
-            setError(nameField, nameErrorLabel, "Name is required");
-            isValid = false;
-        }
-        
-        if (emailField.getText().trim().isEmpty()) {
-            setError(emailField, emailErrorLabel, "Email is required");
-            isValid = false;
-        }
-        
-        if (phoneField.getText().trim().isEmpty()) {
-            setError(phoneField, phoneErrorLabel, "Phone number is required");
-            isValid = false;
-        }
-        
-        if (String.valueOf(passwordField.getPassword()).trim().isEmpty()) {
-            setError(passwordField, passwordErrorLabel, "Password is required");
-            isValid = false;
-        }
-        
-        if (String.valueOf(confirmPasswordField.getPassword()).trim().isEmpty()) {
-            setError(confirmPasswordField, confirmPasswordErrorLabel, "Please confirm your password");
-            isValid = false;
-        }
-        
-        // Restore placeholder texts if fields are empty
-        if (nameField.getText().isEmpty()) {
-            nameField.setText(NAME_PLACEHOLDER);
-            nameField.setForeground(LIGHT_TEXT_COLOR);
-        }
-        
-        if (emailField.getText().isEmpty()) {
-            emailField.setText(EMAIL_PLACEHOLDER);
-            emailField.setForeground(LIGHT_TEXT_COLOR);
-        }
-        
-        if (phoneField.getText().isEmpty()) {
-            phoneField.setText(PHONE_PLACEHOLDER);
-            phoneField.setForeground(LIGHT_TEXT_COLOR);
-        }
-        
-        if (String.valueOf(passwordField.getPassword()).isEmpty()) {
-            passwordField.setText(PASSWORD_PLACEHOLDER);
-            passwordField.setEchoChar((char) 0);
-            passwordField.setForeground(LIGHT_TEXT_COLOR);
-        }
-        
-        if (String.valueOf(confirmPasswordField.getPassword()).isEmpty()) {
-            confirmPasswordField.setText(CONFIRM_PASSWORD_PLACEHOLDER);
-            confirmPasswordField.setEchoChar((char) 0);
-            confirmPasswordField.setForeground(LIGHT_TEXT_COLOR);
-        }
-        
-        return isValid;
     }
     
     private void setError(JComponent field, JLabel errorLabel, String errorMessage) {
