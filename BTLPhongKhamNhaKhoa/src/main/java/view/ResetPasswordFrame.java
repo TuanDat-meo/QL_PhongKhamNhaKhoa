@@ -14,10 +14,12 @@ public class ResetPasswordFrame extends JFrame {
     private EnterOTPFrame parentFrame;
     private int idNguoiDung;
     private JLabel newPasswordErrorLabel, confirmPasswordErrorLabel;
+    private LoginFrame loginFrame;
 
-    public ResetPasswordFrame(EnterOTPFrame parent, int idNguoiDung) {
+    public ResetPasswordFrame(EnterOTPFrame parent, int idNguoiDung, LoginFrame loginFrame) {
         this.parentFrame = parent;
         this.idNguoiDung = idNguoiDung;
+        this.loginFrame = loginFrame;
         setTitle("Reset Password");
         setSize(500, 350);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -115,11 +117,19 @@ public class ResetPasswordFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Password changed successfully. Returning to login.");
                 this.dispose();
                 parentFrame.dispose();
-                new LoginFrame();
+                if (loginFrame != null) {
+                    loginFrame.setVisible(true);
+                } else {
+                    new LoginFrame();
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to update password. Please try again.");
             }
         });
+    }
+
+    public ResetPasswordFrame(EnterOTPFrame parent, int idNguoiDung) {
+        this(parent, idNguoiDung, null);
     }
 
     private JPanel createLabeledField(String labelText, JPasswordField field, JLabel errorLabel) {

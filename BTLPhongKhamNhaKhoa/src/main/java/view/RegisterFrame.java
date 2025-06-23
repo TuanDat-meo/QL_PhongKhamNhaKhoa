@@ -62,13 +62,20 @@ public class RegisterFrame extends JFrame {
     private static final Font SMALL_FONT = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font ERROR_FONT = new Font("Segoe UI", Font.ITALIC, 11);
     
-    public RegisterFrame() {
+    private LoginFrame loginFrame;
+    
+    public RegisterFrame(LoginFrame loginFrame) {
+        this.loginFrame = loginFrame;
         setupWindow();
         initializeComponents();
         setupActions();
         setupValidation();
         setVisible(true);
         mainPanel.requestFocusInWindow();
+    }
+    
+    public RegisterFrame() {
+        this(null);
     }
     
     private void setupWindow() {
@@ -430,11 +437,14 @@ public class RegisterFrame extends JFrame {
         });
         
         backToLoginButton.addActionListener(e -> {
-            // Open login frame
-            SwingUtilities.invokeLater(() -> {
-                new LoginFrame();
-                dispose(); // Close registration window
-            });
+            this.dispose();
+            if (loginFrame != null) {
+                loginFrame.setVisible(true); // Chỉ hiện lại login cũ, không mở mới
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    new LoginFrame();
+                });
+            }
         });
     }
     
