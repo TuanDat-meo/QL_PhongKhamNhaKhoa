@@ -1,7 +1,7 @@
 DROP DATABASE QuanLyPhongKham;
 CREATE DATABASE QuanLyPhongKham;
 USE QuanLyPhongKham;
--- ALTER DATABASE QuanLyPhongKham CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 CREATE TABLE NguoiDung (
     idNguoiDung INT AUTO_INCREMENT PRIMARY KEY,
     hoTen NVARCHAR(100),
@@ -20,16 +20,6 @@ CREATE TABLE OTP (
     daSuDung BOOLEAN,
     loai NVARCHAR(20), -- Sử dụng NVARCHAR cho ENUM để hỗ trợ Unicode
     FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung)
-);
-CREATE TABLE ResetPassword (
-    idReset INT AUTO_INCREMENT PRIMARY KEY,
-    idNguoiDung INT,
-    idOTP INT,
-    token NVARCHAR(255) UNIQUE NOT NULL,
-    thoiGianHetHan DATETIME NOT NULL,
-    daSuDung BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (idNguoiDung) REFERENCES NguoiDung(idNguoiDung),
-    FOREIGN KEY (idOTP) REFERENCES OTP(idOTP)
 );
 CREATE TABLE BenhNhan (
     idBenhNhan INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,8 +59,6 @@ CREATE TABLE LichHen (
     FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan),
     FOREIGN KEY (idPhongKham) REFERENCES PhongKham(idPhongKham)
 );
--- ALTER TABLE LichHen MODIFY COLUMN trangThai VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 CREATE TABLE HoSoBenhAn (
     idHoSo INT AUTO_INCREMENT PRIMARY KEY,
     idBenhNhan INT NOT NULL,
@@ -80,7 +68,6 @@ CREATE TABLE HoSoBenhAn (
     trangThai NVARCHAR(20) DEFAULT N'Mới', -- Sử dụng NVARCHAR cho ENUM để hỗ trợ Unicode
     FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan) ON DELETE CASCADE
 );
--- ALTER TABLE HoSoBenhAn MODIFY COLUMN trangThai VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE TABLE LuongNhanVien (
     idLuong INT AUTO_INCREMENT PRIMARY KEY,
     idNguoiDung INT,
@@ -121,6 +108,7 @@ CREATE TABLE HoaDon (
     trangThai NVARCHAR(20) NOT NULL DEFAULT N'ChuaThanhToan', -- Sử dụng NVARCHAR cho ENUM để hỗ trợ Unicode
     FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan) ON DELETE CASCADE
 );
+-- note
 CREATE TABLE ChiTietHoaDon (
     idChiTiet INT AUTO_INCREMENT PRIMARY KEY,
     idHoaDon INT NOT NULL,
@@ -182,11 +170,4 @@ CREATE TABLE DoanhThu (
     tongDoanhThu DECIMAL(15,2),
     idHoaDon INT,
     FOREIGN KEY (idHoaDon) REFERENCES HoaDon(idHoaDon)
-);
-
-CREATE TABLE YeuCauLichHen (
-    idYeuCau INT AUTO_INCREMENT PRIMARY KEY,
-    idBenhNhan INT,
-    ngayYeuCau DATE,
-    FOREIGN KEY (idBenhNhan) REFERENCES BenhNhan(idBenhNhan)
 );

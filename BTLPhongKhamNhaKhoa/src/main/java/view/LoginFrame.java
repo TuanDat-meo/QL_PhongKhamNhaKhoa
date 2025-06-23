@@ -4,16 +4,12 @@ import javax.swing.*;
 import javax.swing.border.*;
 
 import controller.NguoiDungController;
-import image.imageResize;
 import model.NguoiDung;
-import view.DoanhThuUI.NotificationType;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.sql.SQLException;
-import java.net.URL;
 import java.util.regex.Pattern;
 
 public class LoginFrame extends JFrame {
@@ -26,24 +22,13 @@ public class LoginFrame extends JFrame {
     private JButton togglePasswordButton;
     private JLabel emailErrorLabel;
     private JLabel passwordErrorLabel;
-    
-    // Constants
     private static final int RADIUS = 15;
     private static final String PASSWORD_PLACEHOLDER = "Enter password";
     private static final String EMAIL_PLACEHOLDER = "Email or phone number";
-    
-    // Email validation pattern - RFC 5322 compliant
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(
-        "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$");
-    
-    // Phone number pattern - simple version for Vietnamese phone numbers
-    private static final Pattern PHONE_PATTERN = Pattern.compile(
-        "^(0|\\+84)(3|5|7|8|9)([0-9]{8})$");
-    
-    // Password requirements
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$");    
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^(0|\\+84)(3|5|7|8|9)([0-9]{8})$");
     private static final int MIN_PASSWORD_LENGTH = 6;
     
-    // Colors
     private static final Color BACKGROUND_COLOR = new Color(255, 255, 255);
     private static final Color PRIMARY_COLOR = new Color(24, 119, 242);
     private static final Color PRIMARY_DARK_COLOR = new Color(12, 80, 170);
@@ -53,8 +38,7 @@ public class LoginFrame extends JFrame {
     private static final Color LIGHT_TEXT_COLOR = new Color(110, 119, 128);
     private static final Color FIELD_BACKGROUND = new Color(255, 255, 255);
     private static final Color BORDER_COLOR = new Color(226, 230, 234);
-    private static final Color ERROR_COLOR = new Color(220, 53, 69);
-    
+    private static final Color ERROR_COLOR = new Color(220, 53, 69);    
     // Fonts
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 30);
     private static final Font FIELD_FONT = new Font("Segoe UI", Font.PLAIN, 14);    
@@ -191,13 +175,6 @@ public class LoginFrame extends JFrame {
                                x + eyeWidth/2 + 3, y + eyeHeight/2 + 3);
                 }
             }
-            public void setEyeOpen(boolean open) {
-                this.eyeOpen = open;
-                repaint();
-            }
-            public boolean isEyeOpen() {
-                return eyeOpen;
-            }
         };
         togglePasswordButton.setBorderPainted(false);
         togglePasswordButton.setContentAreaFilled(false);
@@ -241,10 +218,8 @@ public class LoginFrame extends JFrame {
                 togglePasswordButton.repaint();
             }
         });
-    }    
-    private JButton createTextEyeButton() {
-        return new JButton();
-    }    
+    }   
+       
     private void setupCardLayout() {
         mainPanel.removeAll();
         mainPanel.setLayout(null);
@@ -541,69 +516,7 @@ public class LoginFrame extends JFrame {
             this.color = color;
             this.title = title;
         }
-    }    
-    private JTextField createTextField(String placeholder) {
-        JTextField field = new JTextField();
-        field.setFont(FIELD_FONT);
-        field.setForeground(LIGHT_TEXT_COLOR);
-        field.setText(placeholder);
-        field.setBackground(FIELD_BACKGROUND);
-        field.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        field.putClientProperty("JComponent.roundRect", true);
-        field.putClientProperty("JTextField.placeholderText", placeholder);
-        field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                if (field.getText().equals(placeholder)) {
-                    field.setText("");
-                    field.setForeground(TEXT_COLOR);
-                }
-            }
-            @Override
-            public void focusLost(FocusEvent e) {
-                if (field.getText().isEmpty()) {
-                    field.setText(placeholder);
-                    field.setForeground(LIGHT_TEXT_COLOR);
-                }
-            }
-        });
-        return field;
-    }    
-    private JPasswordField createPasswordField(String placeholder) {
-        JPasswordField field = new JPasswordField();
-        field.setFont(FIELD_FONT);
-        field.setForeground(LIGHT_TEXT_COLOR);
-        field.setText(placeholder);
-        field.setEchoChar((char) 0); // Show the placeholder text
-        field.setBackground(FIELD_BACKGROUND);
-        field.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
-            new EmptyBorder(10, 15, 10, 15)
-        ));
-        field.putClientProperty("JComponent.roundRect", true);
-        field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                if (String.valueOf(field.getPassword()).equals(placeholder)) {
-                    field.setText("");
-                    field.setForeground(TEXT_COLOR);
-                    field.setEchoChar('●');
-                }
-            }
-            @Override
-            public void focusLost(FocusEvent e) {
-                if (String.valueOf(field.getPassword()).isEmpty()) {
-                    field.setText(placeholder);
-                    field.setForeground(LIGHT_TEXT_COLOR);
-                    field.setEchoChar((char) 0);
-                }
-            }
-        });
-        return field;
-    }    
+    }  
     private JButton createButton(String text, Color bgColor, Color hoverColor) {
         JButton button = new JButton(text) {
             @Override
@@ -638,23 +551,7 @@ public class LoginFrame extends JFrame {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
         return button;
-    }    
-    private void showErrorMessage(String message) {
-        JOptionPane optionPane = new JOptionPane(message, JOptionPane.ERROR_MESSAGE);
-        JDialog dialog = optionPane.createDialog("Lỗi");
-        dialog.setBackground(BACKGROUND_COLOR);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }    
-    private void showSuccessMessage(String message) {
-        JOptionPane optionPane = new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE);
-        JDialog dialog = optionPane.createDialog("Thành công");
-        
-        dialog.setBackground(BACKGROUND_COLOR);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
-    
+    }        
     public static void main(String[] args) {
         try {
             UIManager.put("TextField.arc", RADIUS);
@@ -670,8 +567,6 @@ public class LoginFrame extends JFrame {
         });
     }
 }
-
-// Thêm class RoundedTextField và RoundedPasswordField để bo góc lớn cho input
 class RoundedTextField extends JTextField {
     private int radius;
     public RoundedTextField(int radius) {

@@ -1,5 +1,4 @@
 USE QuanLyPhongKham;
-DESCRIBE NguoiDung;
 INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, vaiTro) VALUES
 (N'Nguyễn Thị Hồng Loan', N'bacsi13@gmail.com', N'bacsi123', N'0965432187', '1988-03-12', N'Nữ', N'Bác sĩ'),
 (N'Trần Minh Quân', N'bacsi14@gmail.com', N'bacsi123', N'0976543298', '1985-09-28', N'Nam', N'Bác sĩ'),
@@ -29,7 +28,7 @@ INSERT INTO NguoiDung (hoTen, email, matKhau, soDienThoai, ngaySinh, gioiTinh, v
 (N'Hoàng Thị Lan', N'ketoan@gmail.com', N'ketoan123', N'0934567890', '1988-11-30', N'Nữ', N'Kế toán'),
 (N'Phạm Văn Tùng', N'quankho@gmail.com', N'quankho123', N'0976543210', '1995-03-25', N'Nam', N'Quản kho'),
 (N'Trần Minh Hoàng', N'tranminhhoang@gmail.com', N'user123', N'0978123456', '1990-07-15', N'Nam', null),
-(N'Phạm Thị Lan', N'phamthilan@gmail.com', N'user123', N'0967543210', '1985-12-30', N'Nữ', null),
+(N'Phạm Thị Lan', N'user@gmail.com', N'user123', N'0967543210', '1985-12-30', N'Nữ', null),
 (N'Đỗ Văn Tuấn', N'dovantuan@gmail.com', N'user123', N'0987654321', '2000-04-18', N'Nam', null),
 (N'Vũ Ngọc Mai', N'vungocmai@gmail.com', N'user123', N'0934567890', '1998-11-25', N'Nữ', null),
 (N'Ngô Đức Tài', N'ngoductai@gmail.com', N'user123', N'0923456789', '1993-06-10', N'Nam', null),
@@ -100,8 +99,20 @@ INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, ki
 (N'Lương Văn Đạt', 39, 3, N'Phẫu thuật hàm mặt', N'Tiến sĩ Phẫu thuật hàm mặt - Đại học Y Dược TP.HCM (2012)', 12),
 (N'Trịnh Thị Hương Giang', 40, 1, N'Nha khoa cộng đồng', N'Thạc sĩ Y tế công cộng - Đại học Y Dược TP.HCM (2020)', 4),
 (N'Bùi Thanh Tùng', 41, 2, N'Implant nha khoa', N'Bác sĩ Chuyên khoa II - Đại học Y Dược Hà Nội (2016)', 8);
-
 -- Cập nhật một số lịch hẹn mẫu với các bác sĩ mới
+INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
+-- Thứ 2 - 23/06/2025
+(1, 2, '2025-06-23', 1, '09:00:00', N'Chờ xác nhận', N'Khám tổng quát và tư vấn điều trị'),
+
+-- Thứ 4 - 25/06/2025  
+(5, 2, '2025-06-25', 1, '14:30:00', N'Chờ xác nhận', N'Tư vấn làm răng sứ thẩm mỹ'),
+
+-- Thứ 6 - 27/06/2025
+(2, 2, '2025-06-27', 2, '10:00:00', N'Chờ xác nhận', N'Điều trị sâu răng và trám composite'),
+
+-- Thứ 7 - 28/06/2025
+(3, 2, '2025-06-28', 3, '15:30:00', N'Chờ xác nhận', N'Cạo vôi răng và vệ sinh răng miệng');
+
 INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
 (13, 1, '2025-06-12', 1, '08:00:00', N'Chờ xác nhận', N'Tư vấn làm răng sứ thẩm mỹ'),
 (13, 5, '2025-06-15', 1, '09:30:00', N'Chờ xác nhận', N'Tẩy trắng răng chuyên nghiệp'),
