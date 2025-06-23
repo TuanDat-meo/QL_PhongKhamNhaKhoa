@@ -58,6 +58,22 @@ INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALU
 (N'Trịnh Minh Thư', '2002-01-15', N'Nữ', N'0945678912', N'001002000456', N'78 Lý Tự Trọng, Quận 1, TP.HCM'),
 (N'Phan Thanh Hải', '1997-09-30', N'Nam', N'0989123456', N'079097000789', N'23 Võ Văn Tần, Quận 3, TP.HCM'),
 (N'Dương Thị Hồng', '1994-12-20', N'Nữ', N'0967891234', N'079094000654', N'45 Trần Hưng Đạo, Quận 1, TP.HCM');
+INSERT INTO BenhNhan (hoTen, ngaySinh, gioiTinh, soDienThoai, cccd, diaChi) VALUES
+(N'Nguyễn Thị Hằng', '1975-02-14', N'Nữ', N'0912345098', N'001075000456', N'89 Nguyễn Thị Minh Khai, Quận 1, TP.HCM'),
+(N'Võ Minh Trí', '1995-08-20', N'Nam', N'0987654123', N'079095000789', N'156 Lê Văn Sỹ, Quận 3, TP.HCM'),
+(N'Trần Thị Ngọc', '2003-12-05', N'Nữ', N'0934567812', N'001003000123', N'67 Nguyễn Văn Trỗi, Quận Phú Nhuận, TP.HCM'),
+(N'Lê Văn Đức', '1988-06-30', N'Nam', N'0923456781', N'001088000456', N'234 Cách Mạng Tháng 8, Quận 10, TP.HCM'),
+(N'Phạm Thị Thu', '1972-11-18', N'Nữ', N'0909876123', N'001072000789', N'345 Hoàng Văn Thụ, Quận Tân Bình, TP.HCM'),
+(N'Hoàng Minh Khôi', '2001-03-22', N'Nam', N'0967543812', N'001001000234', N'123 Phan Xích Long, Quận Phú Nhuận, TP.HCM'),
+(N'Đặng Thị Linh', '1990-09-08', N'Nữ', N'0945678123', N'001090000567', N'456 Đinh Tiên Hoàng, Quận Bình Thạnh, TP.HCM'),
+(N'Bùi Văn Thành', '1983-04-15', N'Nam', N'0932165487', N'001083000890', N'789 Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM'),
+(N'Lý Thị Xuân', '1996-07-12', N'Nữ', N'0954321678', N'001096000123', N'234 Phan Đăng Lưu, Quận Phú Nhuận, TP.HCM'),
+(N'Trịnh Văn Hải', '1979-01-28', N'Nam', N'0976543219', N'001079000456', N'567 Nguyễn Kiệm, Quận Gò Vấp, TP.HCM'),
+(N'Ngô Thị Hoa', '1987-10-03', N'Nữ', N'0938765412', N'001087000789', N'890 Quang Trung, Quận Gò Vấp, TP.HCM'),
+(N'Vũ Minh Đức', '1992-05-17', N'Nam', N'0921456783', N'001092000012', N'123 Lê Đức Thọ, Quận Gò Vấp, TP.HCM'),
+(N'Cao Thị Bích', '1985-12-09', N'Nữ', N'0965432178', N'001085000345', N'456 Nguyễn Oanh, Quận Gò Vấp, TP.HCM'),
+(N'Phan Văn Long', '1998-08-25', N'Nam', N'0943217865', N'001098000678', N'789 Phạm Văn Đồng, Quận Thủ Đức, TP.HCM'),
+(N'Đinh Thị Mai', '1981-06-11', N'Nữ', N'0987123654', N'001081000901', N'234 Võ Văn Ngân, Quận Thủ Đức, TP.HCM');
 
 INSERT INTO PhongKham (tenPhong, diaChi) VALUES
 (N'Phòng khám Nha khoa Quận 1', N'123 Nguyễn Huệ, Quận 1, TP.HCM'),
@@ -78,28 +94,16 @@ INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, ki
 (N'Võ Thị Thanh', 30, 1, N'Nội nha', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2020)', 4),
 (N'Huỳnh Văn Long', 31, 2, N'Phục hình răng', N'Tiến sĩ Phục hình răng - Đại học Y Dược TP.HCM (2011)', 13);
 INSERT INTO BacSi (hoTenBacSi, idNguoiDung, idPhongKham, chuyenKhoa, bangCap, kinhNghiem) VALUES
--- Bác sĩ cùng chuyên khoa Nha khoa thẩm mỹ tại Phòng khám Quận 1 (cùng với Trần Thị Hương và Nguyễn Thị Linh)
 (N'Nguyễn Thị Hồng Loan', 32, 1, N'Nha khoa thẩm mỹ', N'Thạc sĩ Nha khoa thẩm mỹ - Đại học Y Dược TP.HCM (2019)', 5),
-
--- Bác sĩ cùng chuyên khoa Nha khoa trẻ em tại Phòng khám Quận 3 (cùng với Lê Tuấn Đạt và Vũ Minh Tâm)
 (N'Trần Minh Quân', 33, 2, N'Nha khoa trẻ em', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2018)', 6),
-
--- Bác sĩ cùng chuyên khoa Nội nha tại Phòng khám Bình Thạnh (cùng với Phạm Thị Mai và Đặng Thị Hoa)
 (N'Lê Thị Thanh Nga', 34, 3, N'Nội nha', N'Thạc sĩ Nội nha - Đại học Y Dược TP.HCM (2017)', 7),
-
--- Bác sĩ cùng chuyên khoa Phục hình răng tại Phòng khám Quận 1 (cùng với Hoàng Văn Nam và Trương Văn Đức)
 (N'Phạm Văn Hùng', 35, 1, N'Phục hình răng', N'Tiến sĩ Phục hình răng - Đại học Y Dược Hà Nội (2015)', 9),
-
--- Bác sĩ cùng chuyên khoa Nha khoa thẩm mỹ tại Phòng khám Quận 3 (cùng với Lý Thị Kim)
 (N'Võ Thị Lan Hương', 36, 2, N'Nha khoa thẩm mỹ', N'Bác sĩ Chuyên khoa II - Đại học Y Dược Cần Thơ (2020)', 4),
-
--- Các bác sĩ với chuyên khoa khác
 (N'Đỗ Minh Tuấn', 37, 1, N'Chỉnh nha', N'Thạc sĩ Chỉnh nha - Đại học Y Dược TP.HCM (2014)', 10),
 (N'Hoàng Thị Mai Linh', 38, 2, N'Nha khoa pháp y', N'Bác sĩ Chuyên khoa I - Đại học Y Dược Huế (2021)', 3),
 (N'Lương Văn Đạt', 39, 3, N'Phẫu thuật hàm mặt', N'Tiến sĩ Phẫu thuật hàm mặt - Đại học Y Dược TP.HCM (2012)', 12),
 (N'Trịnh Thị Hương Giang', 40, 1, N'Nha khoa cộng đồng', N'Thạc sĩ Y tế công cộng - Đại học Y Dược TP.HCM (2020)', 4),
 (N'Bùi Thanh Tùng', 41, 2, N'Implant nha khoa', N'Bác sĩ Chuyên khoa II - Đại học Y Dược Hà Nội (2016)', 8);
--- Cập nhật một số lịch hẹn mẫu với các bác sĩ mới
 INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
 -- Thứ 2 - 23/06/2025
 (1, 2, '2025-06-23', 1, '09:00:00', N'Chờ xác nhận', N'Khám tổng quát và tư vấn điều trị'),
@@ -216,6 +220,22 @@ INSERT INTO HoSoBenhAn (idBenhNhan, chuanDoan, ghiChu, ngayTao, trangThai) VALUE
 (8, N'Răng sứt mẻ số 21, 22 cần phục hình', N'Bệnh nhân muốn làm dán sứ veneer.', '2024-05-22', N'Mới'),
 (9, N'Răng hô cần niềng răng', N'Bệnh nhân muốn cải thiện thẩm mỹ khuôn mặt.', '2024-05-25', N'Mới'),
 (10, N'Loạn khớp thái dương hàm', N'Bệnh nhân có tiếng kêu khi há miệng, đau vùng khớp.', '2024-05-27', N'Mới');
+INSERT INTO HoSoBenhAn (idBenhNhan, chuanDoan, ghiChu, ngayTao, trangThai) VALUES
+(11, N'Sâu răng số 24, 25 giai đoạn sâu vừa', N'Bệnh nhân đau nhức khi ăn đồ lạnh, cần trám răng sớm.', '2024-06-01', N'Đang điều trị'),
+(12, N'Răng khôn số 18 mọc lệch, ảnh hưởng răng số 17', N'Cần nhổ răng khôn để tránh chen chúc răng.', '2024-06-03', N'Đang điều trị'),
+(13, N'Thiếu răng số 35, 36, 37 cần trồng răng', N'Bệnh nhân mất răng do tai nạn 2 năm trước.', '2024-06-05', N'Mới'),
+(14, N'Viêm nha chu mãn tính toàn hàm', N'Lợi tụt, răng lung lay nhẹ, cần điều trị dài hạn.', '2024-06-08', N'Đang điều trị'),
+(15, N'Răng cửa số 21 nhiễm tetracycline', N'Bệnh nhân muốn cải thiện màu sắc răng bằng veneer.', '2024-06-10', N'Mới'),
+(16, N'Khớp cắn sai, cần chỉnh nha', N'Răng hàm trên và dưới không khớp đúng.', '2024-06-12', N'Mới'),
+(17, N'Sâu răng số 46, 47 sâu sâu đến tủy', N'Đau dữ dội vào ban đêm, cần điều trị tủy gấp.', '2024-06-15', N'Đang điều trị'),
+(18, N'Áp xe răng số 12', N'Sưng phù vùng mặt, cần dẫn lưu và kháng sinh.', '2024-06-18', N'Đang điều trị'),
+(19, N'Tụt lợi vùng răng nanh số 13, 23', N'Lợi tụt lộ chân răng, nhạy cảm khi ăn uống.', '2024-06-20', N'Mới'),
+(20, N'Nứt răng số 16 do cắn phải đồ cứng', N'Nứt dọc theo mặt nhai, nguy cơ gãy răng cao.', '2024-06-22', N'Đang điều trị'),
+(21, N'Ê buốt răng toàn hàm', N'Răng nhạy cảm với đồ lạnh, nóng do men răng mỏng.', '2024-06-25', N'Mới'),
+(22, N'Mòn cổ răng số 14, 15, 24, 25', N'Do đánh răng sai cách, lực quá mạnh.', '2024-06-28', N'Hoàn tất'),
+(23, N'Viêm tủy răng số 26 cấp tính', N'Đau nhức dữ dội, không ngủ được, cần điều trị tủy.', '2024-07-01', N'Đang điều trị'),
+(24, N'Hội chứng rối loạn khớp thái dương hàm', N'Có tiếng kêu khi há miệng, đau cơ nhai.', '2024-07-03', N'Đang điều trị'),
+(25, N'Cần làm hàm tháo lắp toàn phần hàm dưới', N'Mất hết răng hàm dưới, cần phục hình toàn bộ.', '2024-07-05', N'Mới');
 
 INSERT INTO LichHen (idBacSi, idBenhNhan, ngayHen, idPhongKham, gioHen, trangThai, moTa) VALUES
 (1, 11, '2025-01-08', 1, '08:00:00', N'Đã hoàn thành', N'Khám tổng quát và tư vấn'),
@@ -271,7 +291,119 @@ INSERT INTO DieuTri (idHoSo, idBacSi, moTa, ngayDieuTri) VALUES
 (5, 1, N'Trám tủy, đặt thuốc kháng sinh trong ống tủy.', '2024-05-08'),
 (6, 2, N'Lấy dấu hàm để chuẩn bị làm cầu răng 3 đơn vị.', '2024-05-10'),
 (6, 2, N'Thử cầu răng tạm thời, điều chỉnh khớp cắn.', '2024-05-17');
+INSERT INTO DieuTri (idHoSo, idBacSi, moTa, ngayDieuTri) VALUES
+-- Điều trị cho hồ sơ 1 (Sâu răng số 16, 26)
+(1, 1, N'Khám và chẩn đoán sâu răng, chụp X-quang để đánh giá mức độ sâu.', '2024-01-15'),
+(1, 1, N'Mài sạch mô sâu răng số 16, trám composite màu A2.', '2024-01-18'),
+(1, 1, N'Điều trị răng số 26, trám composite và đánh bóng.', '2024-01-22'),
+(1, 1, N'Tái khám, kiểm tra độ bền trám và hướng dẫn vệ sinh răng miệng.', '2024-02-15'),
 
+-- Điều trị cho hồ sơ 2 (Viêm nha chu)
+(2, 2, N'Khám và chẩn đoán viêm nha chu, chụp X-quang đánh giá mức độ tiêu xương.', '2024-02-20'),
+(2, 2, N'Cạo vôi răng và làm sạch túi nha chu giai đoạn 1.', '2024-02-23'),
+(2, 2, N'Điều trị nha chu sâu, làm sạch túi nha chu giai đoạn 2.', '2024-03-01'),
+(2, 2, N'Hướng dẫn vệ sinh răng miệng đúng cách và kê thuốc kháng sinh.', '2024-03-05'),
+(2, 2, N'Tái khám sau 1 tháng, đánh giá kết quả điều trị.', '2024-04-05'),
+
+-- Điều trị cho hồ sơ 3 (Răng khôn)
+(3, 3, N'Khám và chụp X-quang răng khôn số 48, đánh giá vị trí mọc.', '2024-03-05'),
+(3, 3, N'Tư vấn về quy trình nhổ răng khôn và chuẩn bị phẫu thuật.', '2024-03-08'),
+(3, 3, N'Tiến hành nhổ răng khôn số 48, khâu vết thương.', '2024-03-12'),
+(3, 3, N'Tái khám sau 3 ngày, kiểm tra quá trình lành vết thương.', '2024-03-15'),
+(3, 3, N'Tháo chỉ khâu và hoàn tất điều trị.', '2024-03-22'),
+
+-- Điều trị cho hồ sơ 7 (Viêm nướu)
+(7, 4, N'Khám và chẩn đoán viêm nướu do cao răng.', '2024-05-18'),
+(7, 4, N'Cạo vôi răng toàn hàm và vệ sinh răng miệng.', '2024-05-21'),
+(7, 4, N'Hướng dẫn cách chải răng đúng và sử dụng nước súc miệng.', '2024-05-21'),
+
+-- Điều trị cho hồ sơ 11 (Sâu răng số 24, 25)
+(11, 5, N'Khám và chẩn đoán sâu răng vừa ở răng số 24, 25.', '2024-06-01'),
+(11, 5, N'Mài sạch mô sâu và trám composite cho răng số 24.', '2024-06-04'),
+(11, 5, N'Điều trị răng số 25, trám và đánh bóng hoàn thiện.', '2024-06-08'),
+
+-- Điều trị cho hồ sơ 12 (Răng khôn số 18)
+(12, 6, N'Khám và chụp phim X-quang đánh giá vị trí răng khôn.', '2024-06-03'),
+(12, 6, N'Tư vấn kế hoạch nhổ răng và chuẩn bị dụng cụ phẫu thuật.', '2024-06-06'),
+(12, 6, N'Tiến hành nhổ răng khôn số 18, khâu và băng bó.', '2024-06-10'),
+
+-- Điều trị cho hồ sơ 14 (Viêm nha chu mãn tính)
+(14, 7, N'Khám tổng quát và chụp phim X-quang toàn cảnh.', '2024-06-08'),
+(14, 7, N'Cạo vôi răng sâu và làm sạch túi nha chu toàn hàm.', '2024-06-12'),
+(14, 7, N'Điều trị nha chu sâu với kỹ thuật nạo túi nha chu.', '2024-06-15'),
+(14, 7, N'Kê đơn thuốc kháng sinh và thuốc súc miệng chuyên dụng.', '2024-06-15'),
+
+-- Điều trị cho hồ sơ 17 (Sâu răng sâu đến tủy)
+(17, 8, N'Khám cấp cứu do đau răng dữ dội vào ban đêm.', '2024-06-15'),
+(17, 8, N'Điều trị tủy răng số 46 - loại bỏ tủy viêm, lấy tủy.', '2024-06-18'),
+(17, 8, N'Làm sạch ống tủy và đặt thuốc kháng sinh.', '2024-06-22'),
+(17, 8, N'Điều trị tủy răng số 47, loại bỏ tủy bệnh lý.', '2024-06-25'),
+
+-- Điều trị cho hồ sơ 18 (Áp xe răng)
+(18, 9, N'Khám cấp cứu, chẩn đoán áp xe răng số 12.', '2024-06-18'),
+(18, 9, N'Dẫn lưu mủ qua ống tủy và kê kháng sinh.', '2024-06-18'),
+(18, 9, N'Theo dõi và rửa ống tủy hàng ngày.', '2024-06-21'),
+(18, 9, N'Điều trị tủy và trám tủy tạm thời.', '2024-06-25'),
+
+-- Điều trị cho hồ sơ 20 (Nứt răng)
+(20, 10, N'Khám và chẩn đoán nứt răng số 16.', '2024-06-22'),
+(20, 10, N'Đánh giá mức độ nứt bằng phương pháp nhuộm màu.', '2024-06-25'),
+(20, 10, N'Chuẩn bị làm crown sứ để bảo vệ răng nứt.', '2024-06-28'),
+
+-- Điều trị cho hồ sơ 22 (Mòn cổ răng)
+(22, 11, N'Khám và chẩn đoán mòn cổ răng do chải răng sai cách.', '2024-06-28'),
+(22, 11, N'Trám composite cho các vùng cổ răng bị mòn.', '2024-07-01'),
+(22, 11, N'Hướng dẫn kỹ thuật đánh răng đúng cách.', '2024-07-01'),
+
+-- Điều trị cho hồ sơ 23 (Viêm tủy cấp tính)
+(23, 12, N'Khám cấp cứu do viêm tủy cấp tính răng số 26.', '2024-07-01'),
+(23, 12, N'Mở tủy để giảm áp lực và giảm đau cho bệnh nhân.', '2024-07-02'),
+(23, 12, N'Lấy tủy và làm sạch ống tủy, đặt thuốc kháng sinh.', '2024-07-05'),
+
+-- Điều trị cho hồ sơ 24 (Rối loạn khớp thái dương hàm)
+(24, 13, N'Khám và chẩn đoán rối loạn khớp thái dương hàm.', '2024-07-03'),
+(24, 13, N'Lấy dấu hàm để làm nẹp cắn điều trị.', '2024-07-06'),
+(24, 13, N'Tư vấn các bài tập vật lý trị liệu cho khớp hàm.', '2024-07-10');
+
+-- Thêm một số hồ sơ bệnh án mới cho các trường hợp phức tạp
+INSERT INTO HoSoBenhAn (idBenhNhan, chuanDoan, ghiChu, ngayTao, trangThai) VALUES
+(3, N'Biến chứng sau nhổ răng khôn - viêm ổ răng khô', N'Bệnh nhân bị viêm ổ răng khô sau nhổ răng 5 ngày.', '2024-03-20', N'Hoàn tất'),
+(5, N'Hoại tử tủy răng số 36 - cần điều trị lại', N'Điều trị tủy lần đầu thất bại, cần can thiệp lại.', '2024-05-15', N'Hoàn tất'),
+(8, N'Viêm quanh răng do mảng bám vi khuẩn', N'Lợi sưng đỏ quanh vùng răng vừa trám, cần điều trị kháng viêm.', '2024-06-01', N'Hoàn tất'),
+(1, N'Tái khám định kỳ sau trám răng 6 tháng', N'Kiểm tra tình trạng răng đã trám và vệ sinh răng miệng.', '2024-07-15', N'Mới'),
+(9, N'Chuẩn bị niềng răng - nhổ răng tiền hàm', N'Cần nhổ 4 răng tiền hàm để tạo khoảng trống cho niềng răng.', '2024-07-20', N'Mới');
+
+-- Thêm các lần điều trị cho hồ sơ bệnh án mới
+INSERT INTO DieuTri (idHoSo, idBacSi, moTa, ngayDieuTri) VALUES
+-- Điều trị biến chứng nhổ răng khôn
+(26, 3, N'Khám và chẩn đoán viêm ổ răng khô sau nhổ răng khôn.', '2024-03-20'),
+(26, 3, N'Làm sạch ổ răng, đặt gạc thuốc và kê thuốc giảm đau.', '2024-03-21'),
+(26, 3, N'Thay gạc thuốc và theo dõi quá trình lành vết thương.', '2024-03-24'),
+(26, 3, N'Tái khám, ổ răng đã lành tốt, hoàn tất điều trị.', '2024-03-28'),
+
+-- Điều trị lại tủy răng
+(27, 1, N'Khám và đánh giá tình trạng răng số 36 đã điều trị tủy.', '2024-05-15'),
+(27, 1, N'Tháo trám cũ, làm sạch lại ống tủy bị nhiễm trùng.', '2024-05-18'),
+(27, 1, N'Điều trị tủy lại với kỹ thuật hiện đại, sát khuẩn triệt để.', '2024-05-22'),
+(27, 1, N'Trám tủy và phục hình cuối cùng bằng inlay.', '2024-05-29'),
+(27, 1, N'Tái khám 1 tháng, răng ổn định không còn triệu chứng.', '2024-06-29'),
+
+-- Điều trị viêm quanh răng
+(28, 4, N'Khám và chẩn đoán viêm lợi quanh vùng răng trám.', '2024-06-01'),
+(28, 4, N'Làm sạch mảng bám và điều chỉnh bề mặt trám.', '2024-06-02'),
+(28, 4, N'Kê thuốc kháng viêm và hướng dẫn vệ sinh răng miệng.', '2024-06-02'),
+(28, 4, N'Tái khám sau 1 tuần, tình trạng viêm đã giảm.', '2024-06-09'),
+
+-- Tái khám định kỳ
+(29, 1, N'Khám định kỳ 6 tháng sau trám răng.', '2024-07-15'),
+(29, 1, N'Kiểm tra các răng đã trám, tình trạng ổn định tốt.', '2024-07-15'),
+(29, 1, N'Cạo vôi răng nhẹ và đánh bóng răng định kỳ.', '2024-07-15'),
+
+-- Chuẩn bị niềng răng
+(30, 2, N'Khám và tư vấn kế hoạch niềng răng tổng thể.', '2024-07-20'),
+(30, 2, N'Chụp phim X-quang và lấy dấu hàm để phân tích.', '2024-07-23'),
+(30, 2, N'Nhổ răng tiền hàm số 14 chuẩn bị cho niềng răng.', '2024-07-26'),
+(30, 2, N'Nhổ răng tiền hàm số 24 và theo dõi lành vết thương.', '2024-07-30');
 INSERT INTO HoaDon (idBenhNhan, ngayTao, tongTien, trangThai) VALUES
 (1, '2025-03-01', 1500000.00, N'DaThanhToan'),
 (2, '2025-03-05', 2200000.00, N'ChuaThanhToan'),

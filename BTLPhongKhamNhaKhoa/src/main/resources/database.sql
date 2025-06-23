@@ -12,6 +12,7 @@ CREATE TABLE NguoiDung (
     gioiTinh NVARCHAR(10), -- Sử dụng NVARCHAR cho ENUM để hỗ trợ Unicode
     vaiTro NVARCHAR(20)    -- Sử dụng NVARCHAR cho ENUM để hỗ trợ Unicode
 ); 
+
 CREATE TABLE OTP (
     idOTP INT AUTO_INCREMENT PRIMARY KEY,
     idNguoiDung INT,
