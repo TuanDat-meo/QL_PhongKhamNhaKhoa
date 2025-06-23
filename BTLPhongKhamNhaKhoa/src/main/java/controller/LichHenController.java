@@ -402,6 +402,4 @@ public int getPhongKhamIdFromName(String tenPhong) {
             e.printStackTrace();
         }
     }
-
-
 }
