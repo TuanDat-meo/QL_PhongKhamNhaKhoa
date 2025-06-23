@@ -1,6 +1,7 @@
 package view;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
@@ -17,671 +18,862 @@ import java.sql.Date;
 import java.sql.SQLException;
 import controller.LichHenController;
 import controller.BenhNhanController;
+import controller.NguoiDungController;
 import model.LichHen;
 import model.NguoiDung;
+import model.BenhNhan;
 
 public class LichSuLichHenPanel extends JPanel {
     private LichHenController controller;
     private BenhNhanController benhNhanController;
-    private JTable lichHenTable;
-    private DefaultTableModel tableModel;
+    private NguoiDungController nguoiDungController;
+    private NguoiDung currentUser;
+    private int currentUserId;
     private JTabbedPane tabbedPane;
-    private JTable upcomingTable;
-    private DefaultTableModel upcomingModel;
-    private JTable historyTable;
-    private DefaultTableModel historyModel;
-    private JButton btnChiTiet;
-    private JButton btnHuy;
-    private JTextField txtTimKiem;
-    private JButton btnTimKiem;
-    private JButton btnReset;
-    private NguoiDung currentUser = null;
+    private JPanel lichSuPanel;
+    private JPanel sapToiPanel;
+    private JTable lichSuTable;
+    private JTable sapToiTable;
+    private DefaultTableModel lichSuTableModel;
+    private DefaultTableModel sapToiTableModel;
+    private int selectedRow = -1;
+    private int selectedColumn = -1;
     
-    // Color scheme
-    private final Color BG_PRIMARY = new Color(245, 247, 250);
-    private final Color BG_SECONDARY = new Color(255, 255, 255);
-    private final Color BG_ACCENT = new Color(232, 240, 254);
-    private final Color PRIMARY_COLOR = new Color(25, 118, 210);
-    private final Color PRIMARY_DARK = new Color(21, 101, 192);
-    private final Color PRIMARY_LIGHT = new Color(66, 165, 245);
-    private final Color SECONDARY_COLOR = new Color(66, 66, 66);
-    private final Color ACCENT_COLOR = new Color(211, 47, 47);
-    private final Color SUCCESS_COLOR = new Color(46, 125, 50);
-    private final Color WARNING_COLOR = new Color(237, 108, 2);
-    private final Color TEXT_PRIMARY = new Color(33, 33, 33);
-    private final Color TEXT_SECONDARY = new Color(97, 97, 97);
-    private final Color TEXT_LIGHT = new Color(158, 158, 158);
-    private final Color BORDER_COLOR = new Color(224, 224, 224);
-    private final Color DIVIDER_COLOR = new Color(238, 238, 238);
-    private final Color COLOR_MORNING = new Color(232, 245, 253);
-    private final Color COLOR_AFTERNOON = new Color(255, 243, 224);
-    private final Color COLOR_SELECTED = new Color(187, 222, 251);
-    private final Color COLOR_BOOKED = new Color(224, 242, 241);
-    private final Color COLOR_OWN_BOOKED = new Color(200, 230, 201);
-    private final Color TABLE_HEADER_BG = new Color(25, 118, 210);
-    private final Color TABLE_HEADER_FG = Color.WHITE;
-    private final Color TABLE_ROW_ALT = new Color(250, 250, 250);
+    private Color warningColor = new Color(237, 187, 85);
+    private Color backgroundColor = new Color(248, 249, 250);
+    private Color buttonTextColor = Color.WHITE;
+    private Color accentColor = new Color(192, 80, 77);
+    private Color borderColor = new Color(222, 226, 230);
+    private Color primaryColor = new Color(41, 128, 185);
+    private Color secondaryColor = new Color(245, 248, 250);
+    private Color successColor = new Color(86, 156, 104);
+    private Color headerTextColor = Color.WHITE;
+    private Color nearestAppointmentColor = new Color(255, 248, 220); // Màu highlight cho lịch hẹn gần nhất
+    private Color nearestAppointmentBorderColor = new Color(255, 193, 7); // Màu viền cho lịch hẹn gần nhất
     
-    // Font settings
-    private final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 20);
-    private final Font FONT_SUBTITLE = new Font("Segoe UI", Font.BOLD, 14);
-    private final Font FONT_HEADING = new Font("Segoe UI", Font.BOLD, 15);
-    private final Font FONT_REGULAR = new Font("Segoe UI", Font.PLAIN, 14);
-    private final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 14);
-    private final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
-    private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 14);
+    private Font buttonFont = new Font("Segoe UI", Font.PLAIN, 12);
+    private Font regularFont = new Font("Segoe UI", Font.PLAIN, 14);
+    private Font headerFont = new Font("Segoe UI", Font.BOLD, 16);
     
-    // Columns for appointment table
-    private final String[] COLUMN_NAMES = {
-        "ID", "Ngày hẹn", "Giờ hẹn", "Bác sĩ", "Phòng khám", "Dịch vụ", "Trạng thái"
-    };
+    private JPanel errorPanel;
+    private JLabel errorLabel;
     
-    // Constructor
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+    private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+
     public LichSuLichHenPanel(NguoiDung user) {
         this.currentUser = user;
+        this.currentUserId = user != null ? user.getIdNguoiDung() : -1;
         controller = new LichHenController();
         benhNhanController = new BenhNhanController();
+        nguoiDungController = new NguoiDungController();
+        
         setupUI();
         loadData();
-        setupEventListeners();
     }
-    
+
+    public LichSuLichHenPanel(int userId) {
+        this.currentUserId = userId;
+        controller = new LichHenController();
+        benhNhanController = new BenhNhanController();
+        nguoiDungController = new NguoiDungController();
+        
+        setCurrentUserId(userId);
+        setupUI();
+        loadData();
+    }
+
+    public void setCurrentUserId(int userId) {
+        this.currentUserId = userId;
+        try {
+            NguoiDungController userController = new NguoiDungController();
+            this.currentUser = userController.getNguoiDungById(userId);
+            if (this.currentUser != null) {
+                updateUIForCurrentUser();
+                loadData();
+            } else {
+                showErrorMessage("Không tìm thấy thông tin người dùng!");
+            }
+        } catch (SQLException e) {
+            showErrorMessage("Không thể tải thông tin người dùng: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void updateUIForCurrentUser() {
+        if (currentUser != null) {
+            Component[] components = ((JPanel) getComponent(0)).getComponents();
+            for (Component comp : components) {
+                if (comp instanceof JLabel && ((JLabel) comp).getText().contains("Quản lý lịch hẹn")) {
+                    ((JLabel) comp).setText("Quản lý lịch hẹn - " + currentUser.getHoTen());
+                    break;
+                }
+            }
+        }
+    }
+
     private void setupUI() {
-        setLayout(new BorderLayout(0, 0));
-        setBorder(new EmptyBorder(15, 15, 15, 15));
-        setBackground(BG_PRIMARY);
-        
-        // Create the header panel
+        setLayout(new BorderLayout());
+        setBackground(backgroundColor);
+        setBorder(new EmptyBorder(20, 20, 20, 20));
+
         JPanel headerPanel = createHeaderPanel();
-        
-        // Create the content panel
-        JPanel contentPanel = createContentPanel();
-        
-        // Create the footer panel
-        JPanel footerPanel = createFooterPanel();
-        
-        // Add panels to the main panel
         add(headerPanel, BorderLayout.NORTH);
-        add(contentPanel, BorderLayout.CENTER);
-        add(footerPanel, BorderLayout.SOUTH);
+
+        createTabbedPane();
+        add(tabbedPane, BorderLayout.CENTER);
+
+        createErrorPanel();
+        add(errorPanel, BorderLayout.SOUTH);
     }
-    
+
     private JPanel createHeaderPanel() {
-        JPanel headerPanel = new JPanel(new BorderLayout(0, 10));
-        headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
-        headerPanel.setBackground(BG_PRIMARY);
-        
-        // Title panel
-        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        titlePanel.setBackground(BG_PRIMARY);
-        JLabel titleLabel = new JLabel("LỊCH SỬ LỊCH HẸN");
-        titleLabel.setFont(FONT_TITLE);
-        titleLabel.setForeground(PRIMARY_DARK);
-        titlePanel.add(titleLabel);
-        
-        // Search panel
-        JPanel searchPanel = new JPanel();
-        searchPanel.setLayout(new BoxLayout(searchPanel, BoxLayout.X_AXIS));
-        searchPanel.setBorder(new EmptyBorder(10, 0, 5, 0));
-        searchPanel.setBackground(BG_PRIMARY);
-        
-        JLabel searchLabel = new JLabel("Tìm kiếm:");
-        searchLabel.setFont(FONT_REGULAR);
-        searchLabel.setForeground(TEXT_PRIMARY);
-        searchLabel.setBorder(new EmptyBorder(0, 0, 0, 10));
-        
-        txtTimKiem = new JTextField(20);
-        txtTimKiem.setFont(FONT_REGULAR);
-        txtTimKiem.setBorder(new CompoundBorder(
-            new LineBorder(BORDER_COLOR, 1, true),
-            new EmptyBorder(8, 10, 8, 10)
-        ));
-        
-        btnTimKiem = createStyledButton("Tìm kiếm", PRIMARY_COLOR);
-        btnReset = createStyledButton("Đặt lại", SECONDARY_COLOR);
-        
-        searchPanel.add(searchLabel);
-        searchPanel.add(txtTimKiem);
-        searchPanel.add(Box.createRigidArea(new Dimension(10, 0)));
-        searchPanel.add(btnTimKiem);
-        searchPanel.add(Box.createRigidArea(new Dimension(10, 0)));
-        searchPanel.add(btnReset);
-        
-        headerPanel.add(titlePanel, BorderLayout.NORTH);
-        headerPanel.add(searchPanel, BorderLayout.CENTER);
-        
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(backgroundColor);
+        headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+
+        String userName = (currentUser != null) ? currentUser.getHoTen() : "Người dùng";
+        JLabel titleLabel = new JLabel("Quản lý lịch hẹn - " + userName);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titleLabel.setForeground(primaryColor);
+        headerPanel.add(titleLabel, BorderLayout.WEST);
+
+        JButton refreshButton = createStyledButton("Làm mới", primaryColor);
+        refreshButton.addActionListener(e -> {
+            loadData();
+            showSuccessMessage("Đã cập nhật dữ liệu!");
+        });
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+
         return headerPanel;
     }
-    
-    private JButton createStyledButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
-        button.setFont(FONT_BUTTON);
-        button.setForeground(Color.WHITE);
-        button.setBackground(bgColor);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(true);
-        button.setOpaque(true);
-        button.setBorder(new EmptyBorder(8, 15, 8, 15));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        button.addMouseListener(new MouseAdapter() {
+
+    private void createTabbedPane() {
+        tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(headerFont);
+        tabbedPane.setBackground(backgroundColor);
+        tabbedPane.setForeground(primaryColor);
+
+        lichSuPanel = createLichSuPanel();
+        sapToiPanel = createSapToiPanel();
+
+        tabbedPane.addTab("Lịch hẹn sắp tới", sapToiPanel);
+        tabbedPane.addTab("Lịch sử đặt lịch", lichSuPanel);
+
+        tabbedPane.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
             @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(bgColor.darker());
+            protected void paintTabBorder(Graphics g, int tabPlacement, int tabIndex,
+                    int x, int y, int w, int h, boolean isSelected) {
             }
             
             @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(bgColor);
+            protected void paintContentBorder(Graphics g, int tabPlacement, int selectedIndex) {
             }
         });
-        
-        return button;
     }
-    
-    private JPanel createContentPanel() {
-        JPanel contentPanel = new JPanel(new BorderLayout(0, 10));
-        contentPanel.setBackground(BG_PRIMARY);
-        
-        // Create tabbed pane with custom styling
-        tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(FONT_SUBTITLE);
-        tabbedPane.setBackground(BG_SECONDARY);
-        tabbedPane.setForeground(TEXT_PRIMARY);
-        
-        // Customize tabbed pane appearance
-        UIManager.put("TabbedPane.selected", BG_ACCENT);
-        UIManager.put("TabbedPane.contentAreaColor", BG_SECONDARY);
-        UIManager.put("TabbedPane.focus", PRIMARY_LIGHT);
-        UIManager.put("TabbedPane.light", BG_SECONDARY);
-        UIManager.put("TabbedPane.tabAreaBackground", BG_SECONDARY);
-        
-        // Create upcoming appointments tab
-        JPanel upcomingPanel = createAppointmentPanel(true);
-        tabbedPane.addTab("Lịch hẹn sắp tới", upcomingPanel);
-        
-        // Create appointment history tab
-        JPanel historyPanel = createAppointmentPanel(false);
-        tabbedPane.addTab("Lịch sử lịch hẹn", historyPanel);
-        
-        // Add tabbed pane to content panel with a border
-        JPanel tabbedPaneContainer = new JPanel(new BorderLayout());
-        tabbedPaneContainer.setBackground(BG_SECONDARY);
-        tabbedPaneContainer.setBorder(new LineBorder(BORDER_COLOR, 1, true));
-        tabbedPaneContainer.add(tabbedPane, BorderLayout.CENTER);
-        
-        contentPanel.add(tabbedPaneContainer, BorderLayout.CENTER);
-        
-        return contentPanel;
-    }
-    
-    private JPanel createAppointmentPanel(boolean isUpcoming) {
-        JPanel panel = new JPanel(new BorderLayout(0, 0));
-        panel.setBackground(BG_SECONDARY);
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        
-        DefaultTableModel model = new DefaultTableModel(COLUMN_NAMES, 0) {
+
+    private JPanel createLichSuPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(backgroundColor);
+        panel.setBorder(new EmptyBorder(20, 0, 0, 0));
+
+        String[] columnNames = {"ID", "Bác sĩ", "Ngày hẹn", "Giờ hẹn", "Phòng khám", "Trạng thái", "Mô tả"};
+        lichSuTableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
-            
-            @Override
-            public Class<?> getColumnClass(int columnIndex) {
-                return String.class;
-            }
         };
+
+        lichSuTable = new JTable(lichSuTableModel);
+        setupTable(lichSuTable);
+
+        JScrollPane scrollPane = new JScrollPane(lichSuTable);
+        styleScrollPane(scrollPane);
+
+        JPanel infoPanel = createInfoPanel("Hiển thị tất cả lịch hẹn đã qua hoặc đã hoàn thành");
         
-        JTable table = new JTable(model);
-        table.setRowHeight(35);
-        table.setAutoCreateRowSorter(true);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getTableHeader().setReorderingAllowed(false);
-        table.setShowGrid(true);
-        table.setGridColor(DIVIDER_COLOR);
-        table.setFont(FONT_REGULAR);
-        table.setSelectionBackground(COLOR_SELECTED);
-        table.setSelectionForeground(TEXT_PRIMARY);
-        table.setBackground(BG_SECONDARY);
-        table.setForeground(TEXT_PRIMARY);
-        
-        // Configure table header
-        JTableHeader header = table.getTableHeader();
-        header.setFont(FONT_SUBTITLE);
-        header.setPreferredSize(new Dimension(header.getWidth(), 40));
-        header.setBackground(TABLE_HEADER_BG);
-        header.setForeground(TABLE_HEADER_FG);
-        
-        // Configure cell renderer for center alignment
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, 
-                    boolean isSelected, boolean hasFocus, int row, int column) {
-                Component cell = super.getTableCellRendererComponent(table, value, 
-                        isSelected, hasFocus, row, column);
-                
-                if (!isSelected) {
-                    if (row % 2 == 0) {
-                        cell.setBackground(BG_SECONDARY);
-                    } else {
-                        cell.setBackground(TABLE_ROW_ALT);
-                    }
-                }
-                
-                // Status column styling (last column)
-                if (column == 6) {
-                    String status = value.toString();
-                    if (status.equalsIgnoreCase("Đã hủy")) {
-                        cell.setForeground(ACCENT_COLOR);
-                    } else if (status.equalsIgnoreCase("Hoàn thành")) {
-                        cell.setForeground(SUCCESS_COLOR);
-                    } else if (status.equalsIgnoreCase("Đang chờ")) {
-                        cell.setForeground(WARNING_COLOR);
-                    } else {
-                        cell.setForeground(PRIMARY_COLOR);
-                    }
-                } else {
-                    cell.setForeground(isSelected ? TEXT_PRIMARY : TEXT_SECONDARY);
-                }
-                
-                setBorder(new EmptyBorder(0, 5, 0, 5));
-                return cell;
-            }
-        };
-        
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
-        }
-        
-        // Hide ID column
-        table.getColumnModel().getColumn(0).setMinWidth(0);
-        table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setWidth(0);
-        
-        // Set column widths
-        table.getColumnModel().getColumn(1).setPreferredWidth(100); // Ngày hẹn
-        table.getColumnModel().getColumn(2).setPreferredWidth(80);  // Giờ hẹn
-        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Bác sĩ
-        table.getColumnModel().getColumn(4).setPreferredWidth(120); // Phòng khám
-        table.getColumnModel().getColumn(5).setPreferredWidth(250); // Dịch vụ
-        table.getColumnModel().getColumn(6).setPreferredWidth(100); // Trạng thái
-        
-        // Add table to scroll pane
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(BG_SECONDARY);
-        
-        // Add a title label based on the tab
-        String title = isUpcoming ? "Lịch hẹn sắp tới" : "Lịch sử lịch hẹn";
-        JLabel tabTitle = new JLabel(title);
-        tabTitle.setFont(FONT_HEADING);
-        tabTitle.setForeground(TEXT_PRIMARY);
-        tabTitle.setBorder(new EmptyBorder(0, 0, 10, 0));
-        
-        panel.add(tabTitle, BorderLayout.NORTH);
+        panel.add(infoPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
-        
-        // Store references
-        if (isUpcoming) {
-            upcomingTable = table;
-            upcomingModel = model;
-        } else {
-            historyTable = table;
-            historyModel = model;
-        }
-        
+
         return panel;
     }
-    
-    private JPanel createFooterPanel() {
-        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        footerPanel.setBorder(new EmptyBorder(15, 0, 0, 0));
-        footerPanel.setBackground(BG_PRIMARY);
+
+    private JPanel createSapToiPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(backgroundColor);
+        panel.setBorder(new EmptyBorder(20, 0, 0, 0));
+
+        String[] columnNames = {"ID", "Bác sĩ", "Ngày hẹn", "Giờ hẹn", "Phòng khám", "Trạng thái", "Mô tả", "Thao tác"};
+        sapToiTableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 7;
+            }
+        };
+
+        sapToiTable = new JTable(sapToiTableModel);
+        setupTable(sapToiTable);
         
-        btnChiTiet = createStyledButton("Xem chi tiết", PRIMARY_COLOR);
-        btnHuy = createStyledButton("Hủy lịch hẹn", ACCENT_COLOR);
+        sapToiTable.getColumn("Thao tác").setCellRenderer(new ButtonRenderer());
+        sapToiTable.getColumn("Thao tác").setCellEditor(new ButtonEditor(new JCheckBox()));
+
+        JScrollPane scrollPane = new JScrollPane(sapToiTable);
+        styleScrollPane(scrollPane);
+
+        JPanel infoPanel = createSapToiInfoPanel();
         
-        footerPanel.add(btnChiTiet);
-        footerPanel.add(btnHuy);
-        
-        return footerPanel;
+        panel.add(infoPanel, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
     }
-    
+
+    private JPanel createInfoPanel(String message) {
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        infoPanel.setBackground(secondaryColor);
+        infoPanel.setBorder(new CompoundBorder(
+            new LineBorder(borderColor, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+
+        JLabel infoLabel = new JLabel(message);
+        infoLabel.setFont(regularFont);
+        infoLabel.setForeground(primaryColor);
+        infoPanel.add(infoLabel);
+
+        return infoPanel;
+    }
+
+    private JPanel createSapToiInfoPanel() {
+        JPanel infoPanel = new JPanel(new BorderLayout());
+        infoPanel.setBackground(secondaryColor);
+        infoPanel.setBorder(new CompoundBorder(
+            new LineBorder(borderColor, 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+
+        JLabel infoLabel = new JLabel("Lịch hẹn sắp tới - Bạn có thể hủy lịch hẹn nếu cần thiết (Lịch hẹn gần nhất được đánh dấu màu vàng)");
+        infoLabel.setFont(regularFont);
+        infoLabel.setForeground(primaryColor);
+        infoPanel.add(infoLabel, BorderLayout.WEST);
+
+        JPanel legendPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        legendPanel.setBackground(secondaryColor);
+        
+        JLabel legendLabel = new JLabel("Đã xác nhận | Chờ xác nhận | Đã hủy");
+        legendLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        legendLabel.setForeground(Color.GRAY);
+        legendPanel.add(legendLabel);
+        
+        infoPanel.add(legendPanel, BorderLayout.EAST);
+
+        return infoPanel;
+    }
+
+    private void setupTable(JTable table) {
+        table.setFont(regularFont);
+        table.setRowHeight(45);
+        table.setSelectionBackground(primaryColor.brighter());
+        table.setSelectionForeground(Color.WHITE);
+        table.setGridColor(borderColor);
+        table.setShowGrid(true);
+        table.setIntercellSpacing(new Dimension(1, 1));
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(headerFont);
+        header.setBackground(primaryColor);
+        header.setForeground(headerTextColor);
+        header.setPreferredSize(new Dimension(0, 50));
+        header.setBorder(BorderFactory.createEmptyBorder());
+
+        // Sử dụng renderer tùy chỉnh để highlight lịch hẹn gần nhất
+        if (table == sapToiTable) {
+            table.setDefaultRenderer(Object.class, new SapToiTableCellRenderer());
+        } else {
+            table.setDefaultRenderer(Object.class, new CustomTableCellRenderer());
+        }
+
+        if (table.getColumnCount() >= 7) {
+            table.getColumnModel().getColumn(0).setPreferredWidth(50);
+            table.getColumnModel().getColumn(1).setPreferredWidth(150);
+            table.getColumnModel().getColumn(2).setPreferredWidth(100);
+            table.getColumnModel().getColumn(3).setPreferredWidth(80);
+            table.getColumnModel().getColumn(4).setPreferredWidth(120);
+            table.getColumnModel().getColumn(5).setPreferredWidth(120);
+            table.getColumnModel().getColumn(6).setPreferredWidth(200);
+            
+            if (table.getColumnCount() == 8) {
+                table.getColumnModel().getColumn(7).setPreferredWidth(100);
+            }
+        }
+    }
+
+    private void styleScrollPane(JScrollPane scrollPane) {
+        scrollPane.setBorder(new LineBorder(borderColor, 1, true));
+        scrollPane.getViewport().setBackground(Color.WHITE);
+        scrollPane.setBackground(Color.WHITE);
+    }
+
+    private void createErrorPanel() {
+        errorPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        errorPanel.setBackground(backgroundColor);
+        errorPanel.setVisible(false);
+
+        errorLabel = new JLabel();
+        errorLabel.setFont(regularFont);
+        errorLabel.setForeground(accentColor);
+        errorPanel.add(errorLabel);
+    }
+
+    private JButton createStyledButton(String text, Color backgroundColor) {
+        JButton button = new JButton(text);
+        button.setFont(buttonFont);
+        button.setForeground(buttonTextColor);
+        button.setBackground(backgroundColor);
+        button.setBorder(new EmptyBorder(10, 20, 10, 20));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(backgroundColor.darker());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(backgroundColor);
+            }
+        });
+
+        return button;
+    }
+
     private void loadData() {
-        if (currentUser == null) return;
-        
-        // Clear existing data
-        upcomingModel.setRowCount(0);
-        historyModel.setRowCount(0);
-        
+        if (currentUser == null) {
+            showErrorMessage("Không có thông tin người dùng!");
+            return;
+        }
+
         try {
-            // Get all appointments for the current user
-            List<LichHen> dsLichHen = controller.getLichHenByUserId(currentUser.getIdNguoiDung());
+            List<LichHen> userLichHen = getUserAppointments();
             
-            // Get current date
-            Date currentDate = new Date(System.currentTimeMillis());
-            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+            lichSuTableModel.setRowCount(0);
+            sapToiTableModel.setRowCount(0);
             
-            // Process each appointment
-            for (LichHen lichHen : dsLichHen) {
+            if (userLichHen.isEmpty()) {
+                showErrorMessage("Không tìm thấy lịch hẹn nào cho tài khoản này.");
+                return;
+            }
+            
+            java.util.Date today = new java.util.Date();
+            
+            // Danh sách lịch hẹn sắp tới để sắp xếp
+            List<LichHen> upcomingAppointments = new ArrayList<>();
+            
+            for (LichHen lichHen : userLichHen) {
                 Object[] rowData = {
                     lichHen.getIdLichHen(),
-                    dateFormat.format(lichHen.getNgayHen()),
-                    timeFormat.format(lichHen.getGioHen()),
-                    lichHen.getHoTenBacSi(),
-                    lichHen.getTenPhong(),
-                    lichHen.getMoTa(), // Using moTa as the service description
-                    lichHen.getTrangThai()
+                    lichHen.getHoTenBacSi() != null ? lichHen.getHoTenBacSi() : "",
+                    lichHen.getNgayHen() != null ? dateFormat.format(lichHen.getNgayHen()) : "",
+                    lichHen.getGioHen() != null ? timeFormat.format(lichHen.getGioHen()) : "",
+                    lichHen.getTenPhong() != null ? lichHen.getTenPhong() : "",
+                    lichHen.getTrangThai() != null ? lichHen.getTrangThai() : "",
+                    lichHen.getMoTa() != null ? lichHen.getMoTa() : ""
                 };
                 
-                // Check if the appointment is upcoming or in the past
-                boolean isUpcoming = lichHen.getNgayHen().after(currentDate) || 
-                                     lichHen.getNgayHen().equals(currentDate);
-                
-                if (isUpcoming) {
-                    upcomingModel.addRow(rowData);
+                if (lichHen.getNgayHen() != null && 
+                    (lichHen.getNgayHen().before(today) || 
+                    "Đã hoàn thành".equals(lichHen.getTrangThai()) || 
+                    "Đã hủy".equals(lichHen.getTrangThai()))) {
+                    lichSuTableModel.addRow(rowData);
                 } else {
-                    historyModel.addRow(rowData);
+                    upcomingAppointments.add(lichHen);
                 }
             }
+            upcomingAppointments.sort((l1, l2) -> {
+                java.util.Date dateTime1 = combineDateTime(l1.getNgayHen(), l1.getGioHen());
+                java.util.Date dateTime2 = combineDateTime(l2.getNgayHen(), l2.getGioHen());
+                
+                if (dateTime1 == null && dateTime2 == null) return 0;
+                if (dateTime1 == null) return 1;
+                if (dateTime2 == null) return -1;
+                int result = dateTime1.compareTo(dateTime2);
+                if (result == 0) {
+                    String status1 = l1.getTrangThai() != null ? l1.getTrangThai() : "";
+                    String status2 = l2.getTrangThai() != null ? l2.getTrangThai() : "";
+                    
+                    if ("Đã xác nhận".equals(status1) && !"Đã xác nhận".equals(status2)) {
+                        return -1;
+                    } else if (!"Đã xác nhận".equals(status1) && "Đã xác nhận".equals(status2)) {
+                        return 1;
+                    }
+                }
+                
+                return result;
+            });
             
-            // Sort upcoming appointments by date (closest first)
-            if (upcomingTable.getRowCount() > 0) {
-                TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(upcomingModel);
-                upcomingTable.setRowSorter(sorter);
+            // Thêm lịch hẹn sắp tới đã sắp xếp vào bảng
+            for (LichHen lichHen : upcomingAppointments) {
+                Object[] rowData = {
+                    lichHen.getIdLichHen(),
+                    lichHen.getHoTenBacSi() != null ? lichHen.getHoTenBacSi() : "",
+                    lichHen.getNgayHen() != null ? dateFormat.format(lichHen.getNgayHen()) : "",
+                    lichHen.getGioHen() != null ? timeFormat.format(lichHen.getGioHen()) : "",
+                    lichHen.getTenPhong() != null ? lichHen.getTenPhong() : "",
+                    lichHen.getTrangThai() != null ? lichHen.getTrangThai() : "",
+                    lichHen.getMoTa() != null ? lichHen.getMoTa() : ""
+                };
                 
-                List<RowSorter.SortKey> sortKeys = new ArrayList<>();
-                sortKeys.add(new RowSorter.SortKey(1, SortOrder.ASCENDING)); // Sort by date
-                sortKeys.add(new RowSorter.SortKey(2, SortOrder.ASCENDING)); // Then by time
-                sorter.setSortKeys(sortKeys);
-                sorter.sort();
-                
-                // Select the first row (closest appointment)
-                upcomingTable.setRowSelectionInterval(0, 0);
-                
-                // Switch to upcoming tab
-                tabbedPane.setSelectedIndex(0);
+                Object[] sapToiRowData = Arrays.copyOf(rowData, rowData.length + 1);
+                if ("Chờ xác nhận".equals(lichHen.getTrangThai()) || 
+                    "Đã xác nhận".equals(lichHen.getTrangThai())) {
+                    sapToiRowData[sapToiRowData.length - 1] = "Hủy lịch";
+                } else {
+                    sapToiRowData[sapToiRowData.length - 1] = "";
+                }
+                sapToiTableModel.addRow(sapToiRowData);
             }
             
+            tabbedPane.setTitleAt(0, "Lịch hẹn sắp tới (" + sapToiTableModel.getRowCount() + ")");
+            tabbedPane.setTitleAt(1, "Lịch sử đặt lịch (" + lichSuTableModel.getRowCount() + ")");
+            
+            // Làm mới bảng để cập nhật highlight
+            sapToiTable.repaint();
+            
         } catch (Exception e) {
-            showErrorDialog("Lỗi khi tải dữ liệu lịch hẹn: " + e.getMessage());
+            showErrorMessage("Lỗi khi tải dữ liệu: " + e.getMessage());
             e.printStackTrace();
         }
     }
-    
-    private void setupEventListeners() {
-        // Search button action
-        btnTimKiem.addActionListener(e -> timKiemLichHen());
+    private List<LichHen> getUserAppointments() {
+        List<LichHen> userLichHen = new ArrayList<>();
         
-        // Reset button action
-        btnReset.addActionListener(e -> {
-            txtTimKiem.setText("");
-            loadData();
-        });
-        
-        // Enter key in search field
-        txtTimKiem.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    timKiemLichHen();
-                }
-            }
-        });
-        
-        // Chi tiết button action
-        btnChiTiet.addActionListener(e -> xemChiTiet());
-        
-        // Hủy lịch hẹn button action
-        btnHuy.addActionListener(e -> huyLichHen());
-        
-        // Double-click on table row
-        upcomingTable.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    xemChiTiet();
-                }
-            }
-        });
-        
-        historyTable.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    xemChiTiet();
-                }
-            }
-        });
-        
-        // Tab change listener to update button states
-        tabbedPane.addChangeListener(e -> {
-            updateButtonStates();
-        });
-    }
-    
-    private void updateButtonStates() {
-        boolean isUpcomingTab = tabbedPane.getSelectedIndex() == 0;
-        btnHuy.setEnabled(isUpcomingTab);
-    }
-    
-    private void timKiemLichHen() {
-        String searchText = txtTimKiem.getText().trim().toLowerCase();
-        
-        if (searchText.isEmpty()) {
-            loadData();
-            return;
+        if (currentUser == null) {
+            return userLichHen;
         }
         
-        filterTable(upcomingModel, upcomingTable, searchText);
-        filterTable(historyModel, historyTable, searchText);
-    }
-    
-    private void filterTable(DefaultTableModel model, JTable table, String searchText) {
-        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
-        table.setRowSorter(sorter);
-        
-        RowFilter<DefaultTableModel, Object> rowFilter = new RowFilter<DefaultTableModel, Object>() {
-            @Override
-            public boolean include(Entry<? extends DefaultTableModel, ? extends Object> entry) {
-                for (int i = 1; i < entry.getValueCount(); i++) {
-                    if (entry.getStringValue(i).toLowerCase().contains(searchText)) {
-                        return true;
-                    }
+        try {
+            List<BenhNhan> matchingPatients = findMatchingPatients();
+            
+            if (matchingPatients.isEmpty()) {
+                return userLichHen;
+            }          
+            List<LichHen> allLichHen = controller.getAllLichHen();
+            
+            for (LichHen lichHen : allLichHen) {
+                if (isAppointmentBelongsToUser(lichHen, matchingPatients)) {
+                    userLichHen.add(lichHen);
                 }
-                return false;
             }
-        };
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         
-        sorter.setRowFilter(rowFilter);
+        return userLichHen;
     }
-    
-    private void xemChiTiet() {
-        // Get the selected appointment
-        LichHen selectedLichHen = getSelectedLichHen();
+    private List<BenhNhan> findMatchingPatients() {
+        List<BenhNhan> matchingPatients = new ArrayList<>();
         
-        if (selectedLichHen == null) {
-            showInfoDialog("Vui lòng chọn một lịch hẹn để xem chi tiết");
-            return;
+        try {
+            List<BenhNhan> allBenhNhan = benhNhanController.getAllBenhNhan();
+            
+            for (BenhNhan benhNhan : allBenhNhan) {
+                if (isPatientMatchesUser(benhNhan, currentUser)) {
+                    matchingPatients.add(benhNhan);
+                }
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         
-        // Display appointment details
-        showLichHenDetails(selectedLichHen);
+        return matchingPatients;
     }
-    
-    private void huyLichHen() {
-        // Only allow cancelling upcoming appointments
-        if (tabbedPane.getSelectedIndex() != 0) {
-            showInfoDialog("Chỉ có thể hủy lịch hẹn sắp tới");
-            return;
+    private boolean isPatientMatchesUser(BenhNhan benhNhan, NguoiDung user) {
+        // Kiểm tra số điện thoại (ưu tiên cao nhất)
+        if (isPhoneNumberMatch(benhNhan.getSoDienThoai(), user.getSoDienThoai())) {
+            return true;
         }
         
-        // Get the selected appointment
-        LichHen selectedLichHen = getSelectedLichHen();
-        
-        if (selectedLichHen == null) {
-            showInfoDialog("Vui lòng chọn một lịch hẹn để hủy");
-            return;
+        // Kiểm tra họ tên
+        if (isNameMatch(benhNhan.getHoTen(), user.getHoTen())) {
+            // Nếu có ngày sinh, phải khớp cả ngày sinh
+            if (benhNhan.getNgaySinh() != null && user.getNgaySinh() != null) {
+                if (benhNhan.getNgaySinh().equals(user.getNgaySinh())) {
+                    return true;
+                }
+            } else {
+                // Nếu không có ngày sinh, chỉ cần khớp tên
+                return true;
+            }
         }
         
-        // Confirm cancellation
-        int option = JOptionPane.showConfirmDialog(this, 
-            "Bạn có chắc chắn muốn hủy lịch hẹn này không?", 
-            "Xác nhận hủy", JOptionPane.YES_NO_OPTION);
+        return false;
+    }
+    private boolean isPhoneNumberMatch(String phone1, String phone2) {
+        if (phone1 == null || phone2 == null) return false;
         
-        if (option == JOptionPane.YES_OPTION) {
+        String cleanPhone1 = phone1.replaceAll("[\\s\\-\\(\\)\\+]", "").trim();
+        String cleanPhone2 = phone2.replaceAll("[\\s\\-\\(\\)\\+]", "").trim();
+        
+        if (cleanPhone1.isEmpty() || cleanPhone2.isEmpty()) return false;
+        
+        return cleanPhone1.equals(cleanPhone2);
+    }
+    private boolean isNameMatch(String name1, String name2) {
+        if (name1 == null || name2 == null) return false;
+        
+        String cleanName1 = name1.trim().toLowerCase().replaceAll("\\s+", " ");
+        String cleanName2 = name2.trim().toLowerCase().replaceAll("\\s+", " ");
+        
+        if (cleanName1.isEmpty() || cleanName2.isEmpty()) return false;
+        
+        return cleanName1.equals(cleanName2);
+    }
+    // Kiểm tra xem lịch hẹn có thuộc về người dùng không     
+    private boolean isAppointmentBelongsToUser(LichHen lichHen, List<BenhNhan> matchingPatients) {
+        // Kiểm tra qua ID bệnh nhân
+        if (lichHen.getIdBenhNhan() > 0) {
+            for (BenhNhan patient : matchingPatients) {
+                if (patient.getIdBenhNhan() == lichHen.getIdBenhNhan()) {
+                    return true;
+                }
+            }
+        }        
+        // Kiểm tra qua tên bệnh nhân trong lịch hẹn
+        if (lichHen.getHoTenBenhNhan() != null && !lichHen.getHoTenBenhNhan().trim().isEmpty()) {
+            for (BenhNhan patient : matchingPatients) {
+                if (isNameMatch(lichHen.getHoTenBenhNhan(), patient.getHoTen())) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    private void handleCancelAppointment(int lichHenId) {
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn có chắc chắn muốn hủy lịch hẹn này?\n" +
+            "Lưu ý: Bạn chỉ có thể hủy lịch hẹn trước 24 giờ.",
+            "Xác nhận hủy lịch",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
             try {
-                // Set status to "Đã hủy"
-                selectedLichHen.setTrangThai("Đã hủy");
+                LichHen lichHen = controller.getLichHenById(lichHenId);
+                if (lichHen == null) {
+                    showErrorMessage("Không tìm thấy lịch hẹn!");
+                    return;
+                }
                 
-                // Update the appointment in the database
-                boolean success = controller.updateLichHen(selectedLichHen);
+                java.util.Date now = new java.util.Date();
+                java.util.Date appointmentDateTime = combineDateTime(lichHen.getNgayHen(), lichHen.getGioHen());
+                long timeDiff = appointmentDateTime.getTime() - now.getTime();
+                long hoursDiff = timeDiff / (1000 * 60 * 60);
                 
+                if (hoursDiff < 24) {
+                    showErrorMessage("Không thể hủy lịch hẹn trong vòng 24 giờ trước cuộc hẹn!");
+                    return;
+                }
+                
+                boolean success = controller.capNhatTrangThaiLichHen(lichHenId, "Đã hủy");
                 if (success) {
-                    showSuccessDialog("Đã hủy lịch hẹn thành công");
+                	showSuccessToast("Đã hủy lịch hẹn thành công!");   
                     loadData();
                 } else {
-                    showErrorDialog("Không thể hủy lịch hẹn");
+                    showErrorMessage("Không thể hủy lịch hẹn. Vui lòng thử lại!");
                 }
             } catch (Exception e) {
-                showErrorDialog("Lỗi khi hủy lịch hẹn: " + e.getMessage());
+                showErrorMessage("Lỗi khi hủy lịch hẹn: " + e.getMessage());
                 e.printStackTrace();
             }
         }
     }
-    
-    private LichHen getSelectedLichHen() {
-        JTable activeTable = tabbedPane.getSelectedIndex() == 0 ? upcomingTable : historyTable;
-        DefaultTableModel activeModel = tabbedPane.getSelectedIndex() == 0 ? upcomingModel : historyModel;
-        
-        int selectedRow = activeTable.getSelectedRow();
-        if (selectedRow < 0) {
+    public void showSuccessToast(String message) {
+        JDialog toastDialog = new JDialog();
+        toastDialog.setUndecorated(true);
+        toastDialog.setAlwaysOnTop(true);        
+        JPanel toastPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        toastPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        toastPanel.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));               
+        JLabel messageLabel = new JLabel(message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+        toastPanel.add(messageLabel);        
+        toastDialog.add(toastPanel);
+        toastDialog.pack();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toastDialog.setLocation(
+                screenSize.width - toastDialog.getWidth() - 20,
+                screenSize.height - toastDialog.getHeight() - 60
+        );        
+        toastDialog.setVisible(true);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                toastDialog.dispose();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    private java.util.Date combineDateTime(java.sql.Date date, java.sql.Time time) {
+        if (date == null || time == null) {
             return null;
         }
         
-        // Convert view index to model index if table is sorted
-        int modelRow = activeTable.convertRowIndexToModel(selectedRow);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTime(date);
         
-        // Get appointment ID from the hidden column
-        int lichHenId = Integer.parseInt(activeModel.getValueAt(modelRow, 0).toString());
+        java.util.Calendar timeCal = java.util.Calendar.getInstance();
+        timeCal.setTime(time);
         
-        try {
-            return controller.getLichHenById(lichHenId);
-        } catch (Exception e) {
-            showErrorDialog("Lỗi khi lấy thông tin lịch hẹn: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
+        cal.set(java.util.Calendar.HOUR_OF_DAY, timeCal.get(java.util.Calendar.HOUR_OF_DAY));
+        cal.set(java.util.Calendar.MINUTE, timeCal.get(java.util.Calendar.MINUTE));
+        cal.set(java.util.Calendar.SECOND, timeCal.get(java.util.Calendar.SECOND));
+        
+        return cal.getTime();
     }
-    
-    private void showLichHenDetails(LichHen lichHen) {
-        // Create a styled dialog
-        JDialog dialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Chi tiết lịch hẹn", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(BG_SECONDARY);
+
+    private void showErrorMessage(String message) {
+        errorLabel.setText(message);
+        errorPanel.setVisible(true);
         
-        // Create a panel for the content
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(BG_SECONDARY);
-        contentPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        
-        // Header
-        JLabel headerLabel = new JLabel("Thông tin lịch hẹn");
-        headerLabel.setFont(FONT_HEADING);
-        headerLabel.setForeground(PRIMARY_DARK);
-        headerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(headerLabel);
-        contentPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        
-        // Create info panel
-        JPanel infoPanel = new JPanel(new GridLayout(0, 2, 15, 10));
-        infoPanel.setBackground(BG_SECONDARY);
-        infoPanel.setBorder(new CompoundBorder(
-            new LineBorder(BORDER_COLOR, 1),
-            new EmptyBorder(15, 15, 15, 15)
-        ));
-        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-        
-        // Add appointment details
-        addDetailRow(infoPanel, "Ngày hẹn:", dateFormat.format(lichHen.getNgayHen()));
-        addDetailRow(infoPanel, "Giờ hẹn:", timeFormat.format(lichHen.getGioHen()));
-        addDetailRow(infoPanel, "Bác sĩ:", lichHen.getHoTenBacSi());
-        addDetailRow(infoPanel, "Phòng khám:", lichHen.getTenPhong());
-        addDetailRow(infoPanel, "Dịch vụ:", lichHen.getMoTa());
-        
-        // Add status with color
-        JLabel statusLabel = new JLabel("Trạng thái:");
-        statusLabel.setFont(FONT_BOLD);
-        statusLabel.setForeground(TEXT_PRIMARY);
-        
-        JLabel statusValue = new JLabel(lichHen.getTrangThai());
-        statusValue.setFont(FONT_REGULAR);
-        
-        // Set status color
-        if (lichHen.getTrangThai().equalsIgnoreCase("Đã hủy")) {
-            statusValue.setForeground(ACCENT_COLOR);
-        } else if (lichHen.getTrangThai().equalsIgnoreCase("Hoàn thành")) {
-            statusValue.setForeground(SUCCESS_COLOR);
-        } else if (lichHen.getTrangThai().equalsIgnoreCase("Đang chờ")) {
-            statusValue.setForeground(WARNING_COLOR);
-        } else {
-            statusValue.setForeground(PRIMARY_COLOR);
-        }
-        
-        infoPanel.add(statusLabel);
-        infoPanel.add(statusValue);
-        
-        contentPanel.add(infoPanel);
-        contentPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(BG_SECONDARY);
-        
-        JButton closeButton = createStyledButton("Đóng", PRIMARY_COLOR);
-        closeButton.addActionListener(e -> dialog.dispose());
-        
-        buttonPanel.add(closeButton);
-        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        contentPanel.add(buttonPanel);
-        
-        dialog.add(contentPanel, BorderLayout.CENTER);
-        dialog.setSize(450, 400);
-        dialog.setLocationRelativeTo(this);
-        dialog.setResizable(false);
-        dialog.setVisible(true);
+        Timer timer = new Timer(5000, e -> errorPanel.setVisible(false));
+        timer.setRepeats(false);
+        timer.start();
     }
-    
-    private void addDetailRow(JPanel panel, String label, String value) {
-        JLabel labelComponent = new JLabel(label);
-        labelComponent.setFont(FONT_BOLD);
-        labelComponent.setForeground(TEXT_PRIMARY);
-        
-        JLabel valueComponent = new JLabel(value);
-        valueComponent.setFont(FONT_REGULAR);
-        valueComponent.setForeground(TEXT_SECONDARY);
-        
-        panel.add(labelComponent);
-        panel.add(valueComponent);
-    }
-    
-    private void showInfoDialog(String message) {
-        JOptionPane.showMessageDialog(this, message, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-    }
-    
-    private void showErrorDialog(String message) {
-        JOptionPane.showMessageDialog(this, message, "Lỗi", JOptionPane.ERROR_MESSAGE);
-    }
-    
-    private void showSuccessDialog(String message) {
+
+    private void showSuccessMessage(String message) {
         JOptionPane.showMessageDialog(this, message, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private class CustomTableCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            
+            if (!isSelected) {
+                if (row % 2 == 0) {
+                    c.setBackground(Color.WHITE);
+                } else {
+                    c.setBackground(new Color(248, 249, 250));
+                }
+            }
+            
+            if (column == 5) {
+                String status = value != null ? value.toString() : "";
+                switch (status) {
+                    case "Đã xác nhận":
+                        c.setForeground(successColor);
+                        break;
+                    case "Chờ xác nhận":
+                        c.setForeground(warningColor);
+                        break;
+                    case "Đã hủy":
+                        c.setForeground(accentColor);
+                        break;
+                    default:
+                        c.setForeground(Color.BLACK);
+                        break;
+                }
+            } else {
+                c.setForeground(Color.BLACK);
+            }
+            
+            return c;
+        }
+    }    
+    private class SapToiTableCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            
+            // Reset border trước khi set lại
+            setBorder(null);
+            
+            if (!isSelected) {
+                // Highlight lịch hẹn gần nhất (hàng đầu tiên) với màu vàng cho toàn bộ hàng
+                if (row == 0 && sapToiTableModel.getRowCount() > 0) {
+                    c.setBackground(nearestAppointmentColor);
+                    // Tạo border cho toàn bộ hàng
+                    if (column == 0) {
+                        // Cột đầu tiên: border trái, trên, dưới
+                        setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(2, 2, 2, 0, nearestAppointmentBorderColor),
+                            BorderFactory.createEmptyBorder(5, 8, 5, 5)
+                        ));
+                    } else if (column == table.getColumnCount() - 1) {
+                        // Cột cuối: border phải, trên, dưới
+                        setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(2, 0, 2, 2, nearestAppointmentBorderColor),
+                            BorderFactory.createEmptyBorder(5, 5, 5, 8)
+                        ));
+                    } else {
+                        // Các cột giữa: chỉ border trên, dưới
+                        setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(2, 0, 2, 0, nearestAppointmentBorderColor),
+                            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                        ));
+                    }
+                } else {
+                    // Màu xen kẽ cho các hàng khác
+                    if (row % 2 == 0) {
+                        c.setBackground(Color.WHITE);
+                    } else {
+                        c.setBackground(new Color(248, 249, 250));
+                    }
+                    // Padding bình thường cho các hàng khác
+                    setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+                }
+            } else {
+                // Khi hàng được chọn, vẫn giữ padding
+                setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+            }
+            
+            // Màu chữ theo trạng thái
+            if (column == 5) { // Cột trạng thái
+                String status = value != null ? value.toString() : "";
+                switch (status) {
+                    case "Đã xác nhận":
+                        c.setForeground(successColor);
+                        break;
+                    case "Chờ xác nhận":
+                        c.setForeground(warningColor);
+                        break;
+                    case "Đã hủy":
+                        c.setForeground(accentColor);
+                        break;
+                    default:
+                        c.setForeground(Color.BLACK);
+                        break;
+                }
+            } else {
+                if (isSelected) {
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setForeground(Color.BLACK);
+                }
+            }
+            
+            return c;
+        }
+    }
+
+    // Thêm cải tiến cho ButtonRenderer để phù hợp với highlight
+    private class ButtonRenderer implements javax.swing.table.TableCellRenderer {
+        private JButton button;
+
+        public ButtonRenderer() {
+            button = new JButton();
+            button.setOpaque(true);
+            button.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            if (value != null && !value.toString().isEmpty()) {
+                button.setText(value.toString());
+                button.setForeground(Color.WHITE);
+                // Nếu là hàng đầu tiên (lịch hẹn gần nhất), điều chỉnh màu button
+                if (row == 0 && sapToiTableModel.getRowCount() > 0) {
+                    button.setBackground(accentColor.darker()); // Màu đậm hơn để nổi bật trên nền vàng
+                    // Border phải để khớp với highlight
+                    button.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(2, 0, 2, 2, nearestAppointmentBorderColor),
+                        BorderFactory.createEmptyBorder(3, 5, 3, 8)
+                    ));
+                } else {
+                    button.setBackground(accentColor);
+                    button.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+                }
+            } else {
+                button.setText("");
+                if (row == 0 && sapToiTableModel.getRowCount() > 0) {
+                    button.setBackground(nearestAppointmentColor);
+                    button.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(2, 0, 2, 2, nearestAppointmentBorderColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 8)
+                    ));
+                } else {
+                    button.setBackground(Color.LIGHT_GRAY);
+                    button.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
+                }
+            }
+            return button;
+        }
+    }
+    private void setupTableForSmoothHighlight(JTable table) {
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+        
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setRowSelectionAllowed(true);
+        table.setColumnSelectionAllowed(false);
+        table.setDoubleBuffered(true);
+    }
+    private class ButtonEditor extends javax.swing.DefaultCellEditor {
+        private JButton button;
+        private String label;
+        private boolean isPushed;
+        private int currentRow;
+
+        public ButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+            button = new JButton();
+            button.setOpaque(true);
+            button.addActionListener(e -> fireEditingStopped());
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            if (value != null && !value.toString().isEmpty()) {
+                label = value.toString();
+                button.setText(label);
+                button.setBackground(accentColor);
+                button.setForeground(Color.WHITE);
+                currentRow = row;
+                isPushed = true;
+            } else {
+                button.setText("");
+                button.setBackground(Color.LIGHT_GRAY);
+                isPushed = false;
+            }
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            if (isPushed && "Hủy lịch".equals(label)) {
+                int lichHenId = (Integer) sapToiTableModel.getValueAt(currentRow, 0);
+                handleCancelAppointment(lichHenId);
+            }
+            isPushed = false;
+            return label;
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            isPushed = false;
+            return super.stopCellEditing();
+        }
     }
 }
