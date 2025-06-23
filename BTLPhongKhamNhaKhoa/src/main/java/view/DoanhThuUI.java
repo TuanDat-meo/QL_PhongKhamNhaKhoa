@@ -699,7 +699,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
                 tongThu = tongThuObj.toString();
             }
             
-            String trangThai = modelDoanhThu.getValueAt(modelRow, 5).toString();
+            String trangThai = ((String) modelDoanhThu.getValueAt(modelRow, 5)).equals("DaThanhToan") ? "Đã Thanh Toán" : (String) modelDoanhThu.getValueAt(modelRow, 5);
             
             JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
             if (topFrame != null) {
@@ -1298,7 +1298,7 @@ public class DoanhThuUI extends JPanel implements MessageCallback, DataChangeLis
             String tenBenhNhan = (String) modelDoanhThu.getValueAt(modelRow, 2);
             String thangNam = (String) modelDoanhThu.getValueAt(modelRow, 3);
             String tongThu = modelDoanhThu.getValueAt(modelRow, 4).toString();
-            String trangThai = (String) modelDoanhThu.getValueAt(modelRow, 5);
+            String trangThai = ((String) modelDoanhThu.getValueAt(modelRow, 5)).equals("DaThanhToan") ? "Đã Thanh Toán" : (String) modelDoanhThu.getValueAt(modelRow, 5);
 
             Object[] data = { idDoanhThu, idHoaDon, tenBenhNhan, thangNam, tongThu, trangThai };
 
