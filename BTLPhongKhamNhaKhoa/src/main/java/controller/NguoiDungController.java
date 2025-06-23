@@ -153,8 +153,6 @@ public class NguoiDungController {
             }
         }
     }
-
-    // GIẢI PHÁP 2: Script để migrate tất cả mật khẩu cũ (chạy 1 lần)
     public static void migrateAllPlaintextPasswords() {
         Connection connection = null;
         PreparedStatement selectStatement = null;
