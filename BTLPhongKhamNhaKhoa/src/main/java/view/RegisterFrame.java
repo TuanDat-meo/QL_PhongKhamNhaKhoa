@@ -428,7 +428,11 @@ public class RegisterFrame extends JFrame {
             if (success) {
                 showNotification("Registration successful!", NotificationType.SUCCESS);
                 SwingUtilities.invokeLater(() -> {
-                    new LoginFrame();
+                    if (loginFrame != null) {
+                        loginFrame.setVisible(true);
+                    } else {
+                        new LoginFrame();
+                    }
                     dispose();
                 });
             } else {
