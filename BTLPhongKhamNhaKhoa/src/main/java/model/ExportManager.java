@@ -1,4 +1,4 @@
-package util;
+package model;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -6,7 +6,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.event.MouseEvent;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -15,21 +14,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.regex.Pattern;
-
-// Thêm imports cho Excel
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.DefaultIndexedColorMap;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-// Thêm imports cho PDF
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
-import com.itextpdf.text.Rectangle;
-
-/**
- * Lớp tiện ích để xuất dữ liệu từ JTable sang các định dạng CSV và khác
- */
 public class ExportManager {
     // Constants
     private static final int DIALOG_WIDTH = 480;
@@ -381,8 +371,7 @@ public class ExportManager {
             return new File(filePath + "." + extension);
         }
         return file;
-    }
-    
+    }  
     
     private void exportToExcel(File file) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
@@ -555,10 +544,6 @@ public class ExportManager {
             }
         }
     }
-    
-    /**
-     * Xuất dữ liệu sang định dạng PDF
-     */
     private void exportToPDF(File file) throws Exception {
         Document document = new Document(PageSize.A4.rotate(), 36, 36, 50, 36);
         PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(file));
@@ -707,10 +692,6 @@ public class ExportManager {
         // Đóng tài liệu
         document.close();
     }
-    
-    /**
-     * Class để tạo header/footer cho PDF
-     */
     private class PDFHeaderFooter extends PdfPageEventHelper {
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
@@ -802,27 +783,7 @@ public class ExportManager {
             bw.newLine();
         }
     }
-    private String normalizeString(String text) {
-        if (text == null || text.isEmpty()) {
-            return "";
-        }
-        
-        // Bước 1: Chuẩn hóa Unicode (ví dụ: chuyển "ế" thành "e")
-        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKD);
-        
-        // Bước 2: Loại bỏ các ký tự dấu
-        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        normalized = pattern.matcher(normalized).replaceAll("");
-        
-        // Bước 3: Thay thế các ký tự đặc biệt bằng khoảng trắng hoặc ký tự an toàn
-        normalized = normalized.replaceAll("[^\\p{ASCII}]", "");
-        
-        // Bước 4: Loại bỏ các ký tự có thể gây vấn đề cho CSV
-        normalized = normalized.replace("\r", " ").replace("\n", " ");
-        
-        // Trả về chuỗi đã xử lý
-        return normalized.trim();
-    }
+    
     private String escapeCSV(String text) {
         if (text == null || text.isEmpty()) {
             return "\"\"";
@@ -830,15 +791,12 @@ public class ExportManager {
         
         // Luôn đặt trong dấu ngoặc kép để đảm bảo tính nhất quán và hỗ trợ Unicode
         return "\"" + text.replace("\"", "\"\"") + "\"";
-    }
-    
+    }    
     private String generateDefaultFileName() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         return "export_data_" + sdf.format(new Date());
     }
-
 	public void setTableModel(DefaultTableModel tableModel2) {
-		// TODO Auto-generated method stub
 		
 	}
 }

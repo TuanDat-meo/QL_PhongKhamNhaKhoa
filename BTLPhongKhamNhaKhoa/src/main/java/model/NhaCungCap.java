@@ -1,20 +1,18 @@
 package model;
 
-import java.time.LocalDate; // Import cho LocalDate để xử lý ngày tháng
+import java.time.LocalDate;
 
 public class NhaCungCap {
     private String maNCC;
     private String tenNCC;
     private String diaChi;
     private String soDienThoai;
-    private LocalDate ngayDangKy; // Thuộc tính mới
-    private String maSoThue;     // Thuộc tính mới
+    private LocalDate ngayDangKy; 
+    private String maSoThue;     
 
     public NhaCungCap() {
-        // Constructor mặc định
     }
 
-    // Constructor đầy đủ với các thuộc tính mới
     public NhaCungCap(String maNCC, String tenNCC, String diaChi, String soDienThoai,
                       LocalDate ngayDangKy, String maSoThue) {
         this.maNCC = maNCC;
@@ -24,8 +22,6 @@ public class NhaCungCap {
         this.ngayDangKy = ngayDangKy;
         this.maSoThue = maSoThue;
     }
-
-    // --- Getters và Setters cho các thuộc tính cũ ---
     public String getMaNCC() {
         return maNCC;
     }
@@ -57,12 +53,9 @@ public class NhaCungCap {
     public void setSoDienThoai(String soDienThoai) {
         this.soDienThoai = soDienThoai;
     }
-
-    // --- Getters và Setters cho các thuộc tính mới ---
     public LocalDate getNgayDangKy() {
         return ngayDangKy;
     }
-
     public void setNgayDangKy(LocalDate ngayDangKy) {
         this.ngayDangKy = ngayDangKy;
     }
@@ -74,7 +67,6 @@ public class NhaCungCap {
     public void setMaSoThue(String maSoThue) {
         this.maSoThue = maSoThue;
     }
-
     @Override
     public String toString() {
         return "NhaCungCap{" +

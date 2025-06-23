@@ -1,7 +1,5 @@
 package model;
 
-import model.PhongKham;
-
 public class PhongKhamItem {
     private PhongKham phongKham;
     

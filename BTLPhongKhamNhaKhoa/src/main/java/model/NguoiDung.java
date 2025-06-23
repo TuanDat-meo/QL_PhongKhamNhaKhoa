@@ -12,11 +12,9 @@ public class NguoiDung {
     private String gioiTinh;
     private String vaiTro;
 
-    // Constructor không đối số
     public NguoiDung() {
     }
 
-    // Constructor đầy đủ tham số
     public NguoiDung(int idNguoiDung, String hoTen, String email, String soDienThoai, String matKhau, Date ngaySinh, String gioiTinh, String vaiTro) {
         this.idNguoiDung = idNguoiDung;
         this.hoTen = hoTen;
@@ -28,7 +26,7 @@ public class NguoiDung {
         this.vaiTro = vaiTro;
     }
 
-    // Constructor không có ID (dùng cho đăng ký người dùng mới)
+    //  (dùng cho đăng ký người dùng mới)
     public NguoiDung(String hoTen, String email, String soDienThoai, String matKhau, Date ngaySinh, String gioiTinh, String vaiTro) {
         this.hoTen = hoTen;
         this.email = email;
@@ -38,8 +36,6 @@ public class NguoiDung {
         this.gioiTinh = gioiTinh;
         this.vaiTro = vaiTro;
     }
-
-    // Getters và Setters
     public int getIdNguoiDung() {
         return idNguoiDung;
     }

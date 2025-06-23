@@ -241,14 +241,14 @@ public class SuaDoanhThuDialog extends JDialog {
                             txtTongDoanhThu.setCaretPosition(0);
                             txtIdHoaDon.setForeground(Color.BLACK);
                             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                                new util.CustomBorder(8, successColor),
+                                new model.CustomBorder(8, successColor),
                                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
                             ));
                         } else {
                             txtTongDoanhThu.setText("Không tìm thấy hóa đơn");
                             txtIdHoaDon.setForeground(Color.RED);
                             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                                new util.CustomBorder(8, errorColor),
+                                new model.CustomBorder(8, errorColor),
                                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
                             ));
                         }
@@ -256,7 +256,7 @@ public class SuaDoanhThuDialog extends JDialog {
                         txtTongDoanhThu.setText("ID không hợp lệ");
                         txtIdHoaDon.setForeground(Color.RED);
                         txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                            new util.CustomBorder(8, errorColor),
+                            new model.CustomBorder(8, errorColor),
                             BorderFactory.createEmptyBorder(5, 12, 5, 12)
                         ));
                     }
@@ -264,7 +264,7 @@ public class SuaDoanhThuDialog extends JDialog {
                     txtTongDoanhThu.setText("");
                     txtIdHoaDon.setForeground(Color.BLACK);
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, borderColor),
+                        new model.CustomBorder(8, borderColor),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                 }
@@ -316,7 +316,7 @@ public class SuaDoanhThuDialog extends JDialog {
         textField.setMinimumSize(new Dimension(230, 38));
         textField.setMaximumSize(new Dimension(230, 38));
         textField.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
         textField.setBackground(editable ? Color.WHITE : new Color(245, 245, 245));
@@ -339,7 +339,7 @@ public class SuaDoanhThuDialog extends JDialog {
         JDateChooser dateChooser = new JDateChooser();
         dateChooser.setFont(regularFont);
         dateChooser.setPreferredSize(new Dimension(230, 38));
-        dateChooser.setBorder(new util.CustomBorder(8, borderColor));
+        dateChooser.setBorder(new model.CustomBorder(8, borderColor));
         JTextField dateTextField = (JTextField) dateChooser.getDateEditor().getUiComponent();
         dateTextField.setFont(regularFont);
         dateTextField.setBorder(new EmptyBorder(5, 12, 5, 12));
@@ -413,12 +413,12 @@ public class SuaDoanhThuDialog extends JDialog {
 
         // Đặt lại viền mặc định trước khi kiểm tra
         txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
         JTextField dateTextField = (JTextField) dateChooserThangNam.getDateEditor().getUiComponent();
         dateTextField.setBorder(BorderFactory.createCompoundBorder(
-            new util.CustomBorder(8, borderColor),
+            new model.CustomBorder(8, borderColor),
             BorderFactory.createEmptyBorder(5, 12, 5, 12)
         ));
 
@@ -436,7 +436,7 @@ public class SuaDoanhThuDialog extends JDialog {
         if (!ValidationUtils.validateRequired(idHoaDonStr, txtIdHoaDon, "ID Hóa Đơn")) {
             ValidationUtils.showValidationError(txtIdHoaDon, errorLabels.get(txtIdHoaDon), "ID Hóa Đơn không được để trống");
             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, errorColor),
+                new model.CustomBorder(8, errorColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             txtIdHoaDon.requestFocus();
@@ -449,7 +449,7 @@ public class SuaDoanhThuDialog extends JDialog {
                     ValidationUtils.showValidationError(txtIdHoaDon, errorLabels.get(txtIdHoaDon), "Không tìm thấy hóa đơn");
                     txtTongDoanhThu.setText("Không tìm thấy hóa đơn");
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, errorColor),
+                        new model.CustomBorder(8, errorColor),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                     txtIdHoaDon.requestFocus();
@@ -457,7 +457,7 @@ public class SuaDoanhThuDialog extends JDialog {
                 } else {
                     txtTongDoanhThu.setText(currencyFormat.format(tongDoanhThu) + " VND");
                     txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                        new util.CustomBorder(8, successColor),
+                        new model.CustomBorder(8, successColor),
                         BorderFactory.createEmptyBorder(5, 12, 5, 12)
                     ));
                 }
@@ -465,7 +465,7 @@ public class SuaDoanhThuDialog extends JDialog {
                 ValidationUtils.showValidationError(txtIdHoaDon, errorLabels.get(txtIdHoaDon), "ID Hóa Đơn không hợp lệ");
                 txtTongDoanhThu.setText("ID không hợp lệ");
                 txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, errorColor),
+                    new model.CustomBorder(8, errorColor),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 txtIdHoaDon.requestFocus();
@@ -477,7 +477,7 @@ public class SuaDoanhThuDialog extends JDialog {
         if (dateText.isEmpty()) {
             ValidationUtils.showValidationError(dateChooserThangNam, errorLabels.get(dateChooserThangNam), "Tháng/Năm không được để trống");
             dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, errorColor),
+                new model.CustomBorder(8, errorColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             dateChooserThangNam.requestFocus();
@@ -488,13 +488,13 @@ public class SuaDoanhThuDialog extends JDialog {
                 sdf.setLenient(false);
                 thangNam = sdf.parse(dateText);
                 dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, successColor),
+                    new model.CustomBorder(8, successColor),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
             } catch (ParseException ex) {
                 ValidationUtils.showValidationError(dateChooserThangNam, errorLabels.get(dateChooserThangNam), "Tháng/Năm không hợp lệ");
                 dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                    new util.CustomBorder(8, errorColor),
+                    new model.CustomBorder(8, errorColor),
                     BorderFactory.createEmptyBorder(5, 12, 5, 12)
                 ));
                 dateChooserThangNam.requestFocus();
@@ -528,21 +528,21 @@ public class SuaDoanhThuDialog extends JDialog {
         try {
             mainUI.getDoanhThuController().suaDoanhThu(idDoanhThu, thangNam, tongDoanhThu, idHoaDon);
             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, successColor),
+                new model.CustomBorder(8, successColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, successColor),
+                new model.CustomBorder(8, successColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             dispose();
         } catch (Exception ex) {
             txtIdHoaDon.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, errorColor),
+                new model.CustomBorder(8, errorColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             dateTextField.setBorder(BorderFactory.createCompoundBorder(
-                new util.CustomBorder(8, errorColor),
+                new model.CustomBorder(8, errorColor),
                 BorderFactory.createEmptyBorder(5, 12, 5, 12)
             ));
             showNotification("Lỗi khi lưu doanh thu!", NotificationType.ERROR);

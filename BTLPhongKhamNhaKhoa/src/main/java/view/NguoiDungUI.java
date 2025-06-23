@@ -12,11 +12,11 @@ import javax.swing.table.TableColumnModel;
 import com.toedter.calendar.JDateChooser;
 
 import controller.NguoiDungController;
+import model.DataChangeListener;
+import model.ExportManager;
 import model.NguoiDung;
-import util.DataChangeListener;
-import util.ExportManager;
-import util.RoundedPanel;
-import util.ExportManager.MessageCallback;
+import model.RoundedPanel;
+import model.ExportManager.MessageCallback;
 import view.BenhNhanUI.NotificationType;
 
 public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeListener {

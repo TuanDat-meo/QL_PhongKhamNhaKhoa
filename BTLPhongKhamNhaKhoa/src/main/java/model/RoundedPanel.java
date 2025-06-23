@@ -1,4 +1,4 @@
-package util;
+package model;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -28,7 +28,6 @@ public class RoundedPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Draw shadow if enabled
         if (shadowEnabled) {
             for (int i = 0; i < 4; i++) {
                 g2d.setColor(new Color(0, 0, 0, 10 - i * 2));

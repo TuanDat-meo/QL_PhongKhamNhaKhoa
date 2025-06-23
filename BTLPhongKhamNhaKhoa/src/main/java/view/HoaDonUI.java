@@ -7,9 +7,9 @@ import controller.HoaDonController;
 import controller.BenhNhanController;
 import model.HoaDon;
 import model.ThanhToanBenhNhan;
-import util.ExportManager;
-import util.ExportManager.MessageCallback;
+import model.ExportManager.MessageCallback;
 import model.BenhNhan;
+import model.ExportManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;

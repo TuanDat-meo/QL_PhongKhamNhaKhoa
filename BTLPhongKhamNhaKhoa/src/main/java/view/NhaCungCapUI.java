@@ -1,12 +1,13 @@
 package view;
 
 import controller.NhaCungCapController;
+import model.CustomBorder;
+import model.DataChangeListener;
+import model.ExportManager;
 import model.NhaCungCap;
-import util.CustomBorder;
-import util.DataChangeListener;
-import util.ExportManager;
-import util.RoundedPanel;
-import util.ExportManager.MessageCallback;
+import model.RoundedPanel;
+import model.ExportManager.MessageCallback;
+
 // Bỏ import không cần thiết và thêm import cho Timer
 // import view.DoanhThuUI.NotificationType;
 import javax.swing.Timer; // Thêm import này

@@ -8,7 +8,9 @@ import javax.swing.event.ChangeListener;
 import com.toedter.calendar.JDateChooser;
 import controller.LichHenController;
 import model.LichHen;
-import util.RoundedPanel;
+import model.RoundedPanel;
+import model.TrangThaiLichHen;
+
 import java.awt.*;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
@@ -1289,19 +1291,19 @@ private void addAppointment() {
                 java.sql.Time timeGioHen = java.sql.Time.valueOf(gioHen);
                 
                 String selectedStatus = (String) statusComboBox.getSelectedItem();
-                LichHen.TrangThaiLichHen trangThaiEnum;
+                TrangThaiLichHen trangThaiEnum;
                 switch(selectedStatus) {
                     case "Chờ xác nhận":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.CHO_XAC_NHAN;
                         break;
                     case "Đã xác nhận":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.DA_XAC_NHAN;
                         break;
                     case "Đã hủy":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_HUY;
+                        trangThaiEnum = TrangThaiLichHen.DA_HUY;
                         break;
                     default:
-                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.CHO_XAC_NHAN;
                 }                
                 String moTa = txtMoTa.getText();
                 
@@ -2177,19 +2179,19 @@ private void addAppointment() {
                 }
                 
                 String selectedStatus = (String) statusComboBox.getSelectedItem();
-                LichHen.TrangThaiLichHen trangThaiEnum;
+                TrangThaiLichHen trangThaiEnum;
                 switch(selectedStatus) {
                     case "Chờ xác nhận":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.CHO_XAC_NHAN;
                         break;
                     case "Đã xác nhận":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.DA_XAC_NHAN;
                         break;
                     case "Đã hủy":
-                        trangThaiEnum = LichHen.TrangThaiLichHen.DA_HUY;
+                        trangThaiEnum = TrangThaiLichHen.DA_HUY;
                         break;
                     default:
-                        trangThaiEnum = LichHen.TrangThaiLichHen.CHO_XAC_NHAN;
+                        trangThaiEnum = TrangThaiLichHen.CHO_XAC_NHAN;
                 }
                 
                 String moTa = txtMoTa.getText();

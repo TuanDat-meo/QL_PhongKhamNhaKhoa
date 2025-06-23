@@ -1,4 +1,4 @@
-package util;
+package model;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicButtonUI;

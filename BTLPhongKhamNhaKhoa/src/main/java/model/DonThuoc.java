@@ -10,7 +10,7 @@ public class DonThuoc {
     private int idBenhNhan;
     private int idBacSi;
     private Date ngayKeDon;
-    private int idHoSoBenhAn; // Thêm thuộc tính này
+    private int idHoSoBenhAn; 
     private List<ChiTietDonThuoc> chiTietDonThuocs;
 
     public DonThuoc() {
