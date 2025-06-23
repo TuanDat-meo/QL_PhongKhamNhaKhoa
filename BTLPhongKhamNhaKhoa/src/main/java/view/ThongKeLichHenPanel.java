@@ -52,21 +52,32 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
     
     public ThongKeLichHenPanel() {
         controller = new ThongKeLichHenController();
+        setLayout(new BorderLayout());
+        setBackground(BACKGROUND_COLOR);
+        setBorder(new EmptyBorder(10, 10, 10, 10)); // Giảm lề để tiết kiệm không gian
+        
         initComponents();
         exportManager = new ExportManager(this, tableModel, this);
+        
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        startDateChooser.setDate(cal.getTime());
+        
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
+        endDateChooser.setDate(cal.getTime());
+        
+        loadData();
     }
     
     private void initComponents() {
         setLayout(new BorderLayout());
         setBackground(BACKGROUND_COLOR);
-        setBorder(new EmptyBorder(15, 15, 15, 15));
+        setBorder(new EmptyBorder(10, 10, 10, 10)); // Giảm lề để tiết kiệm không gian
         
-        createHeaderPanel();
         createFilterPanel();
         createContentPanel();
         createFooterPanel();
         
-        add(headerPanel, BorderLayout.NORTH);
         add(contentPanel, BorderLayout.CENTER);
         add(footerPanel, BorderLayout.SOUTH);
         
@@ -205,7 +216,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         createTablePanel();
         contentPanel.add(tablePanel, BorderLayout.CENTER);
         
-        contentPanel.add(filterPanel, BorderLayout.SOUTH);
+        contentPanel.add(filterPanel, BorderLayout.SOUTH); // Đặt filterPanel dưới bảng dữ liệu
     }
     
     private JPanel createSummaryPanel() {
@@ -276,6 +287,7 @@ public class ThongKeLichHenPanel extends JPanel implements ExportManager.Message
         setupTable(dataTable);
         
         JScrollPane scrollPane = new JScrollPane(dataTable);
+        scrollPane.setPreferredSize(new Dimension(0, 500)); // Chiều cao bảng 500px
         tablePanel.add(scrollPane, BorderLayout.CENTER);
     }
     

@@ -80,7 +80,7 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
     
     public ThongKeDoanhThuPanel() {
         setLayout(new BorderLayout(10, 10));
-        setBorder(new EmptyBorder(15, 15, 15, 15));
+        setBorder(new EmptyBorder(10, 10, 10, 10)); // Giảm lề để tiết kiệm không gian
         setBackground(new Color(245, 247, 250)); 
         
         initComponents();
@@ -99,16 +99,6 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
     }
     
     private void initComponents() {
-        // Header panel
-        headerPanel = new JPanel(new BorderLayout(10, 10));
-        headerPanel.setBackground(new Color(245, 247, 250));
-        headerPanel.setBorder(new EmptyBorder(0, 0, 5, 0));
-        JLabel titleLabel = new JLabel("THỐNG KÊ DOANH THU");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setForeground(primaryColor);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        headerPanel.add(titleLabel, BorderLayout.NORTH);
-
         // Option panel
         pnlOptions = new JPanel();
         pnlOptions.setBackground(new Color(245, 247, 250));
@@ -166,7 +156,7 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
         
         pnlBieuDoContainer = new JPanel();
         pnlBieuDoContainer.setBackground(new Color(245, 247, 250));
-        pnlBieuDoContainer.setPreferredSize(new Dimension(600, 350));
+        pnlBieuDoContainer.setPreferredSize(new Dimension(600, 450)); // Tăng chiều cao biểu đồ
         pnlBieuDoContainer.setLayout(new BorderLayout());
         
         JLabel lblNoData = new JLabel("Chọn loại thống kê và nhấn Thống kê để xem biểu đồ", JLabel.CENTER);
@@ -240,7 +230,7 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
         // Table panel layout
         pnlTable.setLayout(new BorderLayout());
         JScrollPane scrollPane = new JScrollPane(tblThongKe);
-        scrollPane.setPreferredSize(new Dimension(200, 350));
+        scrollPane.setPreferredSize(new Dimension(200, 450)); // Tăng chiều cao bảng
         
         JPanel pnlTableActions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pnlTableActions.setBackground(new Color(245, 247, 250));
@@ -249,22 +239,15 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
         pnlTable.add(scrollPane, BorderLayout.CENTER);
         pnlTable.add(pnlTableActions, BorderLayout.SOUTH);
         
-        // Create topAndCenterPanel to hold pnlOptions and centerPanel
-        JPanel topAndCenterPanel = new JPanel(new BorderLayout(10, 10));
-        topAndCenterPanel.setBackground(new Color(245, 247, 250));
-        topAndCenterPanel.add(pnlOptions, BorderLayout.NORTH);
-        
         // Center panel layout with two columns
         JPanel centerPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         centerPanel.setBackground(new Color(245, 247, 250));
         centerPanel.add(pnlChart);
         centerPanel.add(pnlTable);
         
-        topAndCenterPanel.add(centerPanel, BorderLayout.CENTER);
-        
         // Main panel layout
-        add(headerPanel, BorderLayout.NORTH);
-        add(topAndCenterPanel, BorderLayout.CENTER);
+        add(pnlOptions, BorderLayout.NORTH);
+        add(centerPanel, BorderLayout.CENTER);
     }
     
     private void configureNgayPanel() {
@@ -741,7 +724,7 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
 
                     // Vẽ giá trị trên cột
                     String valueText = formatNumber(value);
-                    int textWidth = fm.stringWidth(valueText);
+                    int textWidth = fm.stringWidth(valueText); // Sửa lỗi: dùng valueText thay vì valueTextWidth
                     int textX = barX + (barWidth - textWidth) / 2;
                     int textY = barY - 5;
 
@@ -763,7 +746,7 @@ public class ThongKeDoanhThuPanel extends JPanel implements ExportManager.Messag
         };
 
         // Kích thước container
-        chart.setPreferredSize(new Dimension(600, 350));
+        chart.setPreferredSize(new Dimension(600, 450));
         chart.setBackground(new Color(245, 247, 250));
         pnlBieuDoContainer.add(chart, BorderLayout.CENTER);
 

@@ -65,10 +65,6 @@ public class ThongKeKhoVatTuPanel extends JPanel {
     private JPanel createHeaderPanel() {
         JPanel pnlHeader = new JPanel(new BorderLayout(10, 10));
         pnlHeader.setBackground(BACKGROUND_COLOR);        
-        JLabel lblTitle = new JLabel("THỐNG KÊ KHO VẬT TƯ");
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 24));
-        lblTitle.setForeground(PRIMARY_COLOR);
-        lblTitle.setHorizontalAlignment(SwingConstants.CENTER);        
         statPanel = new JPanel();
         statPanel.setLayout(new BoxLayout(statPanel, BoxLayout.X_AXIS));
         statPanel.setBackground(Color.WHITE);
@@ -87,9 +83,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         statPanel.add(new JSeparator(JSeparator.VERTICAL));
         statPanel.add(Box.createHorizontalStrut(30));
         statPanel.add(lblTongSoLuong);        
-        pnlHeader.add(lblTitle, BorderLayout.NORTH);
-        pnlHeader.add(Box.createVerticalStrut(10), BorderLayout.CENTER);
-        pnlHeader.add(statPanel, BorderLayout.SOUTH);        
+        pnlHeader.add(statPanel, BorderLayout.CENTER);        
         return pnlHeader;
     }    
     private JPanel createControlPanel() {
@@ -263,9 +257,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
         JComboBox<String> comboBox = new JComboBox<>();
         comboBox.setFont(new Font("Arial", Font.PLAIN, 13));
         comboBox.setBackground(Color.WHITE);
-        // Sử dụng viền mặc định của JComboBox nhưng đổi màu thành đen
         comboBox.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
-        // Đặt kích thước bằng với ô Số lượng tối thiểu (100, 30)
         comboBox.setPreferredSize(new Dimension(100, 30));
         return comboBox;
     }
@@ -533,54 +525,42 @@ public class ThongKeKhoVatTuPanel extends JPanel {
                     }
                 }
                 if (maxValue == 0) maxValue = 1;                
-                // Vẽ tiêu đề
                 g2d.setFont(new Font("Arial", Font.BOLD, 16));
                 g2d.drawString("Thống kê số lượng vật tư theo phân loại", 
                     getWidth() / 2 - 150, 30);                
-                // Vẽ trục và nhãn
                 g2d.setColor(Color.BLACK);
                 g2d.drawLine(padding, padding, padding, bottom);
                 g2d.drawLine(padding, bottom, padding + width, bottom);                
-                // Vẽ các cột
                 int x = padding + barWidth;
                 g2d.setFont(new Font("Arial", Font.PLAIN, 10));
                 
-                // Điều chỉnh khoảng cách giữa các cột
-                int barSpacing = Math.max(barWidth / 2, 20); // Đảm bảo khoảng cách tối thiểu giữa các cột
+                int barSpacing = Math.max(barWidth / 2, 20);
                 
                 for (Map.Entry<String, Integer> entry : thongKe.entrySet()) {
                     String phanLoai = entry.getKey();
                     int value = entry.getValue();                    
-                    // Tính chiều cao của cột
                     int barHeight = (int) ((double) value / maxValue * height);
-                    // Vẽ cột
                     g2d.setColor(new Color(44, 102, 230));
                     g2d.fillRect(x, bottom - barHeight, barWidth, barHeight);                    
-                    // Vẽ khung cột
                     g2d.setColor(Color.BLACK);
                     g2d.drawRect(x, bottom - barHeight, barWidth, barHeight);                    
-                    // Vẽ giá trị
                     g2d.drawString(String.valueOf(value), x + barWidth/2 - g2d.getFontMetrics().stringWidth(String.valueOf(value))/2, 
                                   bottom - barHeight - 5);
                     
-                    // Vẽ nhãn phân loại với khả năng xuống dòng
                     drawWrappedText(g2d, phanLoai, x, bottom + labelPadding, barWidth);
                     
                     x += (barWidth + barSpacing);
                 }
             }
             
-            // Hàm để vẽ text có thể xuống dòng nếu quá dài
             private void drawWrappedText(Graphics2D g2d, String text, int x, int y, int maxWidth) {
                 FontMetrics fm = g2d.getFontMetrics();
                 if (fm.stringWidth(text) <= maxWidth) {
-                    // Nếu text vừa với chiều rộng, vẽ bình thường và căn giữa
                     int textX = x + (maxWidth - fm.stringWidth(text)) / 2;
                     g2d.drawString(text, textX, y);
                     return;
                 }
                 
-                // Chia text thành nhiều dòng
                 java.util.List<String> lines = new ArrayList<>();
                 String[] words = text.split(" ");
                 StringBuilder currentLine = new StringBuilder();
@@ -594,18 +574,15 @@ public class ThongKeKhoVatTuPanel extends JPanel {
                             lines.add(currentLine.toString());
                             currentLine = new StringBuilder(word);
                         } else {
-                            // Nếu một từ dài hơn maxWidth, buộc phải thêm nó vào một dòng riêng
                             lines.add(word);
                         }
                     }
                 }
                 
-                // Thêm dòng cuối cùng nếu còn
                 if (currentLine.length() > 0) {
                     lines.add(currentLine.toString());
                 }
                 
-                // Vẽ từng dòng
                 int lineHeight = fm.getHeight();
                 for (int i = 0; i < lines.size(); i++) {
                     String line = lines.get(i);
@@ -627,18 +604,16 @@ public class ThongKeKhoVatTuPanel extends JPanel {
             private int translateX = 0;
             private int translateY = 0;            
             {
-                // Thêm khả năng zoom và pan cho biểu đồ
                 MouseAdapter mouseHandler = new MouseAdapter() {
                     private Point lastPoint;
                     
                     @Override
                     public void mouseWheelMoved(MouseWheelEvent e) {
                         if (e.getWheelRotation() < 0) {
-                            scale *= 1.1; // Zoom in
+                            scale *= 1.1;
                         } else {
-                            scale /= 1.1; // Zoom out
+                            scale /= 1.1;
                         }
-                        // Giới hạn mức zoom
                         scale = Math.max(0.5, Math.min(scale, 2.0));
                         repaint();
                     }
@@ -650,7 +625,6 @@ public class ThongKeKhoVatTuPanel extends JPanel {
                     
                     @Override
                     public void mouseDragged(MouseEvent e) {
-                        // Di chuyển biểu đồ khi kéo chuột
                         if (lastPoint != null) {
                             translateX += e.getX() - lastPoint.x;
                             translateY += e.getY() - lastPoint.y;
@@ -755,7 +729,7 @@ public class ThongKeKhoVatTuPanel extends JPanel {
             }
         };
         JScrollPane legendScrollPane = new JScrollPane(legendPanel);
-        legendScrollPane.setPreferredSize(new Dimension(200, 0)); // Chiều rộng cố định cho legend
+        legendScrollPane.setPreferredSize(new Dimension(200, 0));
         legendScrollPane.setBorder(BorderFactory.createEmptyBorder());
         int legendHeight = 45 * controller.getTongSoLuongTheoPhanLoai().size() + 50;
         legendPanel.setPreferredSize(new Dimension(180, legendHeight));
