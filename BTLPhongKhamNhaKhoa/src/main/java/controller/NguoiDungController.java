@@ -399,7 +399,8 @@ public class NguoiDungController {
             statement.setString(4, hashPassword(nguoiDung.getMatKhau()));
             statement.setDate(5, nguoiDung.getNgaySinh());
             statement.setString(6, nguoiDung.getGioiTinh());
-            statement.setString(7, nguoiDung.getVaiTro() != null ? nguoiDung.getVaiTro() : null); // Mặc định là USER
+            String vaiTroDB = (nguoiDung.getVaiTro() != null && nguoiDung.getVaiTro().equals("Người dùng")) ? null : nguoiDung.getVaiTro();
+            statement.setString(7, vaiTroDB);
 
             int rowsInserted = statement.executeUpdate();
             success = (rowsInserted > 0);
@@ -430,7 +431,8 @@ public class NguoiDungController {
                 statement.setString(2, user.getEmail());
                 statement.setString(3, user.getSoDienThoai());
                 statement.setString(4, hashPassword(user.getMatKhau()));
-                statement.setString(5, user.getVaiTro());
+                String vaiTroDB = (user.getVaiTro() != null && user.getVaiTro().equals("Người dùng")) ? null : user.getVaiTro();
+                statement.setString(5, vaiTroDB);
                 statement.setInt(6, user.getIdNguoiDung());
             } else {
                 // Không thay đổi mật khẩu
@@ -440,7 +442,8 @@ public class NguoiDungController {
                 statement.setString(1, user.getHoTen());
                 statement.setString(2, user.getEmail());
                 statement.setString(3, user.getSoDienThoai());
-                statement.setString(4, user.getVaiTro());
+                String vaiTroDB = (user.getVaiTro() != null && user.getVaiTro().equals("Người dùng")) ? null : user.getVaiTro();
+                statement.setString(4, vaiTroDB);
                 statement.setInt(5, user.getIdNguoiDung());
             }
 
@@ -772,7 +775,8 @@ public class NguoiDungController {
             statement.setString(4, hashPassword(user.getMatKhau()));
             statement.setDate(5, user.getNgaySinh());
             statement.setString(6, user.getGioiTinh());
-            statement.setString(7, user.getVaiTro());
+            String vaiTroDB = (user.getVaiTro() != null && user.getVaiTro().equals("Người dùng")) ? null : user.getVaiTro();
+            statement.setString(7, vaiTroDB);
 
             int rowsInserted = statement.executeUpdate();
             if (rowsInserted <= 0) {
@@ -793,7 +797,7 @@ public class NguoiDungController {
             // Default values for new user
             String gender = "Nam"; // Default gender to "Nam"
             Date birthDate = null;     // Default birth date (null)
-            String role = "Lễ tân";      // Default role to 'Lễ tân' (matches database)
+            String role = null;      // Default role to null
 
             String query = "INSERT INTO NguoiDung (HoTen, Email, SoDienThoai, MatKhau, NgaySinh, GioiTinh, VaiTro) " +
                            "VALUES (?, ?, ?, ?, ?, ?, ?)";

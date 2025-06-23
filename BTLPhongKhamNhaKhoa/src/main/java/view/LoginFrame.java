@@ -404,8 +404,8 @@ public class LoginFrame extends JFrame {
             }
         });
         createAccountButton.addActionListener(e -> {
-            RegisterFrame registerFrame = new RegisterFrame();
-            registerFrame.setVisible(true);
+            this.setVisible(false);
+            new RegisterFrame(this);
         });        
         loginButton.addActionListener(e -> {
             String email = emailField.getText().trim();

@@ -247,11 +247,11 @@ public class DichVuKhachHangPanel extends JPanel {
                 tableModel.addRow(row);
             }
             
-            if (danhSachDichVu.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "Không có dịch vụ nào trong cơ sở dữ liệu.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            }
+            // if (danhSachDichVu.isEmpty()) {
+            //     JOptionPane.showMessageDialog(this,
+            //         "Không có dịch vụ nào trong cơ sở dữ liệu.",
+            //         "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            // }
             
         } catch (SQLException e) {
             e.printStackTrace();

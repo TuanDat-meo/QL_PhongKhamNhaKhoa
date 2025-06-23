@@ -358,12 +358,13 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             java.util.List<NguoiDung> users = controller.getAllUsers();
             
             for (NguoiDung user : users) {
+                String vaiTroDisplay = (user.getVaiTro() == null || user.getVaiTro().trim().isEmpty()) ? "Người dùng" : user.getVaiTro();
                 Object[] rowData = {
                     user.getIdNguoiDung(),
                     user.getHoTen(),
                     user.getEmail(),
                     user.getSoDienThoai(),
-                    user.getVaiTro()
+                    vaiTroDisplay
                 };
                 tableModel.addRow(rowData);
             }
@@ -506,6 +507,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
                 }
                 if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
                 if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
+                if (!availableRoles.contains("Người dùng")) availableRoles.add("Người dùng");
                 String[] roles = availableRoles.toArray(new String[0]);
                 // Dialog lớn, có scroll
                 JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chỉnh Sửa Người Dùng", true);
@@ -834,12 +836,13 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
             
             // Add search results to the table
             for (NguoiDung user : users) {
+                String vaiTroDisplay = (user.getVaiTro() == null || user.getVaiTro().trim().isEmpty()) ? "Người dùng" : user.getVaiTro();
                 Object[] rowData = {
                     user.getIdNguoiDung(),
                     user.getHoTen(),
                     user.getEmail(),
                     user.getSoDienThoai(),
-                    user.getVaiTro()
+                    vaiTroDisplay
                 };
                 tableModel.addRow(rowData);
             }
@@ -1108,6 +1111,7 @@ public class NguoiDungUI extends JPanel implements MessageCallback, DataChangeLi
         }
         if (!availableRoles.contains("Kế toán")) availableRoles.add("Kế toán");
         if (!availableRoles.contains("Quản kho")) availableRoles.add("Quản kho");
+        if (!availableRoles.contains("Người dùng")) availableRoles.add("Người dùng");
         String[] roles = availableRoles.toArray(new String[0]);
         JComboBox<String> vaiTroBox = new JComboBox<>(roles);
         vaiTroBox.setFont(regularFont);

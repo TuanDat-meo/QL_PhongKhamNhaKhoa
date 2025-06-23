@@ -52,6 +52,9 @@ public class GiaoDienChinh extends JFrame {
     private static final String[] QUANKHO_MENU = {
         "Quản lý Kho Vật Tư", "Quản lý Nhà Cung Cấp", "Thống Kê"
     };
+    private static final String[] USER_MENU = {
+        "Đặt Lịch Hẹn", "Dịch Vụ", "Lịch Sử Lịch Hẹn"
+    };
     
     // Combined menu items to be populated based on user role
     private String[] menuItems;
@@ -128,8 +131,12 @@ public class GiaoDienChinh extends JFrame {
             case "quan kho":
                 menuItems = QUANKHO_MENU;
                 break;
+            case "":
+            case "null":
+                menuItems = USER_MENU;
+                break;
             default:
-                menuItems = new String[]{}; // Không có menu nào ngoài logout
+                menuItems = new String[]{}; // Không có menu nào ngoài logout, KHÔNG hiện popup
         }
     }
 
